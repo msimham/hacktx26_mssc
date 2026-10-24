@@ -1,0 +1,27 @@
+{
+  "name": "magicalsafety",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "workspaces": [
+    "packages/engine",
+    "server",
+    "client"
+  ],
+  "scripts": {
+    "dev": "concurrently -n server,client -c blue,magenta \"npm run dev -w @magicalsafety/server\" \"npm run dev -w @magicalsafety/client\"",
+    "build": "npm run typecheck && npm run build -w @magicalsafety/client",
+    "start": "npm run start -w @magicalsafety/server",
+    "test": "npm test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "sim": "npm run sim -w @magicalsafety/engine",
+    "gen:assets": "tsx scripts/gen-assets.ts",
+    "demo:seed": "tsx scripts/demo-seed.ts"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2",
+    "vitest": "^5.0.5"
+  }
+}

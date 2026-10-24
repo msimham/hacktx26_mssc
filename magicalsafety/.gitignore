@@ -1,0 +1,9 @@
+node_modules
+.env
+.env.*
+!.env.example
+dist
+server/data
+server/assets-cache
+*.log
+.DS_Store
