@@ -29,6 +29,8 @@ export const SessionMeta = z.strictObject({
   players: z.array(PlayerRecord),
   /** Last verified log position. Set when the session ends so tail truncation is detectable. */
   logHead: z.strictObject({ seq: z.number().int(), hash: z.string() }).nullable(),
+  /** The adapted follow-up session, once one has been created from this session's plan. */
+  replay: z.strictObject({ id: z.string(), code: z.string() }).optional(),
 });
 export type SessionMeta = z.infer<typeof SessionMeta>;
 

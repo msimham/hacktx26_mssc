@@ -7,6 +7,7 @@ export const ScenarioId = z.enum(["medical_emergency", "evacuation"]);
 export type ScenarioId = z.infer<typeof ScenarioId>;
 export const SocialEnvironment = z.enum(["friends", "classmates", "coworkers", "assigned_team", "strangers", "simulated"]);
 export type SocialEnvironment = z.infer<typeof SocialEnvironment>;
+export const RoleIdSchema = z.enum(["discoverer", "authority", "runner", "liaison"]);
 export const InputMethod = z.enum(["text", "voice", "mouse", "keyboard"]);
 
 /** What this run looks like. Independent of the org layer (what to teach/evaluate). */
@@ -29,7 +30,16 @@ export const SessionConfig = z.strictObject({
     act2DurationSec: z.number().int().min(90).max(240),
     allowCrossRoomChat: z.boolean(),
   }),
-  adaptation: z.strictObject({ fromSessionId: z.string(), planId: z.string() }).optional(),
+  adaptation: z
+    .strictObject({
+      fromSessionId: z.string(),
+      planId: z.string(),
+      // Role/timing levers that are not part of Difficulty. Applied by createRuntime/compile.
+      rotateRoles: z.boolean().optional(),
+      discovererRole: RoleIdSchema.optional(),
+      distractorFirst: z.boolean().optional(),
+    })
+    .optional(),
 });
 export type SessionConfig = z.infer<typeof SessionConfig>;
 

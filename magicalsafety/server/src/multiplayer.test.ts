@@ -1,68 +1,10 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import type { AddressInfo } from "node:net";
-import { io as connect, type Socket } from "socket.io-client";
 import { afterEach, describe, expect, it } from "vitest";
-import type { Action, PlayerView } from "@magicalsafety/engine";
-import { readEnv } from "./config/env";
-import { createServer, type RunningServer } from "./server";
-import { JsonFileStore } from "./store/store";
+import { boot, cleanup, kit, PASS, sleep } from "./testkit";
 
-const PASS = "test-pass";
-const env = (dataDir = "") => ({ ...readEnv({ ORGANIZER_PASSCODE: PASS }), dataDir });
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
-class Client {
-  socket: Socket;
-  view: PlayerView | null = null;
-  lobby: { players: { id: string; roleId: string | null }[]; you: { isHost: boolean } } | null = null;
-  received: string[] = []; // every payload, as JSON, for leak checks
-  playerId = "";
-  token = "";
-  constructor(url: string) {
-    this.socket = connect(url, { transports: ["websocket"], forceNew: true });
-    this.socket.on("view", (v: PlayerView) => { this.view = v; this.received.push(JSON.stringify(v)); });
-    this.socket.on("lobby", (l) => { this.lobby = l; this.received.push(JSON.stringify(l)); });
-  }
-  emit<T = Record<string, unknown>>(event: string, payload?: unknown): Promise<T> {
-    return new Promise((res) => this.socket.emit(event, payload, res));
-  }
-  async join(code: string, name?: string, token?: string) {
-    const r = await this.emit<{ ok: boolean; playerId?: string; token?: string; error?: string }>("join", { code, name, token });
-    if (r.ok) { this.playerId = r.playerId!; this.token = r.token!; }
-    return r;
-  }
-  do(action: Action) { return this.emit<{ ok: boolean; rejected?: string }>("action", { action }); }
-  get text() { return this.received.join("\n"); }
-  close() { this.socket.close(); }
-}
-
-let server: RunningServer | null = null;
-let clients: Client[] = [];
-afterEach(async () => {
-  clients.forEach((c) => c.close());
-  clients = [];
-  await server?.close();
-  server = null;
-});
-
-async function boot(opts: { dataDir?: string; clockRef?: { now: number } } = {}) {
-  const clockRef = opts.clockRef ?? { now: 1_000_000 };
-  server = await createServer(env(opts.dataDir), { store: opts.dataDir ? new JsonFileStore(opts.dataDir) : new JsonFileStore(), clock: () => clockRef.now, tickMs: 0 });
-  await new Promise<void>((r) => server!.httpServer.listen(0, r));
-  const url = `http://localhost:${(server.httpServer.address() as AddressInfo).port}`;
-  const advance = async (ms: number) => {
-    for (let t = 0; t < ms; t += 500) { clockRef.now += 500; await server!.hub.pump(); }
-    await sleep(40);
-  };
-  const create = async (body: Record<string, unknown> = {}) => {
-    const res = await fetch(`${url}/api/sessions`, { method: "POST", headers: { "content-type": "application/json", "x-organizer-passcode": PASS }, body: JSON.stringify(body) });
-    return (await res.json()) as { id: string; code: string };
-  };
-  const client = () => { const c = new Client(url); clients.push(c); return c; };
-  return { url, advance, create, client, clockRef };
-}
+afterEach(cleanup);
 
 describe("session creation", () => {
   it("requires the organizer passcode and validates settings", async () => {
@@ -114,7 +56,7 @@ describe("two players and a simulated teammate play to a win", () => {
     expect(ana.view!.actors.some((a) => a.kind === "bot")).toBe(true);
 
     // Private knowledge stays private until someone speaks.
-    const state = server!.hub.stateOf(id)!;
+    const state = kit.server!.hub.stateOf(id)!;
     await advance(state.acts[0]!.timing.incidentStartT - state.t + 1000);
     expect(ben.text).toContain("physician is waiting");
     expect(ana.text).not.toContain("physician is waiting");
@@ -182,28 +124,28 @@ describe("reconnect and crash recovery", () => {
     await a.join(code, "Ana");
     await a.emit("choose_role", { roleId: "discoverer" });
     await a.emit("start");
-    const t0 = server!.hub.stateOf(id)!.acts[0]!.timing.incidentStartT;
+    const t0 = kit.server!.hub.stateOf(id)!.acts[0]!.timing.incidentStartT;
     await first.advance(t0 + 1000);
     await a.do({ kind: "say", to: "team", text: "The Duchess collapsed in the ballroom!" });
     await first.advance(20_000);
-    const before = structuredClone(server!.hub.stateOf(id)!.events);
+    const before = structuredClone(kit.server!.hub.stateOf(id)!.events);
     const token = a.token;
-    clients.forEach((c) => c.close()); clients = [];
-    await server!.close(); server = null;
+    kit.clients.forEach((c) => c.close()); kit.clients = [];
+    await kit.server!.close(); kit.server = null;
 
     const second = await boot({ dataDir: dir, clockRef });
-    const resumed = server!.hub.stateOf(id)!;
+    const resumed = kit.server!.hub.stateOf(id)!;
     expect(resumed).not.toBeNull();
     expect(resumed.events.slice(0, before.length)).toEqual(before);
     const b = second.client();
     expect((await b.join(code, undefined, token)).ok).toBe(true);
 
     // Corrupt the log on disk: the session must not be resumed.
-    clients.forEach((c) => c.close()); clients = [];
-    await server!.close(); server = null;
+    kit.clients.forEach((c) => c.close()); kit.clients = [];
+    await kit.server!.close(); kit.server = null;
     const logPath = path.join(dir, `${id}.log.jsonl`);
     await fs.writeFile(logPath, (await fs.readFile(logPath, "utf8")).replace(/"now":\d+/, '"now":1'));
     await boot({ dataDir: dir, clockRef });
-    expect(server!.hub.stateOf(id)).toBeNull();
+    expect(kit.server!.hub.stateOf(id)).toBeNull();
   });
 });

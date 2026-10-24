@@ -18,8 +18,13 @@ export function loadPlayer(code: string): StoredPlayer | null {
   }
 }
 
+export function loadLastName(): string {
+  try { return localStorage.getItem("mss:lastName") ?? ""; } catch { return ""; }
+}
+
 export function savePlayer(code: string, p: StoredPlayer): void {
   try {
+    if (p.name) localStorage.setItem("mss:lastName", p.name);
     localStorage.setItem(key(code), JSON.stringify(p));
     localStorage.setItem(sidKey(p.sessionId), JSON.stringify(p));
   } catch { /* storage unavailable */ }

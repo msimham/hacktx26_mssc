@@ -1,12 +1,19 @@
-import { useState } from "react";
-import { useParams } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useParams, useSearchParams } from "react-router-dom";
+import { loadLastName } from "../session/storage";
 import { SessionProvider, useSession } from "../session/SessionContext";
 import { Lobby } from "./Lobby";
 import { Game } from "./Game";
 
 function Inner() {
   const { status, error, join, view, lobby, code } = useSession();
-  const [name, setName] = useState("");
+  const [params] = useSearchParams();
+  const [name, setName] = useState(loadLastName());
+  // Arriving from "Join the adapted session": reuse the name you played with, no extra typing.
+  useEffect(() => {
+    if (status === "need_name" && params.get("autojoin") === "1" && name.trim()) join(name);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status]);
   if (status === "error") return <p role="alert" className="p-6 text-rose-300">{error} <a className="underline" href="/">Back home</a></p>;
   if (status === "need_name") {
     return (

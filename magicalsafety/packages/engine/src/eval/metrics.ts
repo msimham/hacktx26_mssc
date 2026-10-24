@@ -94,6 +94,9 @@ export function computeMetrics(state: RuntimeState, act: 1 | 2 = 1): MetricResul
   const early = evs.filter((e) => e.t < firstHelpT && ((e.type === "task_completed" && e.payload.distractor === true) || (e.type === "inspected" && e.payload.via !== "check_responsiveness" && e.payload.targetId !== "duchess")));
   out.push(m("priority_order_ok", "Help was requested before distractor tasks or idle exploration", early.length === 0, early));
 
+  const redundant = of("task_failed").filter((e) => e.payload.redundant === true);
+  out.push(m("redundant_efforts", "Work that was already done by someone else when it finished", redundant.length, redundant));
+
   const rejected = of("action_rejected");
   out.push(m("rejected_actions", "Attempted actions the rules rejected (a confusion signal)", rejected.length, rejected));
   return out;

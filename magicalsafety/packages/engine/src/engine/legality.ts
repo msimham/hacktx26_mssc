@@ -111,6 +111,11 @@ export function neededFacts(s: RuntimeState, taskId: string, assignee: Actor): s
   return [...out];
 }
 
+/** Siloed information: what a task needs only passes along with a request when you are in the same room. */
+export function factsRideAlong(s: RuntimeState, from: Actor, to: Actor): boolean {
+  return curAct(s).difficulty.infoDistribution !== "siloed" || from.roomId === to.roomId;
+}
+
 /** THE legality function. legalActions(), voice parsing, hotkeys and server validation all use it. */
 export function checkAction(s: RuntimeState, actor: Actor, action: Action): Check {
   if (s.phase !== "running") return no("The session is not running");
@@ -154,8 +159,9 @@ export function checkAction(s: RuntimeState, actor: Actor, action: Action): Chec
     if (blocked) return no(blocked);
     if (Object.values(s.assignments).some((a) => a.taskId === task.id && (a.status === "pending" || a.status === "accepted")))
       return no("Someone is already on it");
-    const missing = neededFacts(s, task.id, target).filter((f) => !actor.facts.includes(f) && !target.facts.includes(f));
-    if (missing.length) return no("Neither of you knows enough to do that yet");
+    const carry = factsRideAlong(s, actor, target);
+    const missing = neededFacts(s, task.id, target).filter((f) => !target.facts.includes(f) && !(carry && actor.facts.includes(f)));
+    if (missing.length) return no(carry ? "Neither of you knows enough to do that yet" : "They don't know enough to do that yet. Meet them in person or tell them first");
     return yes();
   }
 

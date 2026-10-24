@@ -6,8 +6,11 @@ import { integrationStatuses } from "./config/env";
 import type { Store } from "./store/store";
 import type { SessionHub } from "./realtime/sessionHub";
 import { sessionRoutes } from "./routes/sessions";
+import { health } from "./agent/health";
+import type { TrainingAgent } from "./agent/trainingAgent";
+import type { RunLog } from "./agent/runLog";
 
-export function createApp(env: Env, deps?: { store: Store; hub: SessionHub }) {
+export function createApp(env: Env, deps?: { store: Store; hub: SessionHub; agent: TrainingAgent; runLog: RunLog }) {
   const app = express();
   app.disable("x-powered-by");
   app.use(express.json({ limit: "1mb" }));
@@ -22,10 +25,10 @@ export function createApp(env: Env, deps?: { store: Store; hub: SessionHub }) {
   });
 
   app.get("/api/integrations", (_req, res) => {
-    res.json({ integrations: integrationStatuses(env) });
+    res.json({ integrations: health.apply(integrationStatuses(env)) });
   });
 
-  if (deps) app.use("/api/sessions", sessionRoutes(env, deps.store, deps.hub));
+  if (deps) app.use("/api/sessions", sessionRoutes(env, deps.store, deps.agent, deps.runLog));
 
   // Production: serve the built client.
   const dist = path.resolve(import.meta.dirname, "../../client/dist");

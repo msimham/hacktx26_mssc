@@ -11,7 +11,7 @@ import {
   actors, AUTO_ACCEPT_MS, cloneState, curAct, emit, flushEvents, grantFact, isAutonomous,
   slotRoom, stepRoom,
 } from "./core";
-import { checkAction, neededFacts, recipients, stepDurationMs, stepForAction } from "./legality";
+import { checkAction, factsRideAlong, neededFacts, recipients, stepDurationMs, stepForAction } from "./legality";
 import {
   accrue, applyStep, initMedicalState, nextTimes, onEnterRoom, setupMedical, settleMedical, stepBlocked,
 } from "./medicalHandler";
@@ -73,10 +73,15 @@ export function createRuntime(init: RuntimeInit): RuntimeState {
   const put = (a: Actor) => { state.actors[a.id] = a; state.actorOrder.push(a.id); };
   const homeOf = (r: RoleId) => slotRoom(act, world.roleSkins[r].startRoomSlot);
 
-  for (const { p, role } of withRole) put(mk(p.id, p.name, p.kind, role, null, homeOf(role!)));
+  // Adaptation lever: the named role starts where the Discoverer normally does (and vice versa),
+  // so a different person is the one who first sees the incident.
+  const swap = config.adaptation?.discovererRole;
+  const startRoleFor = (r: RoleId): RoleId => (swap && roles.includes(swap) ? (r === "discoverer" ? swap : r === swap ? "discoverer" : r) : r);
+
+  for (const { p, role } of withRole) put(mk(p.id, p.name, p.kind, role, null, homeOf(startRoleFor(role!))));
   if (config.team.fillWithBots) {
     for (const r of roles.filter((r) => !withRole.some((w) => w.role === r)))
-      put(mk(`bot_${r}`, world.roleSkins[r].name, "bot", r, null, homeOf(r)));
+      put(mk(`bot_${r}`, world.roleSkins[r].name, "bot", r, null, homeOf(startRoleFor(r))));
   }
   put(mk("npc_guard", world.npcs.guard.name, "npc", null, "guard", world.npcs.guard.roomId));
   put(mk("npc_companion", world.npcs.companion.name, "npc", null, "companion", world.npcs.companion.roomId));
@@ -344,7 +349,8 @@ function handle(s: RuntimeState, req: ActionRequest): void {
       const task = act.scenario.tasks[action.taskId]!;
       const id = `as_${s.nextAssignmentNum++}`;
       // Delegating passes along the information the task needs.
-      for (const f of neededFacts(s, task.id, target)) {
+      // Siloed information: knowledge only rides along with a request made in person.
+      for (const f of factsRideAlong(s, actor, target) ? neededFacts(s, task.id, target) : []) {
         if (actor.facts.includes(f) && grantFact(s, target, f)) emit(s, { type: "fact_shared", actor, payload: { factId: f, to: target.id, via: "delegation" } });
       }
       s.assignments[id] = { id, fromId: actor.id, toId: target.id, taskId: task.id, status: "pending", createdT: s.t, acceptAtT: isAutonomous(target) ? s.t + AUTO_ACCEPT_MS : null, acceptedT: null, completedT: null };

@@ -1,61 +1,167 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
-import { getResults, type ResultsPayload } from "../api";
+import { Link, useLocation, useParams } from "react-router-dom";
+import type { Claim } from "@magicalsafety/engine";
+import { getAnalysis, getResults, sendShoutout, type Analysis, type ResultsPayload } from "../api";
 import { loadPlayerBySession } from "../session/storage";
-
-const OUTCOMES: Record<string, { text: string; good: boolean }> = {
-  success_on_time: { text: "Help arrived in time", good: true },
-  success_late: { text: "Help arrived late, but the team got there", good: true },
-  help_never_called: { text: "Help was never called", good: false },
-  help_arrived_too_late: { text: "Help didn't arrive in time", good: false },
-  incomplete_support: { text: "Help arrived, but the person wasn't fully supported", good: false },
-};
+import { COMPETENCY_LABEL, OUTCOMES, SHOUTOUT_REASONS, WEAKNESS_LABEL, fmtSeconds } from "../labels";
+import { EvidenceChip } from "../components/EvidenceChip";
+import { GeneratedBy } from "../components/GeneratedBy";
 
 function show(v: unknown): string {
   if (v === null) return "n/a";
+  if (typeof v === "boolean") return v ? "yes" : "no";
   if (typeof v === "object") return Object.entries(v as Record<string, unknown>).map(([k, x]) => `${k}: ${String(x)}`).join(", ");
   return String(v);
 }
 
 export function Results() {
   const { sessionId = "" } = useParams();
-  const [data, setData] = useState<ResultsPayload | null>(null);
+  const { hash } = useLocation();
+  const [facts, setFacts] = useState<ResultsPayload | null>(null);
+  const [a, setA] = useState<Analysis | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [thanked, setThanked] = useState(false);
+  const [shout, setShout] = useState({ to: "", reason: "stayed_calm" as string });
+  const token = loadPlayerBySession(sessionId)?.token ?? "";
 
   useEffect(() => {
-    const p = loadPlayerBySession(sessionId);
-    if (!p) { setErr("Open this page from the browser you played in."); return; }
-    getResults(sessionId, p.token).then(setData).catch((e: Error) => setErr(e.message));
-  }, [sessionId]);
+    if (!token) { setErr("Open this page from the browser you played in."); return; }
+    getResults(sessionId, token).then(setFacts).catch((e: Error) => setErr(e.message));
+    getAnalysis(sessionId, token).then((x) => { setA(x); setThanked(x.thankedAlready); }).catch((e: Error) => setErr(e.message));
+  }, [sessionId, token]);
+
+  // Poll for the adapted session so every player sees the join button when the host creates it.
+  useEffect(() => {
+    if (!a || a.replay || !token) return;
+    const id = setInterval(() => getAnalysis(sessionId, token).then((x) => x.replay && setA(x)).catch(() => undefined), 3000);
+    return () => clearInterval(id);
+  }, [a, sessionId, token]);
+
+  useEffect(() => { if (hash && a) document.getElementById(hash.slice(1))?.scrollIntoView({ block: "center" }); }, [hash, a]);
 
   if (err) return <p role="alert" className="p-6 text-rose-300">{err} <Link className="underline" to="/">Home</Link></p>;
-  if (!data) return <p className="p-6">Loading results…</p>;
-  const o = data.outcome ? OUTCOMES[data.outcome.outcome] : undefined;
+  if (!facts || !a) return <p className="p-6">Preparing your results…</p>;
+
+  const as = a.assessment;
+  const outcome = OUTCOMES[String(as.actOutcomes.at(-1)?.outcome)] ?? { text: "Session ended", good: false };
+  const name = (id: string) => a.players.find((p) => p.id === id)?.roleName ?? a.players.find((p) => p.id === id)?.name ?? id;
+  const mine = a.you ? as.individuals.find((i) => i.playerId === a.you) : undefined;
+  const others = as.individuals.filter((i) => i.playerId !== a.you);
+  const teammates = a.players.filter((p) => p.id !== a.you && p.kind === "human");
+
+  const ClaimCard = ({ c, tone }: { c: Claim; tone: "good" | "grow" }) => (
+    <li className={`rounded-lg p-3 ring-1 ${tone === "good" ? "bg-emerald-950/50 ring-emerald-500/30" : "bg-amber-950/40 ring-amber-500/30"}`}>
+      <p className="text-sm">{c.text}</p>
+      <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-slate-400">
+        <span className="rounded bg-night px-1.5 py-0.5">{COMPETENCY_LABEL[c.competency]}</span>
+        <span>evidence:</span>
+        {c.evidenceEventIds.map((id) => <EvidenceChip key={id} id={id} timeline={a.timeline} sessionId={sessionId} />)}
+        {c.sourceIds.map((s) => <span key={s} className="rounded bg-sky-900 px-1.5 py-0.5" title="Organization or approved source">📄 {s}</span>)}
+      </div>
+    </li>
+  );
+  const ClaimList = ({ title, claims, tone }: { title: string; claims: Claim[]; tone: "good" | "grow" }) =>
+    claims.length ? <div><h4 className="mb-1 text-sm font-semibold">{title}</h4><ul className="space-y-2">{claims.map((c, i) => <ClaimCard key={i} c={c} tone={tone} />)}</ul></div> : null;
 
   return (
-    <main className="mx-auto max-w-3xl space-y-5 p-6">
+    <main className="mx-auto max-w-4xl space-y-6 p-6">
       <h1 className="font-display text-3xl text-gold">Training results</h1>
-      <div className={`rounded-xl p-5 text-lg font-semibold ${o?.good ? "bg-emerald-900/60" : "bg-rose-900/50"}`}>{o?.text ?? "Session in progress"}</div>
+      <div className={`rounded-xl p-5 text-lg font-semibold ${outcome.good ? "bg-emerald-900/60" : "bg-rose-900/50"}`}>{outcome.text}</div>
 
-      <section className="rounded-xl bg-night-2 p-4">
-        <h2 className="font-display text-lg text-gold">Recorded facts</h2>
-        <p className="mb-2 text-xs text-slate-400">Computed from the event log. Each fact lists the events it came from. AI interpretation arrives in the next phase.</p>
+      <section aria-label="Key moments" className="rounded-xl bg-night-2 p-4">
+        <h2 className="mb-2 font-display text-lg text-gold">What happened</h2>
+        <ol className="space-y-1 text-sm">
+          {a.timeline.map((t) => (
+            <li key={t.id} id={t.id} className={`flex gap-3 rounded px-2 py-1 target:bg-gold/20 ${hash === `#${t.id}` ? "bg-gold/20" : ""}`}>
+              <span className="w-12 shrink-0 text-right font-mono text-slate-400">{fmtSeconds(t.t)}</span>
+              <span className={t.tone === "good" ? "text-emerald-300" : t.tone === "bad" ? "text-rose-300" : t.tone === "alert" ? "text-amber-300" : ""}>{t.text}</span>
+              <code className="ml-auto text-[11px] text-slate-500">{t.id}</code>
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      <section aria-label="Recorded facts" className="rounded-xl border-l-4 border-slate-400 bg-night-2 p-4">
+        <h2 className="font-display text-lg text-gold">Recorded facts <span className="ml-2 rounded bg-slate-600 px-2 py-0.5 font-sans text-xs">Measured, not opinion</span></h2>
+        <p className="mb-2 text-xs text-slate-400">Computed directly from the event log. Each fact lists the events it came from.</p>
         <table className="w-full text-left text-sm">
           <thead className="text-slate-400"><tr><th className="py-1 pr-3">What we measured</th><th className="pr-3">Value</th><th>Evidence</th></tr></thead>
           <tbody>
-            {data.metrics.map((m) => (
+            {facts.metrics.map((m) => (
               <tr key={m.key} className="border-t border-white/10 align-top">
                 <td className="py-2 pr-3">{m.description}</td>
                 <td className="pr-3 font-mono">{show(m.value)}{m.unit && m.value !== null ? ` ${m.unit}` : ""}</td>
-                <td className="space-x-1">{m.evidenceEventIds.slice(0, 4).map((id) => <code key={id} className="rounded bg-night px-1 text-xs">{id}</code>)}</td>
+                <td className="space-x-1">{m.evidenceEventIds.slice(0, 4).map((id) => <EvidenceChip key={id} id={id} timeline={a.timeline} sessionId={sessionId} />)}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </section>
-      <p className="text-xs text-slate-400">Verified record: {data.verifiedLog.entries} entries, chain head {data.verifiedLog.head}…</p>
-      <p className="text-xs text-slate-400">This is a coordination exercise, not certified first-aid training. Follow your organization's certified training.</p>
-      <Link to="/" className="inline-block rounded bg-gold px-4 py-2 font-semibold text-night">Back to start</Link>
+
+      <section aria-label="Interpretation" className="space-y-4 rounded-xl border-l-4 border-sky-400 bg-night-2 p-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <h2 className="font-display text-lg text-gold">Interpretation</h2>
+          <GeneratedBy by={as.generatedBy} />
+        </div>
+        <p className="text-xs text-slate-400">An interpretation of the facts above. Every statement cites recorded events. Treat it as a coaching suggestion.</p>
+        {as.primaryWeaknesses.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {as.primaryWeaknesses.map((w) => <span key={w} className="rounded-full bg-amber-900/60 px-3 py-1 text-xs" title={WEAKNESS_LABEL[w].blurb}>Focus: {WEAKNESS_LABEL[w].title}</span>)}
+          </div>
+        )}
+        <ClaimList title="Team strengths" claims={as.team.strengths} tone="good" />
+        <ClaimList title="Team: what to try next" claims={as.team.improvements} tone="grow" />
+        {as.team.strengths.length + as.team.improvements.length === 0 && <p className="text-sm text-slate-300">Nothing stood out either way in this run.</p>}
+
+        <h3 className="pt-2 font-display text-gold">Individual cards</h3>
+        <div className="grid gap-4 md:grid-cols-2">
+          {[...(mine ? [mine] : []), ...others].map((i) => (
+            <article key={i.playerId} className={`rounded-lg bg-night p-3 ring-1 ${i.playerId === a.you ? "ring-gold" : "ring-white/10"}`}>
+              <h4 className="mb-2 font-semibold">{name(i.playerId)}{i.playerId === a.you && " (you)"}</h4>
+              <div className="space-y-3">
+                <ClaimList title="Went well" claims={i.strengths} tone="good" />
+                <ClaimList title="Try next time" claims={i.improvements} tone="grow" />
+                {i.strengths.length + i.improvements.length === 0 && <p className="text-sm text-slate-400">No standout moments recorded.</p>}
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      {a.realWorld.length > 0 && (
+        <section aria-label="Real-world equivalents" className="rounded-xl bg-night-2 p-4">
+          <h2 className="mb-2 font-display text-lg text-gold">In the real world</h2>
+          <ul className="space-y-1 text-sm">{a.realWorld.map((r) => <li key={r.label}><strong>{r.label}:</strong> {r.realWorld}</li>)}</ul>
+        </section>
+      )}
+
+      {a.you && teammates.length > 0 && (
+        <section aria-label="Team shout-out" className="rounded-xl bg-night-2 p-4">
+          <h2 className="mb-2 font-display text-lg text-gold">Say thanks</h2>
+          {thanked ? <p className="text-sm text-emerald-300">Thank-you sent. 💛</p> : (
+            <form className="flex flex-wrap items-end gap-3" onSubmit={(e) => { e.preventDefault(); if (shout.to) void sendShoutout(sessionId, token, shout.to, shout.reason).then(() => setThanked(true)).catch((x: Error) => setErr(x.message)); }}>
+              <label className="text-sm">Teammate
+                <select value={shout.to} onChange={(e) => setShout({ ...shout, to: e.target.value })} className="mt-1 block rounded bg-night px-2 py-1.5 ring-1 ring-white/15">
+                  <option value="">Choose…</option>
+                  {teammates.map((p) => <option key={p.id} value={p.id}>{p.roleName ?? p.name}</option>)}
+                </select>
+              </label>
+              <label className="text-sm">For
+                <select value={shout.reason} onChange={(e) => setShout({ ...shout, reason: e.target.value })} className="mt-1 block rounded bg-night px-2 py-1.5 ring-1 ring-white/15">
+                  {SHOUTOUT_REASONS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                </select>
+              </label>
+              <button disabled={!shout.to} className="rounded bg-gold px-4 py-1.5 font-semibold text-night disabled:opacity-50">Send thanks</button>
+            </form>
+          )}
+        </section>
+      )}
+
+      <div className="flex flex-wrap items-center gap-3">
+        <Link to={`/replay/${sessionId}`} className="rounded bg-gold px-5 py-2 font-semibold text-night">Plan the next run →</Link>
+        <Link to="/" className="rounded px-4 py-2 ring-1 ring-white/20">Back to start</Link>
+      </div>
+      <p className="text-xs text-slate-400">Verified record: {facts.verifiedLog.entries} entries, chain head {facts.verifiedLog.head}… · This is a coordination exercise, not certified first-aid training. Follow your organization's certified training.</p>
     </main>
   );
 }

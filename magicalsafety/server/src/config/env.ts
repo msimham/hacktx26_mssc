@@ -6,7 +6,8 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 // magicalsafety/.env (server/src/config -> ../../../.env). Missing file is fine: demo mode.
 dotenv.config({ path: path.resolve(here, "../../../.env"), quiet: true });
 
-export type IntegrationState = "mock" | "configured";
+/** "live" and "degraded" are only ever set from real request outcomes (see agent/health.ts). */
+export type IntegrationState = "mock" | "configured" | "live" | "degraded";
 
 export interface IntegrationStatus {
   id: "meta_spark" | "meta_image" | "meta_voice" | "serpapi" | "facebook";

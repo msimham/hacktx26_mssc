@@ -13,12 +13,18 @@ export interface Store {
   appendInput(id: string, input: LogInput): Promise<void>;
   logHead(id: string): { seq: number; hash: string } | null;
   loadLog(id: string): Promise<Verified>;
+  /** Small derived documents (analysis, shout-outs, agent runs). Stored atomically next to the session. */
+  putDoc(id: string, kind: DocKind, value: unknown): Promise<void>;
+  getDoc(id: string, kind: DocKind): Promise<unknown | undefined>;
   delete(id: string): Promise<void>;
   /** Deletes sessions older than maxAgeDays. Returns the deleted ids. */
   sweep(maxAgeDays: number, nowMs: number): Promise<string[]>;
   /** Resolves when every queued write has hit the disk. */
   flush(): Promise<void>;
 }
+
+export type DocKind = "analysis" | "shoutouts" | "runs";
+const DOC_KINDS: readonly DocKind[] = ["analysis", "shoutouts", "runs"];
 
 const SAFE_ID = /^[A-Za-z0-9_-]{4,40}$/;
 
@@ -32,6 +38,7 @@ export class JsonFileStore implements Store {
   private metas = new Map<string, SessionMeta>();
   private heads = new Map<string, { seq: number; hash: string }>();
   private memLogs = new Map<string, string[]>();
+  private memDocs = new Map<string, string>();
   private queues = new Map<string, Promise<void>>();
 
   constructor(private dir?: string) {}
@@ -142,13 +149,43 @@ export class JsonFileStore implements Store {
     return result;
   }
 
+  private docPath(id: string, kind: DocKind) { return path.join(this.dir!, `${this.safe(id)}.${kind}.json`); }
+
+  putDoc(id: string, kind: DocKind, value: unknown): Promise<void> {
+    if (!DOC_KINDS.includes(kind)) throw new Error("invalid document kind");
+    this.safe(id);
+    const body = JSON.stringify(value);
+    if (!this.dir) { this.memDocs.set(`${id}.${kind}`, body); return Promise.resolve(); }
+    return this.enqueue(`${id}.${kind}`, async () => {
+      const tmp = `${this.docPath(id, kind)}.${process.pid}.tmp`;
+      await fs.writeFile(tmp, body, { mode: 0o600 });
+      await fs.rename(tmp, this.docPath(id, kind));
+    });
+  }
+
+  async getDoc(id: string, kind: DocKind): Promise<unknown | undefined> {
+    if (!DOC_KINDS.includes(kind)) throw new Error("invalid document kind");
+    await this.flush();
+    try {
+      const raw = this.dir ? await fs.readFile(this.docPath(id, kind), "utf8") : this.memDocs.get(`${id}.${kind}`);
+      return raw === undefined ? undefined : JSON.parse(raw);
+    } catch {
+      return undefined; // missing or unreadable: callers re-derive and validate
+    }
+  }
+
   async delete(id: string): Promise<void> {
     this.metas.delete(id);
     this.heads.delete(id);
     this.memLogs.delete(id);
+    for (const k of DOC_KINDS) this.memDocs.delete(`${id}.${k}`);
     if (!this.dir) return;
     await this.flush();
-    await Promise.all([fs.rm(this.metaPath(id), { force: true }), fs.rm(this.logPath(id), { force: true })]);
+    await Promise.all([
+      fs.rm(this.metaPath(id), { force: true }),
+      fs.rm(this.logPath(id), { force: true }),
+      ...DOC_KINDS.map((k) => fs.rm(this.docPath(id, k), { force: true })),
+    ]);
   }
 
   async sweep(maxAgeDays: number, nowMs: number): Promise<string[]> {

@@ -46,7 +46,7 @@ export function compile(world: World, config: SessionConfig, seed: number): Runt
       etaMs: track.eta,
       guideBonusMs: 12_000,
       durationMs: durationSec * 1000,
-      secondIncidentT: second ? incidentStartT + 8_000 : null,
+      secondIncidentT: second ? incidentStartT + (config.adaptation?.distractorFirst ? -6_000 : 8_000) : null,
     };
     return {
       act: (i + 1) as 1 | 2,
