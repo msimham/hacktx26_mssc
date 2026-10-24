@@ -1,1 +1,1 @@
-# hacktx26_mssc
+# Magic Safety School
