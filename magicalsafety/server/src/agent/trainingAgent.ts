@@ -1,24 +1,38 @@
 import { z } from "zod";
 import {
-  AdaptationPlan, AdaptationProposal, applyAdaptation, Assessment, AssessmentInterpretation, buildRulePlan, computeMetrics,
-  configDiff, evalContext, interpretWithRules, planId, REAL_WORLD, replay, timelineFor, weaknessesForLever, WORLDS,
-  type DiffRow, type RuntimeState, type TimelineItem, type WeaknessCode,
+  AdaptationPlan, AdaptationProposal, applyAdaptation, Assessment, AssessmentInterpretation, buildRulePlan, competencyWeights,
+  computeMetrics, configDiff, DEFAULT_OBJECTIVES, evalContext, interpretWithRules, metricEmphasis, planId, REAL_WORLD, replay,
+  scoreRubric, timelineFor, weaknessesForLever, WORLDS,
+  type DiffRow, type OrgConfig, type OrgLens, type RuntimeState, type TimelineItem, type WeaknessCode,
 } from "@magicalsafety/engine";
 import type { Store } from "../store/store";
+import type { ToolExecutor } from "../tools/executeTool";
+import type { Usage } from "../tools/usage";
 import { compactEvents } from "./compact";
-import { health } from "./health";
 import { ADAPT_SYSTEM, adaptUser } from "./prompts/adapt";
 import { DIAGNOSE_SYSTEM, diagnoseUser } from "./prompts/diagnose";
-import { costUsd } from "./providers/metaMuse";
-import { ProviderError, type ModelProvider } from "./providers/types";
-import { RunLog, type AgentRun } from "./runLog";
+import type { ModelProvider } from "./providers/types";
 import { wrapUntrusted } from "./redact";
-import { validateInterpretation, validateProposal, type PolicyDecision, type Validation } from "./validate";
+import type { StructuredRunner } from "./structuredRunner";
+import { validateInterpretation, validateProposal } from "./validate";
+
+const RubricResultDoc = z.strictObject({
+  objectiveId: z.string(), indicator: z.string(), direction: z.enum(["at_most", "at_least", "is_true", "is_false"]), target: z.number(), weight: z.number(),
+  value: z.union([z.number(), z.boolean(), z.null()]), met: z.boolean().nullable(), evidenceEventIds: z.array(z.string()),
+});
 
 export const AnalysisDoc = z.strictObject({
   assessment: Assessment,
   plan: AdaptationPlan,
   createdAt: z.number(),
+  /** Snapshot of the organization's lens at analysis time, so results stay explainable if the org is edited later. */
+  org: z.strictObject({ id: z.string().nullable(), name: z.string(), purpose: z.string() }),
+  objectives: z.array(z.strictObject({
+    objectiveId: z.string(), title: z.string(), competency: z.string(), score: z.number().nullable(), items: z.array(RubricResultDoc),
+  })),
+  emphasis: z.array(z.strictObject({ key: z.string(), weight: z.number() })),
+  /** Organization chunks shown to the model / cited by rules ("Learn more"). */
+  references: z.array(z.strictObject({ id: z.string(), docTitle: z.string(), heading: z.string(), text: z.string() })),
 });
 export type AnalysisDoc = z.infer<typeof AnalysisDoc>;
 
@@ -34,24 +48,34 @@ export interface Analysis extends AnalysisDoc {
 
 export interface AgentDeps {
   store: Store;
-  provider: ModelProvider;
-  runLog: RunLog;
+  /** Chooses the provider for an organization (model choice and the contributor-mode double opt-in live there). */
+  providerFor: (org: OrgConfig | undefined) => ModelProvider;
+  runner: StructuredRunner;
+  tools: ToolExecutor;
+  usage: Usage;
   clock?: () => number;
-  /** Reference chunks (org documents / approved web snippets). Empty until the org layer exists. */
-  references?: (sessionId: string) => Promise<{ id: string; text: string }[]>;
-  sleep?: (ms: number) => Promise<void>;
+  /** Test hook: supply reference chunks directly instead of searching the organization's documents. */
+  references?: (sessionId: string) => Promise<{ id: string; text: string; docTitle?: string; heading?: string }[]>;
 }
 
-const MODEL_TIMEOUT_NOTE = "20 s timeout, 1 retry";
+/** Keywords used to find the organization's own guidance for each weakness. */
+const WEAKNESS_QUERY: Record<WeaknessCode, string> = {
+  late_help_seeking: "call emergency help security report phone",
+  slow_recognition: "notice recognize emergency signs aware",
+  info_not_shared: "communicate share information report tell",
+  over_centralization: "delegate ask assign share tasks teammates",
+  no_delegation: "delegate ask assign tasks teammates helpers",
+  helper_ignored: "helper staff assign task ask",
+  poor_prioritization: "priority first call help before",
+  uncoordinated_resources: "coordinate roles who responsible task",
+};
 
 export class TrainingAgent {
   private inflight = new Map<string, Promise<Analysis>>();
   private clock: () => number;
-  private sleep: (ms: number) => Promise<void>;
 
   constructor(private deps: AgentDeps) {
     this.clock = deps.clock ?? Date.now;
-    this.sleep = deps.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
   }
 
   /** OBSERVE + EVALUATE + DIAGNOSE + ADAPT for a finished session. Cached, and de-duplicated while running. */
@@ -97,23 +121,62 @@ export class TrainingAgent {
     return { ...doc, players, realWorld, diff, because, timeline: timelineFor(state) };
   }
 
+  /** Finds the organization's own guidance for each weakness, only through the tool pipeline. */
+  private async findSources(org: OrgConfig | undefined, sessionId: string, codes: WeaknessCode[]) {
+    const byCode = new Map<WeaknessCode, string[]>();
+    const chunks = new Map<string, { id: string; docTitle: string; heading: string; text: string }>();
+    if (!org) return { byCode, chunks };
+    for (const code of codes) {
+      const r = await this.deps.tools.executeTool({ tool: "org_docs.search", args: { query: WEAKNESS_QUERY[code], k: 1 }, orgId: org.id, sessionId, requestedBy: "agent" });
+      if (!r.ok) continue; // not enabled / denied: the agent simply has no organization sources
+      const hit = (r.output as { results: { chunkId: string; docTitle: string; heading: string; text: string }[] }).results[0];
+      if (!hit) continue;
+      byCode.set(code, [hit.chunkId]);
+      chunks.set(hit.chunkId, { id: hit.chunkId, docTitle: hit.docTitle, heading: hit.heading, text: hit.text });
+    }
+    return { byCode, chunks };
+  }
+
   // ---------- the loop ----------
 
   private async generate(state: RuntimeState, logHash: string): Promise<AnalysisDoc> {
     const sessionId = state.sessionId;
-    // EVALUATE (deterministic facts) and the rules answer, which doubles as the fallback.
+    const org = this.deps.store.getOrg(state.config.orgId);
+    const lens: OrgLens = org ? { objectives: org.objectives, rubric: org.rubric } : DEFAULT_OBJECTIVES;
+    const provider = this.deps.providerFor(org);
+    const budget = {
+      max: org?.limits.maxModelCallsPerSession ?? 8,
+      used: () => this.deps.usage.get(org?.id ?? "none", "model_calls", "session", sessionId),
+      spend: () => this.deps.usage.add(org?.id ?? "none", "model_calls", "session", sessionId),
+    };
+
+    // EVALUATE: deterministic facts, scored against the organization's rubric.
     const metrics = computeMetrics(state, 1);
     const ectx = evalContext(state, 1);
-    const rules = interpretWithRules(state, metrics, ectx, 1);
+    const emphasisWeights = competencyWeights(lens);
+    const scored = scoreRubric(lens, metrics);
+
+    // Which organization guidance applies to the weaknesses the facts show?
+    const first = interpretWithRules(state, metrics, ectx, 1, { emphasis: emphasisWeights });
+    const overrideRefs = await this.deps.references?.(sessionId);
+    const found = overrideRefs
+      ? { byCode: new Map<WeaknessCode, string[]>(), chunks: new Map(overrideRefs.map((r) => [r.id, { id: r.id, docTitle: r.docTitle ?? r.id, heading: r.heading ?? "", text: r.text }])) }
+      : await this.findSources(org, sessionId, first.weaknesses.slice(0, 3).map((w) => w.code));
+    const refs = [...found.chunks.values()];
+
+    const rules = interpretWithRules(state, metrics, ectx, 1, { emphasis: emphasisWeights, sourcesFor: (c) => found.byCode.get(c) ?? [] });
     const compact = compactEvents(state, 1);
     const eventIds = new Set(state.events.map((e) => e.id));
     const humanIds = new Set(Object.values(state.actors).filter((a) => a.kind === "human").map((a) => a.id));
-    const refs = (await this.deps.references?.(sessionId)) ?? [];
 
     // DIAGNOSE
-    const diag = await this.runStructured({
-      sessionId, step: "diagnose", system: DIAGNOSE_SYSTEM,
-      user: diagnoseUser({ facts: metrics, events: compact.events, players: compact.players, truncated: compact.truncated, references: wrapUntrusted(refs) }),
+    const diag = await this.deps.runner.run({
+      scopeId: sessionId, step: "diagnose", provider, system: DIAGNOSE_SYSTEM, budget,
+      user: diagnoseUser({
+        facts: metrics, events: compact.events, players: compact.players, truncated: compact.truncated, references: wrapUntrusted(refs),
+        organization: org ? { name: org.name, audience: org.audience, purpose: org.trainingPurpose } : null,
+        objectives: scored.objectives.map((o) => ({ id: o.objectiveId, title: o.title, competency: o.competency, score: o.score, items: o.items.map((i) => ({ indicator: i.indicator, direction: i.direction, target: i.target, weight: i.weight, met: i.met })) })),
+      }),
       schema: AssessmentInterpretation, schemaName: "assessment_interpretation",
       deterministic: () => rules.interpretation,
       validate: (v) => validateInterpretation(v, { eventIds, humanIds, sourceIds: new Set(refs.map((r) => r.id)), metrics, ectx, rules: rules.interpretation }),
@@ -121,17 +184,14 @@ export class TrainingAgent {
     });
 
     const outcomes = state.actOutcomes.map((o) => ({ act: o.act, outcome: o.outcome }));
-    const assessment: Assessment = {
-      sessionId, generatedBy: diag.generatedBy, basedOnLogHash: logHash, facts: metrics,
-      actsReached: 1, actOutcomes: outcomes, ...diag.value,
-    };
+    const assessment: Assessment = { sessionId, generatedBy: diag.generatedBy, basedOnLogHash: logHash, facts: metrics, actsReached: 1, actOutcomes: outcomes, ...diag.value };
 
     // ADAPT: weaknesses come from the (validated) assessment, with the evidence the rules found for each.
     const chosen = rules.weaknesses.filter((w) => assessment.primaryWeaknesses.includes(w.code));
     const rulePlan = buildRulePlan({ sessionId, config: state.config, weaknesses: chosen, anchorEventId: ectx.anchorEventId });
     const { id: _id, generatedBy: _g, targetAct: _t, ...ruleProposal } = rulePlan;
-    const adapt = await this.runStructured({
-      sessionId, step: "adapt", system: ADAPT_SYSTEM,
+    const adapt = await this.deps.runner.run({
+      scopeId: sessionId, step: "adapt", provider, system: ADAPT_SYSTEM, budget,
       user: adaptUser({
         weaknesses: chosen,
         current: { difficulty: state.config.difficulty, allowCrossRoomChat: state.config.rules.allowCrossRoomChat, teamSize: state.config.team.size, socialEnvironment: state.config.socialEnvironment },
@@ -144,73 +204,10 @@ export class TrainingAgent {
     });
 
     const plan: AdaptationPlan = { id: planId(sessionId, adapt.value.basedOn), generatedBy: adapt.generatedBy, targetAct: 1, ...adapt.value };
-    return AnalysisDoc.parse({ assessment, plan, createdAt: this.clock() });
-  }
-
-  /** One model step: call, zod-parse, semantic-validate; retry once with the errors; then fall back to rules. */
-  private async runStructured<I, O>(a: {
-    sessionId: string;
-    step: "diagnose" | "adapt";
-    system: string;
-    user: string;
-    schema: z.ZodType<I>;
-    schemaName: string;
-    deterministic: () => unknown;
-    validate: (v: I) => Validation<O>;
-    fallback: () => O;
-  }): Promise<{ value: O; generatedBy: string; fallbackUsed: boolean }> {
-    const { provider } = this.deps;
-    let user = a.user;
-    let lastErrors: string[] = [];
-
-    for (let attempt = 1; attempt <= 2; attempt++) {
-      const startedAt = this.clock();
-      let errors: string[] = [];
-      let notes: string[] = [];
-      let policy: PolicyDecision[] = [];
-      let output: unknown = null;
-      let usage: AgentRun["usage"] = null;
-      let model = provider.label;
-      let ok = false;
-      let value: O | undefined;
-      let retryAfterMs: number | undefined;
-      let giveUp = false;
-
-      try {
-        const res = await provider.complete({ step: a.step, system: a.system, user, schemaName: a.schemaName, schema: a.schema, deterministic: a.deterministic });
-        model = res.model;
-        usage = res.usage;
-        const parsed = a.schema.safeParse(res.data);
-        if (!parsed.success) {
-          errors = parsed.error.issues.slice(0, 6).map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`);
-        } else {
-          const v = a.validate(parsed.data);
-          if (v.ok) { ok = true; value = v.value; output = v.value; notes = v.notes; policy = v.policy; }
-          else errors = v.errors;
-        }
-        if (provider.id === "meta") health.record("meta_spark", true, model);
-      } catch (err) {
-        const pe = err instanceof ProviderError ? err : new ProviderError("unavailable", "Unexpected provider error");
-        errors = [`${pe.kind}: ${pe.message}`];
-        retryAfterMs = pe.retryAfterMs;
-        giveUp = !(pe.retryable || pe.kind === "timeout"); // auth errors, bad requests and unreachable hosts will not fix themselves
-        if (provider.id === "meta") health.record("meta_spark", false);
-      }
-
-      const last = ok ? false : attempt === 2 || giveUp;
-      await this.deps.runLog.append({
-        id: `run_${a.sessionId}_${a.step}_${attempt}`, sessionId: a.sessionId, step: a.step, attempt,
-        provider: provider.id === "mock" ? "rules" : provider.id, model, startedAt, latencyMs: this.clock() - startedAt,
-        inputSummary: a.user, output, validationErrors: errors, notes, fallbackUsed: last,
-        usage, costUsd: costUsd(model, usage), toolCalls: [], policyDecisions: policy,
-      });
-
-      if (ok) return { value: value as O, generatedBy: provider.id === "mock" ? "rules" : model, fallbackUsed: false };
-      lastErrors = errors;
-      if (giveUp) break;
-      if (retryAfterMs !== undefined || errors.some((e) => e.startsWith("http:") || e.startsWith("parse:"))) await this.sleep(Math.min(retryAfterMs ?? 1000, 3000));
-      user = `${a.user}\n\nYour previous answer was rejected for these reasons. Fix them and answer again (${MODEL_TIMEOUT_NOTE}):\n- ${lastErrors.join("\n- ")}`;
-    }
-    return { value: a.fallback(), generatedBy: "rules", fallbackUsed: true };
+    return AnalysisDoc.parse({
+      assessment, plan, createdAt: this.clock(),
+      org: { id: org?.id ?? null, name: org?.name ?? "Default objectives", purpose: org?.trainingPurpose ?? "" },
+      objectives: scored.objectives, emphasis: metricEmphasis(lens), references: refs,
+    });
   }
 }

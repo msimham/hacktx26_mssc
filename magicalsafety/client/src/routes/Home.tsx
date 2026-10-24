@@ -1,34 +1,26 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { createSession, getIntegrations, type IntegrationStatus } from "../api";
+import { Link, useNavigate } from "react-router-dom";
+import { createSessionFromSetup, getIntegrations, getPass, QUICK_START, setPass, type IntegrationStatus } from "../api";
 import { MockBadge } from "../components/MockBadge";
 
-const ENVIRONMENTS = [
-  ["classmates", "Classmates"], ["friends", "Friends"], ["coworkers", "Coworkers"],
-  ["assigned_team", "Assigned team"], ["strangers", "Strangers (roles hidden)"], ["simulated", "Mostly simulated"],
-] as const;
+const STATE_STYLE: Record<string, string> = { configured: "text-sky-300", live: "text-emerald-300", degraded: "text-amber-300" };
+const STATE_LABEL: Record<string, string> = { configured: "Configured (not yet verified)", live: "Live", degraded: "Degraded (using fallback)" };
 
 export function Home() {
   const nav = useNavigate();
   const [items, setItems] = useState<IntegrationStatus[] | null>(null);
   const [code, setCode] = useState("");
-  const [pass, setPass] = useState("");
-  const [teamSize, setTeamSize] = useState(3);
-  const [bots, setBots] = useState(true);
-  const [env, setEnv] = useState("classmates");
-  const [roles, setRoles] = useState<"random" | "chosen">("random");
+  const [pass, setPassInput] = useState(getPass());
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => { getIntegrations().then(setItems).catch(() => setErr("Server unreachable. Is `npm run dev` running?")); }, []);
 
-  const create = async (e: React.FormEvent) => {
+  const quick = async (e: React.FormEvent) => {
     e.preventDefault();
-    setBusy(true); setErr(null);
-    try {
-      const r = await createSession(pass, { teamSize, fillWithBots: bots, socialEnvironment: env, roleAssignment: roles });
-      nav(`/play/${r.code}`);
-    } catch (x) { setErr((x as Error).message); } finally { setBusy(false); }
+    setBusy(true); setErr(null); setPass(pass);
+    try { const r = await createSessionFromSetup({ ...QUICK_START, orgId: "org_riverside" }); nav(`/play/${r.code}`); }
+    catch (x) { setErr((x as Error).message === "UNAUTHORIZED" ? "Wrong organizer passcode" : (x as Error).message); } finally { setBusy(false); }
   };
 
   const field = "w-full rounded bg-night px-3 py-2 ring-1 ring-white/15";
@@ -52,25 +44,18 @@ export function Home() {
         </section>
 
         <section className="rounded-xl bg-night-2 p-5">
-          <h2 className="mb-3 font-display text-xl text-gold">Create a session <span className="text-xs font-sans text-slate-400">(organizer)</span></h2>
-          <form onSubmit={create} className="space-y-3">
+          <h2 className="mb-3 font-display text-xl text-gold">Organizers</h2>
+          <div className="flex flex-wrap gap-3">
+            <Link to="/setup" className="rounded bg-gold px-4 py-2 font-semibold text-night">Session Setup</Link>
+            <Link to="/builder" className="rounded px-4 py-2 ring-1 ring-white/25">Experience Builder</Link>
+          </div>
+          <form onSubmit={quick} className="mt-4 space-y-2 border-t border-white/10 pt-3">
+            <div className="text-sm text-slate-300">Quick start with the demo organization and default settings:</div>
             <label className="block text-sm">Organizer passcode
-              <input type="password" value={pass} onChange={(e) => setPass(e.target.value)} className={`${field} mt-1`} autoComplete="off" />
-              {/* TODO(USER): Set ORGANIZER_PASSCODE in magicalsafety/.env. Local demo default is "change-me". */}
+              <input type="password" value={pass} onChange={(e) => setPassInput(e.target.value)} className={`${field} mt-1`} autoComplete="off" />
+              {/* TODO(USER): Set ORGANIZER_PASSCODE in magicalsafety/.env. The local demo default is "change-me". */}
             </label>
-            <div className="grid grid-cols-2 gap-3">
-              <label className="block text-sm">Team size
-                <select value={teamSize} onChange={(e) => setTeamSize(Number(e.target.value))} className={`${field} mt-1`}>{[2, 3, 4].map((n) => <option key={n}>{n}</option>)}</select>
-              </label>
-              <label className="block text-sm">Roles
-                <select value={roles} onChange={(e) => setRoles(e.target.value as "random" | "chosen")} className={`${field} mt-1`}><option value="random">Random</option><option value="chosen">Players choose</option></select>
-              </label>
-            </div>
-            <label className="block text-sm">Who is on the team?
-              <select value={env} onChange={(e) => setEnv(e.target.value)} className={`${field} mt-1`}>{ENVIRONMENTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
-            </label>
-            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={bots} onChange={(e) => setBots(e.target.checked)} /> Fill empty roles with 🤖 simulated teammates</label>
-            <button disabled={busy || !pass} className="rounded bg-gold px-4 py-2 font-semibold text-night disabled:opacity-50">{busy ? "Creating…" : "Create session"}</button>
+            <button disabled={busy || !pass} className="rounded bg-night px-4 py-2 ring-1 ring-white/25 disabled:opacity-50">{busy ? "Creating…" : "Quick start"}</button>
           </form>
         </section>
       </div>
@@ -79,9 +64,9 @@ export function Home() {
         <h2 className="mb-3 font-display text-xl text-gold">Integration status</h2>
         <ul className="divide-y divide-white/10">
           {items?.map((i) => (
-            <li key={i.id} className="flex items-center justify-between py-2">
+            <li key={i.id} className="flex items-center justify-between gap-4 py-2">
               <div><div className="font-medium">{i.label}</div><div className="text-sm text-slate-400">{i.detail}</div></div>
-              {i.state === "mock" ? <MockBadge /> : <span className="text-sm font-semibold text-sky-300">Configured</span>}
+              {i.state === "mock" ? <MockBadge /> : <span className={`text-right text-sm font-semibold ${STATE_STYLE[i.state] ?? ""}`}>{STATE_LABEL[i.state] ?? i.state}</span>}
             </li>
           ))}
         </ul>

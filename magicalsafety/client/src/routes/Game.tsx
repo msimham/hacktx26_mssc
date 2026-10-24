@@ -12,6 +12,7 @@ import { SceneView } from "../components/SceneView";
 export function Game() {
   const { view, send, localT, sessionId } = useSession();
   const [toast, setToast] = useState<string | null>(null);
+  const methods = new Set(view?.inputMethods ?? ['mouse', 'keyboard', 'text']);
 
   const act = useCallback(async (la: LegalAction) => {
     const rejected = await send(la.action);
@@ -23,6 +24,7 @@ export function Game() {
     const onKey = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement;
       if (["INPUT", "SELECT", "TEXTAREA"].includes(el.tagName) || e.ctrlKey || e.metaKey || e.altKey) return;
+      if (!methods.has("keyboard")) return;
       const n = Number(e.key);
       if (!n) return;
       const la = view?.legal.find((l) => l.hotkey === n);
@@ -30,6 +32,7 @@ export function Game() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view, act]);
 
   if (!view) return <p className="p-6">Loading…</p>;
@@ -47,14 +50,14 @@ export function Game() {
           )}
         </aside>
         <main className="space-y-4">
-          <SceneView view={view} onAct={act} />
+          <SceneView view={view} onAct={act} canClick={methods.has("mouse")} />
           {toast && <p role="alert" className="rounded bg-rose-900/70 p-2 text-sm">{toast}</p>}
-          <ActionBar view={view} localT={localT} onAct={act} />
+          <ActionBar view={view} localT={localT} onAct={act} canClick={methods.has("mouse")} showKeys={methods.has("keyboard")} />
         </main>
         <aside className="flex min-h-0 flex-col gap-4">
           <Minimap view={view} />
           <div className="min-h-[260px] flex-1">
-            <ChatPanel view={view} onAct={act} onSay={(to, text) => void send({ kind: "say", to, text }).then((r) => r && setToast(r))} />
+            <ChatPanel view={view} onAct={act} canType={methods.has("text")} onSay={(to, text) => void send({ kind: "say", to, text }).then((r) => r && setToast(r))} />
           </div>
         </aside>
       </div>

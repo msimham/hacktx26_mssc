@@ -1,13 +1,9 @@
 import type { AssessmentInterpretation, Claim, Competency, WeaknessCode } from "../schemas/assessment";
 import type { GameEvent, MetricResult } from "../schemas/events";
 import type { RuntimeState } from "../types";
-import { detectWeaknesses, type DetectedWeakness, type EvalContext } from "./weaknesses";
+import { detectWeaknesses, WEAKNESS_COMPETENCY, type DetectedWeakness, type EvalContext } from "./weaknesses";
 
-const COMPETENCY: Record<WeaknessCode, Competency> = {
-  slow_recognition: "recognition", late_help_seeking: "help_seeking", info_not_shared: "communication",
-  over_centralization: "coordination", no_delegation: "delegation", helper_ignored: "delegation",
-  poor_prioritization: "prioritization", uncoordinated_resources: "coordination",
-};
+const COMPETENCY = WEAKNESS_COMPETENCY;
 
 /** Authored improvement wording. Rules produce this text; it is never model-written when the fallback is used. */
 const IMPROVEMENT_TEXT: Record<WeaknessCode, (detail: string) => string> = {
@@ -29,9 +25,16 @@ export interface RuleResult {
   interpretation: AssessmentInterpretation;
 }
 
-export function interpretWithRules(state: RuntimeState, metrics: MetricResult[], ctx: EvalContext, act: 1 | 2 = 1): RuleResult {
+export interface RuleOptions {
+  /** Competency weights from the organization's rubric: reorders which weaknesses are surfaced first. */
+  emphasis?: Partial<Record<Competency, number>>;
+  /** Organization source chunks that back up a weakness ("Learn more"). Returns chunk ids. */
+  sourcesFor?: (code: WeaknessCode) => string[];
+}
+
+export function interpretWithRules(state: RuntimeState, metrics: MetricResult[], ctx: EvalContext, act: 1 | 2 = 1, opts: RuleOptions = {}): RuleResult {
   const evs = state.events.filter((e) => e.act === act);
-  const weaknesses = detectWeaknesses(metrics, ctx);
+  const weaknesses = detectWeaknesses(metrics, ctx, opts.emphasis);
   const top = weaknesses.slice(0, 3);
   const strengths: Claim[] = [];
   const anchor = [ctx.anchorEventId];
@@ -52,7 +55,15 @@ export function interpretWithRules(state: RuntimeState, metrics: MetricResult[],
   if (info?.value !== null && info && Number(info.value) >= 0.6)
     strengths.push(claim("Key information reached the teammates who needed it.", "communication", evOf("info_shared_ratio")));
 
-  const improvements = top.map((w) => claim(IMPROVEMENT_TEXT[w.code](w.detail), COMPETENCY[w.code], w.evidenceEventIds));
+  const improvements = top.map((w) => ({ ...claim(IMPROVEMENT_TEXT[w.code](w.detail), COMPETENCY[w.code], w.evidenceEventIds), sourceIds: (opts.sourcesFor?.(w.code) ?? []).slice(0, 2) }));
+
+  // Strangers: introducing yourself is part of communication.
+  const intro = metric(metrics, "introduced_ratio");
+  if (intro && intro.value !== null) {
+    const r = Number(intro.value);
+    if (r >= 0.99) strengths.push(claim("Everyone introduced themselves, so the team knew who could do what.", "communication", evOf("introduced_ratio")));
+    else if (r < 0.5 && improvements.length < 4) improvements.push(claim("Few people introduced themselves. Saying who you are and what you can do early helps strangers work as a team.", "communication", evOf("introduced_ratio")));
+  }
 
   const individuals = Object.values(state.actors)
     .filter((a) => a.kind === "human")

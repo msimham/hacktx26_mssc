@@ -13,10 +13,11 @@ export { safetyFilter } from "./content/safety/safetyFilter";
 export { REAL_WORLD, SAFETY_FOOTER } from "./content/safety/emergencyProtocol";
 export { mulberry32, hashSeed } from "./util/rng";
 export type { LobbyView } from "./protocol";
-export { evalContext, detectWeaknesses, consistencyCheck, WEAKNESS_PRIORITY, type EvalContext, type DetectedWeakness } from "./eval/weaknesses";
-export { interpretWithRules, type RuleResult } from "./eval/ruleInterpreter";
+export { evalContext, detectWeaknesses, consistencyCheck, WEAKNESS_PRIORITY, WEAKNESS_COMPETENCY, type EvalContext, type DetectedWeakness } from "./eval/weaknesses";
+export { interpretWithRules, type RuleResult, type RuleOptions } from "./eval/ruleInterpreter";
 export {
   buildRulePlan, enforceLevers, applyAdaptation, configDiff, hasChange, weaknessesForLever, planId, noChanges,
   LEVERS_BY_WEAKNESS, LEVER_LABEL, type DiffRow, type PlanInput,
 } from "./eval/adaptation";
 export { timelineFor, type TimelineItem } from "./engine/timeline";
+export { scoreRubric, competencyWeights, metricEmphasis, type RubricResult, type ObjectiveSummary, type OrgLens } from "./eval/rubric";

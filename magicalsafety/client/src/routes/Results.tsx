@@ -3,7 +3,8 @@ import { Link, useLocation, useParams } from "react-router-dom";
 import type { Claim } from "@magicalsafety/engine";
 import { getAnalysis, getResults, sendShoutout, type Analysis, type ResultsPayload } from "../api";
 import { loadPlayerBySession } from "../session/storage";
-import { COMPETENCY_LABEL, OUTCOMES, SHOUTOUT_REASONS, WEAKNESS_LABEL, fmtSeconds } from "../labels";
+import { INDICATOR_INFO, type MetricKey } from "@magicalsafety/engine";
+import { COMPETENCY_LABEL, OUTCOMES, SHOUTOUT_REASONS, WEAKNESS_LABEL, describeTarget, fmtIndicator, fmtSeconds } from "../labels";
 import { EvidenceChip } from "../components/EvidenceChip";
 import { GeneratedBy } from "../components/GeneratedBy";
 
@@ -49,6 +50,11 @@ export function Results() {
   const others = as.individuals.filter((i) => i.playerId !== a.you);
   const teammates = a.players.filter((p) => p.id !== a.you && p.kind === "human");
 
+  const refById = new Map(a.references.map((r) => [r.id, r]));
+  const weightOf = new Map(a.emphasis.map((e) => [e.key, e.weight]));
+  // The organization's rubric decides which facts lead. Everything else follows in its usual order.
+  const orderedMetrics = [...facts.metrics].sort((x, y) => (weightOf.get(y.key) ?? 0) - (weightOf.get(x.key) ?? 0));
+
   const ClaimCard = ({ c, tone }: { c: Claim; tone: "good" | "grow" }) => (
     <li className={`rounded-lg p-3 ring-1 ${tone === "good" ? "bg-emerald-950/50 ring-emerald-500/30" : "bg-amber-950/40 ring-amber-500/30"}`}>
       <p className="text-sm">{c.text}</p>
@@ -56,7 +62,10 @@ export function Results() {
         <span className="rounded bg-night px-1.5 py-0.5">{COMPETENCY_LABEL[c.competency]}</span>
         <span>evidence:</span>
         {c.evidenceEventIds.map((id) => <EvidenceChip key={id} id={id} timeline={a.timeline} sessionId={sessionId} />)}
-        {c.sourceIds.map((s) => <span key={s} className="rounded bg-sky-900 px-1.5 py-0.5" title="Organization or approved source">📄 {s}</span>)}
+        {c.sourceIds.map((s) => {
+          const ref = refById.get(s);
+          return <span key={s} className="rounded bg-sky-900 px-1.5 py-0.5" title={ref?.text ?? "Organization source"}>📄 Learn more: {ref ? `${ref.docTitle} › ${ref.heading}` : s}</span>;
+        })}
       </div>
     </li>
   );
@@ -81,15 +90,42 @@ export function Results() {
         </ol>
       </section>
 
+      <section aria-label="Organization goals" className="rounded-xl border-l-4 border-gold bg-night-2 p-4">
+        <h2 className="font-display text-lg text-gold">{a.org.name}: your goals</h2>
+        {a.org.purpose && <p className="mb-2 text-xs text-slate-400">{a.org.purpose}</p>}
+        <ul className="space-y-3">
+          {a.objectives.map((o) => (
+            <li key={o.objectiveId} className="rounded bg-night p-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <strong>{o.title}</strong>
+                <span className="rounded bg-night-2 px-1.5 py-0.5 text-xs text-slate-300">{COMPETENCY_LABEL[o.competency as keyof typeof COMPETENCY_LABEL] ?? o.competency}</span>
+                <span className={`ml-auto text-sm font-semibold ${o.score === null ? "text-slate-400" : o.score >= 0.99 ? "text-emerald-300" : o.score > 0 ? "text-amber-300" : "text-rose-300"}`}>{o.score === null ? "Not measured this run" : `${Math.round(o.score * 100)}% met`}</span>
+              </div>
+              <ul className="mt-2 space-y-1 text-sm">
+                {o.items.map((i, n) => (
+                  <li key={n} className="flex flex-wrap items-center gap-2">
+                    <span aria-label={i.met === null ? "not measured" : i.met ? "met" : "not met"}>{i.met === null ? "➖" : i.met ? "✅" : "❌"}</span>
+                    <span>{INDICATOR_INFO[i.indicator as MetricKey]?.label ?? i.indicator}</span>
+                    <span className="text-slate-400">goal: {describeTarget(i.indicator, i.direction, i.target)} · got: {fmtIndicator(i.indicator, i.value)}</span>
+                    <span className="text-xs text-gold" title="Weight in your rubric">{"★".repeat(i.weight)}</span>
+                    {i.evidenceEventIds.slice(0, 2).map((id) => <EvidenceChip key={id} id={id} timeline={a.timeline} sessionId={sessionId} />)}
+                  </li>
+                ))}
+              </ul>
+            </li>
+          ))}
+        </ul>
+      </section>
+
       <section aria-label="Recorded facts" className="rounded-xl border-l-4 border-slate-400 bg-night-2 p-4">
         <h2 className="font-display text-lg text-gold">Recorded facts <span className="ml-2 rounded bg-slate-600 px-2 py-0.5 font-sans text-xs">Measured, not opinion</span></h2>
         <p className="mb-2 text-xs text-slate-400">Computed directly from the event log. Each fact lists the events it came from.</p>
         <table className="w-full text-left text-sm">
           <thead className="text-slate-400"><tr><th className="py-1 pr-3">What we measured</th><th className="pr-3">Value</th><th>Evidence</th></tr></thead>
           <tbody>
-            {facts.metrics.map((m) => (
+            {orderedMetrics.map((m) => (
               <tr key={m.key} className="border-t border-white/10 align-top">
-                <td className="py-2 pr-3">{m.description}</td>
+                <td className="py-2 pr-3">{weightOf.has(m.key) && <span className="mr-1 text-gold" title={`Emphasized by your rubric (weight ${weightOf.get(m.key)})`}>★</span>}{m.description}</td>
                 <td className="pr-3 font-mono">{show(m.value)}{m.unit && m.value !== null ? ` ${m.unit}` : ""}</td>
                 <td className="space-x-1">{m.evidenceEventIds.slice(0, 4).map((id) => <EvidenceChip key={id} id={id} timeline={a.timeline} sessionId={sessionId} />)}</td>
               </tr>

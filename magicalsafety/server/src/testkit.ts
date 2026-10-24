@@ -52,11 +52,18 @@ export async function boot(opts: { dataDir?: string; clockRef?: { now: number };
     for (let t = 0; t < ms; t += 500) { clockRef.now += 500; await kit.server!.hub.pump(); }
     await sleep(40);
   };
+  /** Accepts the short legacy options used throughout the tests and builds the structured request body. */
   const create = async (body: Record<string, unknown> = {}) => {
-    const res = await fetch(`${url}/api/sessions`, { method: "POST", headers: { "content-type": "application/json", "x-organizer-passcode": PASS }, body: JSON.stringify(body) });
+    const { teamSize, roleAssignment, fillWithBots, timePressure, ambiguity, ...rest } = body;
+    const team = { ...(teamSize !== undefined && { size: teamSize }), ...(roleAssignment !== undefined && { roleAssignment }), ...(fillWithBots !== undefined && { fillWithBots }) };
+    const difficulty = { ...(timePressure !== undefined && { timePressure }), ...(ambiguity !== undefined && { ambiguity }) };
+    const full = { ...rest, ...(Object.keys(team).length && { team: { size: 3, roleAssignment: "random", fillWithBots: true, ...team } }), ...(Object.keys(difficulty).length && { difficulty }) };
+    const res = await fetch(`${url}/api/sessions`, { method: "POST", headers: { "content-type": "application/json", "x-organizer-passcode": PASS }, body: JSON.stringify(full) });
     return (await res.json()) as { id: string; code: string };
   };
+  const org = (path: string, init: { method?: string; body?: unknown; pass?: string | null } = {}) =>
+    fetch(`${url}/api/orgs${path}`, { method: init.method ?? "GET", headers: { "content-type": "application/json", ...(init.pass === null ? {} : { "x-organizer-passcode": init.pass ?? PASS }) }, ...(init.body !== undefined && { body: JSON.stringify(init.body) }) });
   const client = () => { const c = new Client(url); kit.clients.push(c); return c; };
-  return { url, advance, create, client, clockRef, get server() { return kit.server!; } };
+  return { url, advance, create, org, client, clockRef, get server() { return kit.server!; } };
 }
 

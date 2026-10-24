@@ -59,6 +59,7 @@ export interface PlayerView {
   worldName: string;
   socialEnvironment: string;
   allowCrossRoomChat: boolean;
+  inputMethods: string[];
 }
 
 const FEED_LIMIT = 80;
@@ -190,5 +191,6 @@ export function viewFor(s: RuntimeState, playerId: string): PlayerView | null {
     worldName: act.world.name,
     socialEnvironment: s.config.socialEnvironment,
     allowCrossRoomChat: s.config.rules.allowCrossRoomChat,
+    inputMethods: s.config.inputMethods.slice(),
   };
 }

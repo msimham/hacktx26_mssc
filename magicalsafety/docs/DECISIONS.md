@@ -59,3 +59,27 @@ Sessions are persisted as **(config, seed, ordered input log)**, not as derived 
 - **"Live" is earned:** `agent/health.ts` marks Muse Spark `live` only after a real request succeeds in this process, and `degraded` after a failure. Nothing has been verified against the real API (no key available), so docs/INTEGRATIONS.md says so.
 - **A bug the stub-server test caught:** the OpenAI SDK's timeout/abort errors have `name === "Error"`, so timeouts were misclassified as "unavailable". Now matched by SDK error class.
 - **Deferred as planned:** recap illustration (Phase 6), org objectives/rubric weighting (Phase 4), Act 2 levers (Phase 5), Inspector UI (Phase 7; the run log is already recorded and readable by the organizer).
+
+## Phase 4 (Experience Builder, Session Setup)
+
+- **`executeTool` was built now (org_docs.search only) instead of Phase 7.** The plan puts tool allowlists and limits in the org config, and the training agent now searches org documents; running that outside the pipeline would break the rule. Phase 6 adds the external tools to the same registry. Usage counters are in memory (per process; day counters roll over by UTC date).
+- **One organizer passcode for the whole server** (`ORGANIZER_PASSCODE`), not one per organization. The plan allows "env or config"; a per-org passcode adds nothing at single-process hackathon scale. Every `/api/orgs` route and session creation requires it.
+- **`limits.maxBuilderDraftsPerDay` added** (default 10) so the Builder's model calls are bounded like every other model call. Everything else in the plan's limits list is unchanged.
+- **Rubric items carry a `direction`** (`at_most`, `at_least`, `is_true`, `is_false`) next to `target`; the plan listed only `target`. Targets are stored in the metric's own unit (ms, ratio 0..1, count). `INDICATOR_INFO` (engine) says which directions and ranges make sense per indicator; the server validator and the Builder UI both use it. Added two metrics for rubrics: `succeeded`, and `introduced_ratio` (strangers only).
+- **The organization schema is strict and has no world, scenario, social or team fields**, and a session holds only an `orgId`. Tests assert neither layer can edit the other.
+- **Org emphasis only reorders.** The rubric changes which weaknesses are surfaced first (via competency weights) and which facts lead the Results page; it never adds or removes a weakness. Results also show each objective's rubric items as met / not met / not measured.
+- **Analysis snapshots the organization** (name, purpose, objectives, rubric results, cited sources). Editing the org later does not rewrite past results. The stored analysis shape changed, so analyses from Phase 3 are regenerated on next view.
+- **"Learn more" sources** come from `org_docs.search` through `executeTool` (one query per top weakness). If the organization's allowlist excludes the tool, the agent has no sources and the denial is audited. Retrieval is explainable keyword scoring (BM25-lite) and shows matched terms.
+- **Org documents are `.md`/`.txt` only** (read in the browser, 40,000 characters max, control characters stripped). PDF is out of scope as the plan says.
+- **Model choice is per organization**; contributor mode needs the organization to opt in AND the server (`META_ALLOW_CONTRIBUTOR=true`). The Builder shows a training-data warning, and the server reports a warning when the two disagree.
+- **Per-session model-call limit** counts only real model calls (rules calls are free) and is checked before each call; hitting it falls back to rules and records a `model_call_limit` policy decision.
+- **Retention is now per organization** (`safety.retentionDays`); the server default `RETENTION_DAYS` covers sessions whose organization no longer exists. `storeTranscripts` is stored but unused until voice exists.
+- **`resourceScarcity` is defined as "no NPC helpers at all"** (the Guard and any extra helpers are absent), so the team can only rely on each other. The plan listed the field without defining it.
+- **Social environments:**
+  - `strangers`: others' roles are hidden in the lobby as well as in the game, an icebreaker is shown, and introductions are scored (`introduced_ratio`, a team claim). Choosing a role that someone took still reveals that it is taken.
+  - `simulated`: exactly one human can join; creation requires simulated teammates.
+  - `assigned_team` / role assignment `organizer`: the host assigns roles in the lobby.
+  - `friends`: no behavior difference yet; the Facebook invite arrives in Phase 6.
+- **Input methods** are client-side affordances (hotkeys, scene clicks, typed chat can be switched off). The server does not distinguish how an action was entered. Voice is shown but disabled until Phase 6.
+- **Session creation API changed** from the flat Phase 2 body to a structured one (`team`, `difficulty`, `rules`, ...) so every `SessionConfig` field can be set. Campus and the Evacuation act are rejected with a clear message until Phase 5.
+- **Draft with Muse Spark** reuses the same validate/retry/fallback runner as the training agent. The organizer's description is passed as untrusted data, drafts are clamped to what the schema allows (unsafe objectives dropped, targets pulled into range, impossible directions corrected), and the no-key fallback is a keyword drafter labeled "rules".

@@ -18,7 +18,7 @@ npm test            # all workspaces
 npm run typecheck   # strict TypeScript, all workspaces
 ```
 
-Expected: engine 55 tests, server 48 tests, all green.
+Expected: engine 69 tests, server 93 tests, all green.
 
 What the engine tests prove:
 | Area | Test |
@@ -33,6 +33,19 @@ What the engine tests prove:
 | Determinism | Same seed + inputs → identical event log; replaying the stored inputs reproduces the state |
 | Safety | Dosing / CPR steps / diagnoses are blocked; approved coordination wording passes |
 | Privacy | `viewFor()` never includes another player's private knowledge; strangers' roles stay hidden until they introduce themselves |
+
+What the Phase 4 tests prove:
+| Area | Test |
+|---|---|
+| Two layers | An organization can't carry world/scenario/social/team settings (strict schema); a session holds only an org id; editing an org never changes existing sessions and creating a session never changes the org |
+| Org API | Organizer-only; create/edit/delete; invalid rubrics, out-of-range targets, mismatched ids, and the safety flag are all rejected; the demo org can't be deleted |
+| Documents | Added/removed with control characters stripped and size limits; chunked by heading; ranked with explainable matched terms |
+| `executeTool` | Unknown tool, bad arguments, tool not on the org's allowlist, wrong requester, cross-org session, usage limit, bad output, timeout, thrown errors: all denied without leaking details; every decision audited with redacted arguments |
+| Emphasis | Different rubrics give different emphasized facts, objective scores and surfaced weaknesses; the snapshot keeps old results stable |
+| Sources and limits | Rules claims cite the org's own guidance; without `org_docs.search` there are none; the per-session model-call limit stops real model calls |
+| Draft | The keyword drafter produces valid objectives; a model's draft is clamped (unsafe dropped, targets pulled into range, directions fixed); daily draft limit |
+| Provider choice | Rules without a key or when the org chose mock; contributor mode only when the org AND the server both opt in |
+| Setup | Every setting is validated and stored; unavailable worlds/acts are refused; strangers hide roles and show an icebreaker; simulated allows one human; host-assigned roles; input methods reach the player |
 
 What the training-agent tests prove:
 | Area | Test |
@@ -73,7 +86,27 @@ Prints the full event log and "Recorded facts" for two scripted runs:
 
 Each metric lists `evidenceEventIds` you can find in the log above it.
 
-## 4. Play it in the browser ✅
+## 4. Build and set up a session ✅
+
+```bash
+npm run dev      # then open http://localhost:5173
+```
+
+**Experience Builder** (`/builder`, organizer passcode `change-me`):
+1. The demo organization "Riverside University: Emergency Response" is already there. Change **Share the work** weight or target and **Save**.
+2. Click **Draft with Muse Spark** after writing a sentence under "What do you want people to practice?". With no key the proposal is tagged `RULES`. Click **Use this draft**, tweak it, **Save**.
+3. Under **Documents** paste a short guide using `# headings`, or upload a `.md`/`.txt`. Try the search box ("who to call"): you see which section matched and the matched words.
+4. Under **AI, tools and limits** switch the model to the "contributor" model: a training-data warning appears. Untick **Search this organization's documents** and later results lose their "Learn more" links.
+
+**Session Setup** (`/setup`):
+1. Pick the organization (it shows how many objectives it has: the same training agent, whatever the world).
+2. Pick **Strangers**: roles are hidden in the lobby, an icebreaker appears, and introducing yourself in the game is scored. Pick **Mostly simulated**: only one human can join. Pick **Assigned team**: the host sets everyone's role in the lobby.
+3. Turn off **Mouse** and **Typed chat** to see a keyboard-only game. Try **Subtle** emergencies, **Siloed** information, **No helpers**.
+4. **Create session** → you land in the lobby with a join code.
+
+**See objectives change the results:** play one quick game (or do nothing for ~2.5 minutes), open Results, and note the **goals** panel and the ★ on the emphasized facts. Edit the organization in the Builder (move weight to a different measure), play again, and compare. The first session's results keep the old snapshot.
+
+## 5. Play it in the browser ✅
 
 ```bash
 npm run dev          # server http://localhost:3001, client http://localhost:5173
@@ -82,7 +115,7 @@ npm run dev          # server http://localhost:3001, client http://localhost:517
 Open **http://localhost:5173**.
 
 **Solo with simulated teammates (about 2 minutes)**
-1. *Create a session*: passcode `change-me` (or your `ORGANIZER_PASSCODE`), team size 3, "Players choose" roles, leave 🤖 on. Click **Create session**.
+1. *Create a session*: open **Session Setup** (passcode `change-me`, or your `ORGANIZER_PASSCODE`), keep the defaults but set Roles to "Players choose". Click **Create session**. (Or use **Quick start** on the home page and let roles be random.)
 2. In the waiting room pick **Cinderella**, click **Start the exercise**. The two other roles are 🤖.
 3. Wait for the alarm: the Duchess collapses 10-25 s in (the feed says so and a red "Duchess" chip appears).
 4. In the chat box, type: `The Duchess collapsed! Coachman, get the physician. Steward, move the guests back.` and press Send.
@@ -91,7 +124,7 @@ Open **http://localhost:5173**.
 7. Click **View results** when the dialog appears.
 
 **Two real players (two tabs, or two devices on the same Wi-Fi)**
-1. Tab A creates the session (team size 3, "Players choose") and picks **Cinderella**.
+1. Tab A creates the session in Session Setup (team size 3, "Players choose") and picks **Cinderella**.
 2. Tab B (use a private window or another browser so it has its own identity) opens `http://localhost:5173`, enters the join code, a name, and picks **Royal Steward**.
 3. Tab A clicks **Start**. Each tab sees only its own "What only you know" card. In Tab B the Steward's card says where the physician is; Tab A's does not.
 4. Talk through the chat: the *Cinderella* player says what happened, the *Steward* says where help is. The 🤖 Coachman does the rest, or ask it explicitly.
@@ -130,4 +163,4 @@ After a session ends, click **View results** (about 2.5 minutes if you do nothin
 4. If it works, tell the implementer so INTEGRATIONS.md can record the date and model id. It has never been run against the real API.
 
 **Where data goes:** `server/data/` (gitignored): per session a `.meta.json`, a `.log.jsonl` (hash-chained inputs), and once analysed an `.analysis.json`, `.runs.json` and `.shoutouts.json`. Delete the folder to reset.
-## 5. Full demo (coming in Phase 8, see `DEMO_SCRIPT.md`)
+## 6. Full demo (coming in Phase 8, see `DEMO_SCRIPT.md`)

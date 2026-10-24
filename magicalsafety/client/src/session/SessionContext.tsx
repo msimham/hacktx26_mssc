@@ -19,6 +19,7 @@ interface Ctx {
   send: (action: Action) => Promise<string | null>;
   ready: (ready: boolean) => void;
   chooseRole: (roleId: string) => Promise<string | null>;
+  assignRole: (playerId: string, roleId: string | null) => Promise<string | null>;
   start: () => Promise<string | null>;
 }
 
@@ -81,6 +82,7 @@ export function SessionProvider({ code, children }: { code: string; children: Re
     send: (action) => new Promise((res) => getSocket().emit("action", { action }, (r: { ok: boolean; error?: string; rejected?: string }) => res(r.ok ? (r.rejected ?? null) : (r.error ?? "Failed")))),
     ready: (ready) => getSocket().emit("ready", { ready }),
     chooseRole: (roleId) => new Promise((res) => getSocket().emit("choose_role", { roleId }, (r: { ok: boolean; error?: string }) => res(r.ok ? null : (r.error ?? "Failed")))),
+    assignRole: (playerId, roleId) => new Promise((res) => getSocket().emit("assign_role", { playerId, roleId }, (r: { ok: boolean; error?: string }) => res(r.ok ? null : (r.error ?? "Failed")))),
     start: () => new Promise((res) => getSocket().emit("start", {}, (r: { ok: boolean; error?: string }) => res(r.ok ? null : (r.error ?? "Failed")))),
   }), [code, status, error, lobby, view, ids, doJoin]);
 

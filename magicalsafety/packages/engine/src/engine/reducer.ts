@@ -83,9 +83,11 @@ export function createRuntime(init: RuntimeInit): RuntimeState {
     for (const r of roles.filter((r) => !withRole.some((w) => w.role === r)))
       put(mk(`bot_${r}`, world.roleSkins[r].name, "bot", r, null, homeOf(startRoleFor(r))));
   }
-  put(mk("npc_guard", world.npcs.guard.name, "npc", null, "guard", world.npcs.guard.roomId));
+  // resourceScarcity: no NPC helpers are available at all, so the team can only rely on each other.
+  const helpers = !act.difficulty.resourceScarcity;
+  if (helpers) put(mk("npc_guard", world.npcs.guard.name, "npc", null, "guard", world.npcs.guard.roomId));
   put(mk("npc_companion", world.npcs.companion.name, "npc", null, "companion", world.npcs.companion.roomId));
-  for (let i = 0; i < act.difficulty.extraHelpers; i++) {
+  for (let i = 0; helpers && i < act.difficulty.extraHelpers; i++) {
     const h = world.npcs.extraHelpers[i]!;
     put(mk(`npc_${h.id}`, h.name, "npc", null, h.id, h.roomId));
   }

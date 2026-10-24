@@ -32,3 +32,24 @@ export const SHOUTOUT_REASONS = [
 ] as const;
 
 export const fmtSeconds = (ms: number) => `${Math.round(ms / 1000)}s`;
+
+import { INDICATOR_INFO, type MetricKey } from "@magicalsafety/engine";
+
+/** Human-readable value for a rubric indicator, in its natural unit. */
+export function fmtIndicator(key: string, v: number | boolean | null | undefined): string {
+  if (v === null || v === undefined) return "n/a";
+  const info = INDICATOR_INFO[key as MetricKey];
+  if (typeof v === "boolean") return v ? "yes" : "no";
+  if (!info) return String(v);
+  if (info.kind === "time") return `${Math.round(v / 1000)}s`;
+  if (info.kind === "ratio") return `${Math.round(v * 100)}%`;
+  return String(v);
+}
+
+export function describeTarget(key: string, direction: string, target: number): string {
+  const info = INDICATOR_INFO[key as MetricKey];
+  if (direction === "is_true") return "yes";
+  if (direction === "is_false") return "no";
+  const v = info ? fmtIndicator(key, target) : String(target);
+  return `${direction === "at_most" ? "at most" : "at least"} ${v}`;
+}

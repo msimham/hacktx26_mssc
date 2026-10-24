@@ -1,5 +1,5 @@
 import type { MetricResult } from "../schemas/events";
-import type { WeaknessCode } from "../schemas/assessment";
+import type { Competency, WeaknessCode } from "../schemas/assessment";
 import type { RuntimeState } from "../types";
 
 export interface EvalContext {
@@ -60,7 +60,13 @@ const CHECKS: Record<WeaknessCode, Check> = {
   },
 };
 
-/** Most important first. */
+export const WEAKNESS_COMPETENCY: Record<WeaknessCode, Competency> = {
+  slow_recognition: "recognition", late_help_seeking: "help_seeking", info_not_shared: "communication",
+  over_centralization: "coordination", no_delegation: "delegation", helper_ignored: "delegation",
+  poor_prioritization: "prioritization", uncoordinated_resources: "coordination",
+};
+
+/** Default order, most important first. An organization's rubric can reorder these (see detectWeaknesses). */
 export const WEAKNESS_PRIORITY: WeaknessCode[] = [
   "late_help_seeking", "slow_recognition", "info_not_shared", "poor_prioritization",
   "over_centralization", "uncoordinated_resources", "no_delegation", "helper_ignored",
@@ -74,10 +80,17 @@ const METRIC_FOR: Record<WeaknessCode, string> = {
 
 const toMap = (metrics: MetricResult[]) => new Map(metrics.map((x) => [x.key, x]));
 
-export function detectWeaknesses(metrics: MetricResult[], ctx: EvalContext): DetectedWeakness[] {
+/**
+ * `emphasis` = competency weights from the organization's rubric. Weaknesses in competencies the organization
+ * cares about come first; ties keep the default order. It never adds or removes a weakness.
+ */
+export function detectWeaknesses(metrics: MetricResult[], ctx: EvalContext, emphasis: Partial<Record<Competency, number>> = {}): DetectedWeakness[] {
   const m = toMap(metrics);
   const out: DetectedWeakness[] = [];
-  for (const code of WEAKNESS_PRIORITY) {
+  const order = WEAKNESS_PRIORITY.map((code, i) => ({ code, i }))
+    .sort((a, b) => (emphasis[WEAKNESS_COMPETENCY[b.code]] ?? 0) - (emphasis[WEAKNESS_COMPETENCY[a.code]] ?? 0) || a.i - b.i)
+    .map((x) => x.code);
+  for (const code of order) {
     const r = CHECKS[code](m, ctx);
     if (!r.hit) continue;
     const ev = m.get(METRIC_FOR[code])?.evidenceEventIds ?? [];

@@ -27,6 +27,15 @@ const ActionPayload = z.strictObject({ action: Action });
 const ReadyPayload = z.strictObject({ ready: z.boolean() });
 const RolePayload = z.strictObject({ roleId: z.enum(["discoverer", "authority", "runner", "liaison"]) });
 
+const AssignPayload = z.strictObject({ playerId: z.string().max(40), roleId: RolePayload.shape.roleId.nullable() });
+
+/** Authored conversation starters for teams of strangers. */
+export const ICEBREAKERS = [
+  "Say your name and one thing you are good at when things get stressful.",
+  "Say your name and one skill you could bring to a team in a hurry.",
+  "Say your name and what you would want a stranger beside you to do in an emergency.",
+];
+
 const cleanName = (n: string) => n.replace(/[\u0000-\u001f\u007f<>]/g, "").trim().slice(0, 24);
 
 export interface HubDeps {
@@ -131,6 +140,24 @@ export class SessionHub {
       reply({ ok: true });
     });
 
+    socket.on("assign_role", (payload: unknown, ack?: (r: unknown) => void) => {
+      const reply = (r: unknown) => typeof ack === "function" && ack(r);
+      const p = AssignPayload.safeParse(payload);
+      const auth = this.auth(socket);
+      if (!p.success || !auth) return reply({ ok: false, error: "Invalid request" });
+      const meta = this.deps.store.getMeta(auth.sessionId);
+      if (!meta || meta.status !== "lobby" || meta.config.team.roleAssignment !== "organizer") return reply({ ok: false, error: "Roles are not assigned by the host in this session" });
+      if (meta.hostId !== auth.playerId) return reply({ ok: false, error: "Only the host can assign roles" });
+      const target = meta.players.find((x) => x.id === p.data.playerId);
+      if (!target) return reply({ ok: false, error: "No such player" });
+      if (p.data.roleId && !ROLE_ORDER.slice(0, meta.config.team.size).includes(p.data.roleId)) return reply({ ok: false, error: "That role isn't in this team" });
+      if (p.data.roleId && meta.players.some((x) => x.roleId === p.data.roleId && x.id !== target.id)) return reply({ ok: false, error: "Someone already has that role" });
+      if (p.data.roleId) target.roleId = p.data.roleId; else delete target.roleId;
+      void this.deps.store.saveMeta(meta);
+      this.broadcast(meta.id);
+      reply({ ok: true });
+    });
+
     socket.on("leave", () => {
       const auth = this.auth(socket);
       if (!auth) return;
@@ -185,7 +212,9 @@ export class SessionHub {
     let token = p.token;
     if (!player) {
       if (meta.status !== "lobby") return { ok: false, error: "That session has already started" };
-      if (meta.players.length >= meta.config.team.size) return { ok: false, error: "That session is full" };
+      // A simulated team has exactly one human; everyone else is a labeled simulated teammate.
+      const capacity = meta.config.socialEnvironment === "simulated" ? 1 : meta.config.team.size;
+      if (meta.players.length >= capacity) return { ok: false, error: "That session is full" };
       const name = cleanName(p.name ?? "");
       if (!name) return { ok: false, error: "Please enter a name" };
       token = randomBytes(18).toString("base64url");
@@ -301,14 +330,20 @@ export class SessionHub {
 
   private lobbyView(meta: SessionMeta, playerId: string): LobbyView {
     const live = this.live.get(meta.id);
+    const strangers = meta.config.socialEnvironment === "strangers";
+    const mode = meta.config.team.roleAssignment;
     return {
       phase: "lobby",
       code: meta.code,
       you: { id: playerId, isHost: meta.hostId === playerId },
-      players: meta.players.map((p) => ({ id: p.id, name: p.name, ready: p.ready, isHost: p.id === meta.hostId, connected: (live?.sockets.get(p.id)?.size ?? 0) > 0, roleId: p.roleId ?? null })),
-      roleAssignment: meta.config.team.roleAssignment,
+      // Among strangers nobody sees anyone else's role until they introduce themselves in the game.
+      players: meta.players.map((p) => ({ id: p.id, name: p.name, ready: p.ready, isHost: p.id === meta.hostId, connected: (live?.sockets.get(p.id)?.size ?? 0) > 0, roleId: strangers && p.id !== playerId ? null : (p.roleId ?? null) })),
+      roleAssignment: mode,
+      canAssignRoles: mode === "organizer" && meta.hostId === playerId,
+      icebreaker: strangers ? ICEBREAKERS[meta.seed % ICEBREAKERS.length]! : null,
+      orgName: this.deps.store.getOrg(meta.orgId)?.name ?? null,
       roles: ROLE_ORDER.slice(0, meta.config.team.size).map((id) => ({ id, ...WORLDS[meta.config.worldId]!.roleSkins[id] })).map(({ id, name, title }) => ({ id, name, title })),
-      teamSize: meta.config.team.size,
+      teamSize: meta.config.socialEnvironment === "simulated" ? 1 : meta.config.team.size,
       fillWithBots: meta.config.team.fillWithBots,
       socialEnvironment: meta.config.socialEnvironment,
       worldId: meta.config.worldId,

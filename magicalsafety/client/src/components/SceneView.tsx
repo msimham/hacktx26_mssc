@@ -4,9 +4,11 @@ import { RoomArt } from "./RoomArt";
 interface Props {
   view: PlayerView;
   onAct: (la: LegalAction) => void;
+  /** False when the session doesn't use the mouse: the scene is for looking only. */
+  canClick?: boolean;
 }
 
-export function SceneView({ view, onAct }: Props) {
+export function SceneView({ view, onAct, canClick = true }: Props) {
   const byKey = new Map(view.legal.map((l) => [l.key, l]));
   const here = view.actors.filter((a) => a.roomId === view.room.id);
   const busy = !!view.you.busy;
@@ -18,7 +20,7 @@ export function SceneView({ view, onAct }: Props) {
 
       {view.room.hotspots.map((h) => {
         const la = byKey.get(h.kind === "exit" ? `move:${h.to}` : `inspect:${h.targetId}`);
-        const enabled = !!la && !busy;
+        const enabled = !!la && !busy && canClick;
         return (
           <button
             key={h.id}

@@ -17,6 +17,7 @@ With no `.env`, every integration runs as a labeled mock/rules fallback. Copy `.
 
 ## Status
 
-- Phases 0-3 done: scaffold, engine, multiplayer + world UI + storage, training agent + adaptive replay.
+- Phases 0-4 done: scaffold, engine, multiplayer + world UI + storage, training agent + adaptive replay, Experience Builder + Session Setup.
+- Organizers: `/builder` (objectives, rubric, documents, AI/tool limits) and `/setup` (world, social environment, team, difficulty, input methods).
 - Playable now: create a session on the home page and play the castle medical-emergency scenario with friends and/or 🤖 simulated teammates. Results separate recorded facts from an evidence-cited interpretation (rules in demo mode, Muse Spark if a key is set), and the Adaptive Replay screen sets up a harder, targeted next run.
 - Test and demo walkthrough: [docs/TESTING_AND_DEMO.md](docs/TESTING_AND_DEMO.md).

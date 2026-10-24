@@ -9,6 +9,9 @@ import type { SessionMeta } from "./store/schemas";
 import { health } from "./agent/health";
 import { RunLog } from "./agent/runLog";
 import { TrainingAgent } from "./agent/trainingAgent";
+import { StructuredRunner } from "./agent/structuredRunner";
+import { createToolExecutor } from "./tools/executeTool";
+import { Usage } from "./tools/usage";
 import { MockProvider } from "./agent/providers/mock";
 import { MetaMuseProvider, toProviderError, toStrictJsonSchema } from "./agent/providers/metaMuse";
 import { ProviderError, type Completion, type CompletionRequest, type ModelProvider } from "./agent/providers/types";
@@ -52,7 +55,11 @@ const echo: Script = (req) => ok(req.deterministic());
 async function run(driver: Driver, provider: ModelProvider, refs: { id: string; text: string }[] = []) {
   const store = await seed(driver);
   const runLog = new RunLog(store, () => ["sk-live-secret-999"]);
-  const agent = new TrainingAgent({ store, provider, runLog, sleep: async () => {}, references: async () => refs });
+  const usage = new Usage();
+  const agent = new TrainingAgent({
+    store, providerFor: () => provider, runner: new StructuredRunner({ runLog, sleep: async () => {} }), usage,
+    tools: createToolExecutor({ store, usage }), references: async () => refs,
+  });
   return { analysis: await agent.analyse(ID), runs: await runLog.list(ID), store, agent, runLog };
 }
 

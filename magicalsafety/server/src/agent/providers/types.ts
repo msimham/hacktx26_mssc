@@ -1,6 +1,6 @@
 import type { z } from "zod";
 
-export type AgentStep = "diagnose" | "adapt";
+export type AgentStep = "diagnose" | "adapt" | "builder";
 
 export interface CompletionRequest<T> {
   step: AgentStep;

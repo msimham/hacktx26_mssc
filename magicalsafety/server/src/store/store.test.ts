@@ -108,6 +108,15 @@ describe("JsonFileStore", () => {
     expect(store.list().map((m) => m.id).sort()).toEqual(["ses_new00001", "ses_run00001"]);
   });
 
+  it("sweeps by a per-session retention period", async () => {
+    const store = new JsonFileStore();
+    const day = 86_400_000;
+    await store.createSession(meta({ id: "ses_short0001", code: "SHT111", orgId: "org_shrt", status: "ended", createdAt: 0 }));
+    await store.createSession(meta({ id: "ses_long00001", code: "LNG111", orgId: "org_long", status: "ended", createdAt: 0 }));
+    const removed = await store.sweep((m) => (m.orgId === "org_shrt" ? 7 : 90), 30 * day);
+    expect(removed).toEqual(["ses_short0001"]);
+  });
+
   it("works memory-only", async () => {
     const store = new JsonFileStore();
     await store.createSession(meta());

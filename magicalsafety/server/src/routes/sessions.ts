@@ -1,8 +1,13 @@
-import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import { Router, type Request, type Response } from "express";
 import { z } from "zod";
-import { applyAdaptation, computeMetrics, defaultSessionConfig, hashSeed, replay, SessionConfig as SessionConfigSchema, SocialEnvironment, type SessionConfig } from "@magicalsafety/engine";
+import {
+  applyAdaptation, computeMetrics, DEFAULT_DIFFICULTY, Difficulty, hashSeed, InputMethod, replay, ScenarioId, SCENARIOS, SessionConfig as SessionConfigSchema, SocialEnvironment, WorldId, WORLDS,
+  type SessionConfig,
+} from "@magicalsafety/engine";
+import { SEEDED_ORG_ID } from "../orgs/seed";
 import type { Env } from "../config/env";
+import { passcodeOk, rateLimit } from "../auth";
 import type { Store } from "../store/store";
 import { hashToken } from "../realtime/sessionHub";
 import type { SessionMeta } from "../store/schemas";
@@ -16,31 +21,24 @@ function randomFrom(alphabet: string, n: number): string {
   return Array.from(bytes, (b) => alphabet[b % alphabet.length]).join("");
 }
 
-const digest = (s: string) => createHash("sha256").update(s).digest();
-export const passcodeOk = (given: unknown, expected: string) =>
-  typeof given === "string" && timingSafeEqual(digest(given), digest(expected));
-
 const CreateBody = z.strictObject({
-  teamSize: z.number().int().min(2).max(4).default(3),
-  fillWithBots: z.boolean().default(true),
-  roleAssignment: z.enum(["random", "chosen"]).default("random"),
+  orgId: z.string().regex(/^org_[a-z0-9_]{2,30}$/).default(SEEDED_ORG_ID),
+  worldId: WorldId.default("castle"),
+  acts: z.array(ScenarioId).min(1).max(2).default(["medical_emergency"]),
   socialEnvironment: SocialEnvironment.default("classmates"),
-  timePressure: z.enum(["low", "moderate", "high"]).default("moderate"),
-  ambiguity: z.enum(["clear", "subtle"]).default("clear"),
+  team: z.strictObject({
+    size: z.number().int().min(2).max(4).default(3),
+    roleAssignment: z.enum(["random", "chosen", "organizer"]).default("random"),
+    fillWithBots: z.boolean().default(true),
+  }).default({ size: 3, roleAssignment: "random", fillWithBots: true }),
+  inputMethods: z.array(InputMethod).min(1).max(4).default(["mouse", "keyboard", "text"]),
+  difficulty: Difficulty.partial().default({}),
+  rules: z.strictObject({
+    act1DurationSec: z.number().int().min(150).max(360).default(240),
+    act2DurationSec: z.number().int().min(90).max(240).default(150),
+    allowCrossRoomChat: z.boolean().default(true),
+  }).default({ act1DurationSec: 240, act2DurationSec: 150, allowCrossRoomChat: true }),
 });
-
-/** Tiny in-memory token bucket per IP. */
-export function rateLimit(perMinute: number) {
-  const hits = new Map<string, { n: number; reset: number }>();
-  return (req: Request, res: Response, next: () => void) => {
-    const now = Date.now();
-    const key = req.ip ?? "unknown";
-    const h = hits.get(key);
-    if (!h || h.reset < now) hits.set(key, { n: 1, reset: now + 60_000 });
-    else if (++h.n > perMinute) return void res.status(429).json({ error: "Too many requests" });
-    next();
-  };
-}
 
 const ReplayBody = z.strictObject({ approve: z.array(z.number().int().min(0).max(5)).max(5).default([]) });
 const ShoutoutBody = z.strictObject({
@@ -67,14 +65,20 @@ export function sessionRoutes(env: Env, store: Store, agent: TrainingAgent, runL
     const body = CreateBody.safeParse(req.body ?? {});
     if (!body.success) return void res.status(400).json({ error: "Invalid session settings" });
     const b = body.data;
+    if (!store.getOrg(b.orgId)) return void res.status(400).json({ error: "That organization doesn't exist" });
+    if (!WORLDS[b.worldId]) return void res.status(400).json({ error: `The ${b.worldId} world isn't available yet` });
+    const missing = b.acts.find((a) => !SCENARIOS[a]);
+    if (missing) return void res.status(400).json({ error: `The ${missing.replace("_", " ")} scenario isn't available yet` });
+    if (b.socialEnvironment === "simulated" && !b.team.fillWithBots) return void res.status(400).json({ error: "A simulated team needs simulated teammates turned on" });
     const id = `ses_${randomFrom("abcdefghijklmnopqrstuvwxyz0123456789", 10)}`;
     let code = randomFrom(CODE_ALPHABET, 6);
     while (store.findByCode(code)) code = randomFrom(CODE_ALPHABET, 6);
-    const config: SessionConfig = defaultSessionConfig({
-      id, orgId: "org_riverside", joinCode: code, socialEnvironment: b.socialEnvironment,
-      team: { size: b.teamSize, roleAssignment: b.roleAssignment, fillWithBots: b.fillWithBots },
-      difficulty: { timePressure: b.timePressure, ambiguity: b.ambiguity, simultaneousIncidents: 1, extraHelpers: 0, infoDistribution: "split", resourceScarcity: false },
+    const parsed = SessionConfigSchema.safeParse({
+      id, orgId: b.orgId, joinCode: code, worldId: b.worldId, acts: b.acts, socialEnvironment: b.socialEnvironment, team: b.team,
+      inputMethods: [...new Set(b.inputMethods)], difficulty: { ...DEFAULT_DIFFICULTY, ...b.difficulty }, rules: b.rules,
     });
+    if (!parsed.success) return void res.status(400).json({ error: "Invalid session settings" });
+    const config: SessionConfig = parsed.data;
     const meta: SessionMeta = { id, code, orgId: config.orgId, createdAt: Date.now(), status: "lobby", config, seed: hashSeed(id), hostId: null, players: [], logHead: null };
     await store.createSession(meta);
     res.status(201).json({ id, code });

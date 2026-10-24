@@ -25,6 +25,7 @@ export function computeMetrics(state: RuntimeState, act: 1 | 2 = 1): MetricResul
   const out: MetricResult[] = [];
 
   out.push(m("outcome", "How the act ended", (completed?.payload.outcome as string) ?? "in_progress", completed ? [completed] : []));
+  out.push(m("succeeded", "The team got help to the person", completed ? completed.payload.success === true : null, completed ? [completed] : []));
   out.push(m("time_to_notice_ms", "Time from the incident starting to someone recognising it", delta(noticed), [incident, noticed].filter(Boolean) as GameEvent[], "ms"));
   out.push(m("time_to_help_request_ms", "Time from the incident starting to help being called", delta(helpReq), [incident, helpReq].filter(Boolean) as GameEvent[], "ms"));
   out.push(m("time_to_resource_ms", "Time from the incident starting to the kit reaching the person", delta(kit), [incident, kit].filter(Boolean) as GameEvent[], "ms"));
@@ -93,6 +94,13 @@ export function computeMetrics(state: RuntimeState, act: 1 | 2 = 1): MetricResul
   const firstHelpT = helpReq?.t ?? Infinity;
   const early = evs.filter((e) => e.t < firstHelpT && ((e.type === "task_completed" && e.payload.distractor === true) || (e.type === "inspected" && e.payload.via !== "check_responsiveness" && e.payload.targetId !== "duchess")));
   out.push(m("priority_order_ok", "Help was requested before distractor tasks or idle exploration", early.length === 0, early));
+
+  // Only meaningful among strangers, where roles stay hidden until a player introduces themselves.
+  if (state.config.socialEnvironment === "strangers") {
+    const people = Object.values(state.actors).filter((a) => a.kind !== "npc");
+    const intros = of("introduced");
+    out.push(m("introduced_ratio", "Share of players who introduced themselves (strangers mode)", people.length ? round(new Set(intros.map((e) => e.actorId)).size / people.length) : null, intros));
+  }
 
   const redundant = of("task_failed").filter((e) => e.payload.redundant === true);
   out.push(m("redundant_efforts", "Work that was already done by someone else when it finished", redundant.length, redundant));

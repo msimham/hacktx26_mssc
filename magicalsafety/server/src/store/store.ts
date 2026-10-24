@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { GENESIS, makeLine, verifyLines, type Verified } from "./chain";
+import { OrgConfig } from "@magicalsafety/engine";
 import { SessionMeta, type LogHeader, type LogInput } from "./schemas";
 
 export interface Store {
@@ -13,18 +14,24 @@ export interface Store {
   appendInput(id: string, input: LogInput): Promise<void>;
   logHead(id: string): { seq: number; hash: string } | null;
   loadLog(id: string): Promise<Verified>;
+  /** Organizations (what to teach and evaluate). Validated on every read and write. */
+  saveOrg(org: OrgConfig): Promise<void>;
+  getOrg(id: string): OrgConfig | undefined;
+  listOrgs(): OrgConfig[];
+  deleteOrg(id: string): Promise<void>;
   /** Small derived documents (analysis, shout-outs, agent runs). Stored atomically next to the session. */
   putDoc(id: string, kind: DocKind, value: unknown): Promise<void>;
   getDoc(id: string, kind: DocKind): Promise<unknown | undefined>;
   delete(id: string): Promise<void>;
   /** Deletes sessions older than maxAgeDays. Returns the deleted ids. */
-  sweep(maxAgeDays: number, nowMs: number): Promise<string[]>;
+  sweep(maxAgeDays: number | ((m: SessionMeta) => number), nowMs: number): Promise<string[]>;
   /** Resolves when every queued write has hit the disk. */
   flush(): Promise<void>;
 }
 
 export type DocKind = "analysis" | "shoutouts" | "runs";
 const DOC_KINDS: readonly DocKind[] = ["analysis", "shoutouts", "runs"];
+const ORG_ID = /^org_[a-z0-9_]{2,30}$/;
 
 const SAFE_ID = /^[A-Za-z0-9_-]{4,40}$/;
 
@@ -39,6 +46,7 @@ export class JsonFileStore implements Store {
   private heads = new Map<string, { seq: number; hash: string }>();
   private memLogs = new Map<string, string[]>();
   private memDocs = new Map<string, string>();
+  private orgs = new Map<string, OrgConfig>();
   private queues = new Map<string, Promise<void>>();
 
   constructor(private dir?: string) {}
@@ -49,6 +57,17 @@ export class JsonFileStore implements Store {
     if (!this.dir) return { loaded: 0, skipped };
     await fs.mkdir(this.dir, { recursive: true, mode: 0o700 });
     for (const f of await fs.readdir(this.dir)) {
+      if (f.endsWith(".org.json")) {
+        const oid = f.slice(0, -".org.json".length);
+        try {
+          const org = OrgConfig.parse(JSON.parse(await fs.readFile(path.join(this.dir, f), "utf8")));
+          if (org.id !== oid) throw new Error("id mismatch");
+          this.orgs.set(org.id, org);
+        } catch {
+          skipped.push(oid);
+        }
+        continue;
+      }
       if (!f.endsWith(".meta.json")) continue;
       const id = f.slice(0, -".meta.json".length);
       try {
@@ -149,6 +168,32 @@ export class JsonFileStore implements Store {
     return result;
   }
 
+  private orgPath(id: string) {
+    if (!ORG_ID.test(id)) throw new Error("invalid organization id");
+    return path.join(this.dir!, `${id}.org.json`);
+  }
+
+  async saveOrg(org: OrgConfig): Promise<void> {
+    const valid = OrgConfig.parse(org);
+    this.orgs.set(valid.id, structuredClone(valid));
+    if (!this.dir) return;
+    const body = JSON.stringify(valid);
+    await this.enqueue(valid.id, async () => {
+      const tmp = `${this.orgPath(valid.id)}.${process.pid}.tmp`;
+      await fs.writeFile(tmp, body, { mode: 0o600 });
+      await fs.rename(tmp, this.orgPath(valid.id));
+    });
+  }
+  getOrg(id: string): OrgConfig | undefined {
+    const o = this.orgs.get(id);
+    return o ? structuredClone(o) : undefined;
+  }
+  listOrgs(): OrgConfig[] { return [...this.orgs.values()].map((o) => structuredClone(o)); }
+  async deleteOrg(id: string): Promise<void> {
+    this.orgs.delete(id);
+    if (this.dir) { await this.flush(); await fs.rm(this.orgPath(id), { force: true }); }
+  }
+
   private docPath(id: string, kind: DocKind) { return path.join(this.dir!, `${this.safe(id)}.${kind}.json`); }
 
   putDoc(id: string, kind: DocKind, value: unknown): Promise<void> {
@@ -188,9 +233,9 @@ export class JsonFileStore implements Store {
     ]);
   }
 
-  async sweep(maxAgeDays: number, nowMs: number): Promise<string[]> {
-    const cutoff = nowMs - maxAgeDays * 86_400_000;
-    const gone = this.list().filter((m) => m.status !== "running" && m.createdAt < cutoff).map((m) => m.id);
+  async sweep(maxAgeDays: number | ((m: SessionMeta) => number), nowMs: number): Promise<string[]> {
+    const days = (m: SessionMeta) => (typeof maxAgeDays === "number" ? maxAgeDays : maxAgeDays(m));
+    const gone = this.list().filter((m) => m.status !== "running" && m.createdAt < nowMs - days(m) * 86_400_000).map((m) => m.id);
     for (const id of gone) await this.delete(id);
     return gone;
   }

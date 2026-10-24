@@ -8,6 +8,11 @@ export interface LobbyView {
   players: { id: string; name: string; ready: boolean; isHost: boolean; connected: boolean; roleId: RoleId | null }[];
   roleAssignment: "random" | "chosen" | "organizer";
   roles: { id: RoleId; name: string; title: string }[];
+  /** Host may assign everyone's role (roleAssignment "organizer"). */
+  canAssignRoles: boolean;
+  /** A conversation starter, shown only when the team are strangers. */
+  icebreaker: string | null;
+  orgName: string | null;
   teamSize: number;
   fillWithBots: boolean;
   socialEnvironment: string;

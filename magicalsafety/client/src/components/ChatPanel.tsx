@@ -9,7 +9,7 @@ const TONE: Record<string, string> = {
   bad: "text-rose-300",
 };
 
-export function ChatPanel({ view, onSay, onAct }: { view: PlayerView; onSay: (to: string, text: string) => void; onAct: (la: LegalAction) => void }) {
+export function ChatPanel({ view, onSay, onAct, canType = true }: { view: PlayerView; onSay: (to: string, text: string) => void; onAct: (la: LegalAction) => void; canType?: boolean }) {
   const [text, setText] = useState("");
   const [to, setTo] = useState("team");
   const endRef = useRef<HTMLDivElement>(null);
@@ -55,8 +55,8 @@ export function ChatPanel({ view, onSay, onAct }: { view: PlayerView; onSay: (to
           {recipients.map((r) => <option key={r.to} value={r.to}>{r.label}</option>)}
         </select>
         <label className="sr-only" htmlFor="say-text">Message</label>
-        <input id="say-text" value={text} onChange={(e) => setText(e.target.value)} maxLength={300} placeholder="Say something to your team…" className="min-w-0 flex-1 rounded bg-night px-3 py-1.5 text-sm ring-1 ring-white/10" />
-        <button type="submit" className="rounded bg-gold px-3 py-1.5 text-sm font-semibold text-night">Send</button>
+        <input id="say-text" value={text} onChange={(e) => setText(e.target.value)} maxLength={300} disabled={!canType} placeholder={canType ? "Say something to your team…" : "Typed chat is off for this session"} className="min-w-0 flex-1 rounded bg-night px-3 py-1.5 text-sm ring-1 ring-white/10" />
+        <button type="submit" disabled={!canType} className="rounded bg-gold px-3 py-1.5 text-sm font-semibold text-night disabled:opacity-50">Send</button>
       </form>
     </section>
   );
