@@ -357,7 +357,7 @@ function handle(s: RuntimeState, req: ActionRequest): void {
       if (actor.kind === "bot") {
         actor.activated = true;
         const line = botLine(act.world.labels, actor, step);
-        if (line) emit(s, { type: "said", actor, payload: { to: "team", text: line, heardBy: [], addressed: [], intent: "acknowledges", simulated: true } });
+        if (line) emit(s, { type: "said", actor, payload: { to: "team", text: line, heardBy: (recipients(s, actor, "team") ?? []).map((a) => a.id), addressed: [], intent: "acknowledges", simulated: true } });
       }
       beginStep(s, actor, step, null);
     }

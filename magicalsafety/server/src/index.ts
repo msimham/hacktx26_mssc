@@ -1,13 +1,12 @@
-import http from "node:http";
-import { Server as SocketServer } from "socket.io";
-import { createApp } from "./app";
 import { readEnv } from "./config/env";
+import { createServer } from "./server";
 
 const env = readEnv();
-const app = createApp(env);
-const httpServer = http.createServer(app);
-export const io = new SocketServer(httpServer, { cors: { origin: true } });
-
-httpServer.listen(env.port, () => {
+const server = await createServer(env);
+server.httpServer.listen(env.port, () => {
   console.log(`[magicalsafety] server on http://localhost:${env.port}`);
 });
+
+for (const sig of ["SIGINT", "SIGTERM"] as const) {
+  process.on(sig, () => void server.close().finally(() => process.exit(0)));
+}

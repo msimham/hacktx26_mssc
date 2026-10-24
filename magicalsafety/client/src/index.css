@@ -1,1 +1,19 @@
 @import "tailwindcss";
+
+@theme {
+  --font-display: "Cinzel", Georgia, serif;
+  --font-sans: "Inter", system-ui, sans-serif;
+  --color-night: #0f1b3d;
+  --color-night-2: #16264f;
+  --color-gold: #d4af37;
+  --color-parchment: #f6edd6;
+  --color-ink: #2a2118;
+}
+
+html, body, #root { height: 100%; }
+body { margin: 0; background: var(--color-night); color: #e8ecf8; font-family: var(--font-sans); }
+button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible { outline: 2px solid var(--color-gold); outline-offset: 2px; }
+
+@keyframes pulse-red { 0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,.6); } 50% { box-shadow: 0 0 0 10px rgba(239,68,68,0); } }
+.pulse-critical { animation: pulse-red 1.2s infinite; }
+@media (prefers-reduced-motion: reduce) { .pulse-critical { animation: none; } }

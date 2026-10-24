@@ -29,6 +29,8 @@ export interface Env {
   serpApiKey: string;
   fbAppSecret: string;
   fbAppId: string;
+  dataDir: string;
+  retentionDays: number;
 }
 
 export function readEnv(source: NodeJS.ProcessEnv = process.env): Env {
@@ -49,6 +51,9 @@ export function readEnv(source: NodeJS.ProcessEnv = process.env): Env {
     // TODO(USER): Create a Facebook app (Facebook Login) and set FB_APP_SECRET (server) and VITE_FB_APP_ID (client) in magicalsafety/.env.
     fbAppSecret: get("FB_APP_SECRET"),
     fbAppId: get("VITE_FB_APP_ID"),
+    // Session store location (gitignored). Override with DATA_DIR.
+    dataDir: get("DATA_DIR") || path.resolve(here, "../../data"),
+    retentionDays: Number(get("RETENTION_DAYS", "30")) || 30,
   };
 }
 

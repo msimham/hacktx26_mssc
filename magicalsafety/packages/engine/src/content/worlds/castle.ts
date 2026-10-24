@@ -94,6 +94,13 @@ export const castle: World = {
     bring_kit: "Bring the first-aid chest",
     clear_incident_area: "Move the guests back",
     clear_side_hall: "Calm the crowd on the staircase",
+    // Narration used by the player feed.
+    narr_collapse: "The Duchess collapses in the Grand Ballroom!",
+    narr_crowd: "Crash! A candelabra falls on the Grand Staircase and guests begin to crowd.",
+    narr_worsening: "The Duchess looks worse. Time matters.",
+    narr_critical: "The Duchess's condition is critical!",
+    narr_help_arrived: "The physician arrives and takes over.",
+    narr_victim: "the Duchess",
   },
   vocabulary: ["Cinderella", "Royal Steward", "Coachman", "Lady-in-Waiting", "Duchess", "physician", "guard", "ballroom", "courtyard", "gatehouse", "staircase", "dais", "cabinet"],
 };

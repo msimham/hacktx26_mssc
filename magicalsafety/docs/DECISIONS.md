@@ -29,3 +29,15 @@ Sessions are persisted as **(config, seed, ordered input log)**, not as derived 
 - **Accurate:** replay is the source of truth; a stored session can be re-verified at any time.
 - **Efficient:** the log is tiny (inputs only); a snapshot is never needed at this scale.
 - **Secure:** every record is zod-validated on load; writes are atomic (temp file + rename); the log carries a SHA-256 hash chain so tampering or truncation is detected; no secrets, tokens or audio are ever written; a retention sweep deletes old sessions.
+
+## Phase 2 (multiplayer, world UI, storage)
+
+- **`JsonFileStore` has a memory-only mode** (omit `dir`) instead of a separate `MemoryStore`. Same code path, so tests exercise the real logic. The `Store` interface is still the seam for replacing it.
+- **Only inputs that matter are logged.** Every action (including rejected ones, so replayed metrics match) and every tick *that produced events* is appended. Ticks with no events are redundant because the engine is event-driven. Bot actions are logged as actions, so replay never re-runs the bot policy.
+- **Chat text is part of the stored record.** Replay and evidence need it (typing a fact keyword transfers knowledge). Audio is never stored. The org-level `storeTranscripts` flag (Phase 4) will govern voice transcripts only. The retention sweep deletes whole sessions.
+- **Tail truncation of a *running* session is not detectable** (a valid prefix of a hash chain is a valid chain). The log head is recorded in the session metadata when the session ends, after which any truncation or edit is detected.
+- **A server restart counts as elapsed game time**; resumed sessions fast-forward to "now". Fine for a demo; no pause/resume.
+- **Role choice (`roleAssignment: "chosen"`) shipped in Phase 2** instead of Phase 4, so multiplayer tests can be deterministic.
+- **Session creation uses a placeholder org id (`org_riverside`)** until the org layer lands in Phase 4. Creation requires the organizer passcode; joining needs only the join code; results need a player token (stored only as a SHA-256 hash server-side) or the passcode, and return the same 404 for "missing" and "forbidden".
+- **Bug fixed during this phase:** simulated teammates' chat lines had an empty audience and were never shown. Now delivered to the whole team and marked 🤖.
+- **Not verified in a real browser by the implementer.** The client typechecks and builds, and the live `npm run dev` stack (Vite proxy + websocket + disk store) was smoke-tested with a scripted socket client, but nobody has clicked through the UI yet. See docs/TESTING_AND_DEMO.md for the manual check.
