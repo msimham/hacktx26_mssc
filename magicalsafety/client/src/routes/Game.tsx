@@ -19,6 +19,7 @@ export function Game() {
   const [toast, setToast] = useState<string | null>(null);
   const [card, setCard] = useState<{ act: number; title: string; alarm: boolean } | null>(null);
   const lastAct = useRef(0);
+  const cardTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const methods = new Set(view?.inputMethods ?? ['mouse', 'keyboard', 'text']);
 
   const act = useCallback(async (la: LegalAction) => {
@@ -68,8 +69,9 @@ export function Game() {
     if (!view || actNow === lastAct.current) return;
     lastAct.current = actNow;
     setCard({ act: view.act, title: view.actTitle, alarm: view.alarm });
-    const id = setTimeout(() => setCard(null), 3800);
-    return () => clearTimeout(id);
+    // The timer lives in a ref, not the effect's cleanup: StrictMode re-runs effects in dev, and cancelling it there left the card stuck.
+    if (cardTimer.current) clearTimeout(cardTimer.current);
+    cardTimer.current = setTimeout(() => setCard(null), 3800);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [actNow]);
 
