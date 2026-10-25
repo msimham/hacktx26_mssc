@@ -23,7 +23,7 @@ export function CreateTraining() {
         <Confetti />
         <div aria-hidden className="mb-3 text-6xl">🚀</div>
         <h1 role="status" className="font-display text-3xl font-extrabold tracking-tight sm:text-4xl">
-          Your training is being created
+          Your training simulation agent is being created
         </h1>
         <p className="mt-3 text-slate-600">Nice work. That took about a minute.</p>
         <Link to="/" className={`${buttonPrimary} mt-8 inline-block`}>Back home</Link>
@@ -54,7 +54,7 @@ export function CreateTraining() {
                 setCreated(true);
               }}
             >
-              Create Training
+              Create Training Simulation Agent
             </button>
           </>
         }

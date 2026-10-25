@@ -38,16 +38,17 @@ export function Home() {
           The agent platform for custom training simulations
         </p>
         <h1 className="font-display text-5xl font-extrabold leading-[1.05] tracking-tight sm:text-7xl">
-          Turn &ldquo;we should train on that&rdquo; into{" "}
+          Build a{" "}
           <span className="bg-gradient-to-r from-violet-600 via-fuchsia-500 to-orange-400 bg-clip-text text-transparent">
-            something people play.
-          </span>
+            training simulation agent
+          </span>{" "}
+          your people actually play.
         </h1>
         <p className="mx-auto mt-6 max-w-xl text-lg text-slate-600">
-          Describe what your team needs to practice, and Training Studio builds a custom agent that runs the simulation, plays the other roles and coaches each person. Ready in about a minute.
+          Describe what your team needs to practice, and Training Studio builds a custom training simulation agent that runs the simulation, plays the other roles and coaches each person. Ready in about a minute.
         </p>
         <div className="mt-9 flex flex-col items-center gap-3">
-          <Link to="/create" className={`${buttonPrimary} px-8 py-4 text-lg`}>+ Create Training</Link>
+          <Link to="/create" className={`${buttonPrimary} px-8 py-4 text-lg`}>+ Create Training Simulation Agent</Link>
           <span className="text-sm text-slate-500">5 quick questions. No setup.</span>
         </div>
         <p aria-hidden className="mt-14 animate-bounce text-sm text-slate-400">scroll to see how it works ↓</p>
@@ -63,7 +64,7 @@ export function Home() {
 
       <section className="mx-auto max-w-5xl px-4 py-20">
         <Reveal>
-          <h2 className="text-center font-display text-3xl font-extrabold tracking-tight sm:text-5xl">From idea to your own training agent in three steps</h2>
+          <h2 className="text-center font-display text-3xl font-extrabold tracking-tight sm:text-5xl">From idea to your own simulation agent in three steps</h2>
         </Reveal>
         <ol className="mt-12 grid gap-5 md:grid-cols-3">
           {HOW.map((h, i) => (
@@ -109,8 +110,8 @@ export function Home() {
 
       <section className="px-4 py-24 text-center">
         <Reveal>
-          <h2 className="font-display text-4xl font-extrabold tracking-tight sm:text-6xl">Ready to make your first training agent? 🚀</h2>
-          <Link to="/create" className={`${buttonPrimary} mt-8 inline-block px-8 py-4 text-lg`}>+ Create Training</Link>
+          <h2 className="font-display text-4xl font-extrabold tracking-tight sm:text-6xl">Ready to make your first training simulation agent? 🚀</h2>
+          <Link to="/create" className={`${buttonPrimary} mt-8 inline-block px-8 py-4 text-lg`}>+ Create Training Simulation Agent</Link>
         </Reveal>
       </section>
     </div>

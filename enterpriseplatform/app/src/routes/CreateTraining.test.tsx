@@ -46,7 +46,7 @@ describe("CreateTraining wizard", () => {
       await user.click(screen.getByRole("button", { name: "Continue" }));
     }
     expect(screen.getByText(/what you.re creating/i)).toBeTruthy();
-    await user.click(screen.getByRole("button", { name: "Create Training" }));
+    await user.click(screen.getByRole("button", { name: "Create Training Simulation Agent" }));
     expect(log).toHaveBeenCalledWith(expect.objectContaining({ train: "Team collaboration" }));
     expect(await screen.findByRole("status")).toBeTruthy();
     log.mockRestore();
