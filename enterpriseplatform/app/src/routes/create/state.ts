@@ -13,7 +13,10 @@ export type Action =
   | { type: "back" }
   | { type: "goto"; index: number };
 
-export const initialState = (): WizardState => ({ answers: emptyAnswers(), index: 0 });
+export const initialState = (seed: Partial<Answers> = {}): WizardState => ({
+  answers: { ...emptyAnswers(), ...seed },
+  index: 0,
+});
 
 export const isFilled = (value: string): boolean => value.trim().length > 0;
 
