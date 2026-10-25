@@ -1,3 +1,5 @@
+import { Bubbles, FocusCard, JobPopup, SayPopup } from "../components/Popups";
+import { findMentioned } from "../voice/mention";
 import { GuideBar } from "../components/GuideBar";
 import { cueForAction, playCue, startAmbient, stopAmbient } from "../audio/cues";
 import type { GestureEvent } from "../vision/gestures";
@@ -7,12 +9,9 @@ import { Link } from "react-router-dom";
 import type { LegalAction } from "@magicalsafety/engine";
 import { useSession } from "../session/SessionContext";
 import { ActionBar } from "../components/ActionBar";
-import { ChatPanel } from "../components/ChatPanel";
 import { GameHeader } from "../components/GameHeader";
-import { Minimap } from "../components/Minimap";
 import { VoiceControl } from "../components/VoiceControl";
 import { loadPlayerBySession } from "../session/storage";
-import { RoleCard } from "../components/RoleCard";
 import { SceneView } from "../components/SceneView";
 import { GameSkeleton } from "../components/Skeleton";
 
@@ -21,8 +20,9 @@ export function Game() {
   const [toast, setToast] = useState<string | null>(null);
   const [card, setCard] = useState<{ act: number; title: string; alarm: boolean } | null>(null);
   const lastAct = useRef(0);
-  const [panel, setPanel] = useState(false);
-  const [seen, setSeen] = useState(0);
+  const [job, setJob] = useState(false);
+  const [say, setSay] = useState<{ to?: string } | null>(null);
+  const [focus, setFocus] = useState<string | null>(null);
   const cardTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const methods = new Set(view?.inputMethods ?? ['mouse', 'keyboard', 'text']);
 
@@ -110,7 +110,9 @@ export function Game() {
   }, [actNow]);
 
   if (!view) return <GameSkeleton />;
-  const unread = panel ? 0 : Math.max(0, view.feed.filter((f) => f.tone === "speech").length - seen);
+  // Saying (or typing) a person's name leans the scene toward them and offers what you can do with them.
+  const heard = (text: string) => { const who = findMentioned(text, view.actors); if (who) { setFocus(who.id); playCue("inspect"); } };
+  const sendSay = (to: string, text: string) => { heard(text); void send({ kind: "say", to, text }).then((r) => { if (r) { playCue("reject"); setToast(r); } else playCue("say"); }); };
 
   return (
     <div className={`flex min-h-full flex-col ${view.alarm ? "ring-2 ring-inset ring-rose-600/70" : ""}`}>
@@ -121,33 +123,20 @@ export function Game() {
         <div className="relative">
           {working && <div role="status" className="ack absolute left-1/2 top-3 z-30 -translate-x-1/2 rounded-full bg-gold px-4 py-1.5 text-sm font-bold text-night shadow">⏳ {working}…</div>}
           {done && !working && <div role="status" className="ack absolute left-1/2 top-3 z-30 -translate-x-1/2 rounded-full bg-emerald-500 px-4 py-1.5 text-sm font-bold text-night shadow">✓ {done}</div>}
-          <SceneView view={view} onAct={act} canClick={methods.has("mouse")} />
+          <SceneView view={view} onAct={act} canClick={methods.has("mouse")} focusId={focus} />
           {methods.has("gesture") && view.phase !== "ended" && <div className="absolute right-3 top-3 z-20"><GestureControl legal={view.legal} onAct={act} onGesture={onGesture} onCamera={onCamera} practice={warm !== null} /></div>}
           <button type="button" onClick={toggleFull} className="absolute bottom-3 left-3 z-20 rounded-full bg-night/85 px-3 py-2 text-sm text-slate-200 shadow ring-1 ring-white/20" aria-label="Toggle full screen">⛶</button>
-          <button type="button" onClick={() => { setPanel(true); setSeen(view.feed.length); }} className="absolute bottom-3 right-3 z-20 rounded-full bg-night/85 px-4 py-2 text-sm font-semibold text-gold shadow ring-1 ring-gold/40">
-            👥 Team &amp; chat{unread > 0 && <span className="ml-2 rounded-full bg-rose-600 px-2 py-0.5 text-xs text-white">{unread}</span>}
-          </button>
+          <button type="button" onClick={() => setJob(true)} className="absolute bottom-3 right-3 z-20 rounded-full bg-night/85 px-4 py-2 text-sm font-semibold text-gold shadow ring-1 ring-gold/40">🎭 My job{view.objectives ? ` · ${view.objectives.filter((o) => o.done).length}/${view.objectives.length}` : ""}</button>
+          <Bubbles view={view} />
+          {focus && <FocusCard view={view} actorId={focus} onAct={act} onTalk={(to) => setSay({ to })} onClose={() => setFocus(null)} />}
         </div>
         {toast && <p role="alert" className="rounded bg-rose-900/70 p-2 text-sm">{toast}</p>}
-        <GuideBar view={view} note={warm !== null ? WARM[warm] : null} onSkipNote={() => { warmDone.current = true; setWarm(null); }} onHint={() => { playCue("click"); void send({ kind: "hint" }).then((r) => { if (r) { playCue("reject"); setToast(r); } else playCue("hint"); }); }}>{methods.has("voice") && sessionId ? <VoiceControl sessionId={sessionId} token={loadPlayerBySession(sessionId)?.token ?? ""} legal={view.legal} onSay={(to, text) => void send({ kind: "say", to, text }).then((r) => r && setToast(r))} onAct={act} /> : null}</GuideBar>
+        <GuideBar view={view} onStoryDone={() => setJob(true)} note={warm !== null ? WARM[warm] : null} onSkipNote={() => { warmDone.current = true; setWarm(null); }} onHint={() => { playCue("click"); void send({ kind: "hint" }).then((r) => { if (r) { playCue("reject"); setToast(r); } else playCue("hint"); }); }}>{methods.has("text") && <button type="button" onClick={() => setSay({})} className="rounded-lg bg-sky-200 px-3 py-2 text-sm font-bold text-night">💬 Say</button>}{methods.has("voice") && sessionId ? <VoiceControl sessionId={sessionId} token={loadPlayerBySession(sessionId)?.token ?? ""} legal={view.legal} onSay={sendSay} onAct={act} onHeard={heard} /> : null}</GuideBar>
         <ActionBar view={view} localT={localT} onAct={act} canClick={methods.has("mouse")} showKeys={methods.has("keyboard")} gesture={methods.has("gesture")} />
       </div>
-      {panel && (
-        <div className="fixed inset-0 z-30 flex justify-end bg-black/50" onClick={() => setPanel(false)}>
-          <aside className="flex h-full w-[min(92vw,380px)] flex-col gap-3 overflow-y-auto bg-night p-3 shadow-2xl" role="dialog" aria-label="Team and chat" onClick={(e) => e.stopPropagation()}>
-            <button type="button" onClick={() => setPanel(false)} className="self-end rounded bg-white/10 px-3 py-1 text-sm">Close ✕</button>
-            <RoleCard view={view} />
-            {view.objectives && (
-              <section aria-label="Objectives" className="rounded-xl bg-night-2 p-3">
-                <h3 className="mb-2 font-display text-sm text-gold">Team goals</h3>
-                <ul className="space-y-1 text-sm">{view.objectives.map((o) => <li key={o.id}>{o.done ? "✅" : "⬜"} {o.label}</li>)}</ul>
-              </section>
-            )}
-            <Minimap view={view} />
-            <div className="min-h-[280px] flex-1"><ChatPanel view={view} onAct={act} canType={methods.has("text")} extra={null} onSay={(to, text) => void send({ kind: "say", to, text }).then((r) => r && setToast(r))} /></div>
-          </aside>
-        </div>
-      )}
+      {job && <JobPopup view={view} onAct={act} onClose={() => setJob(false)} />}
+      {say && <SayPopup view={view} presetTo={say.to} onSay={sendSay} onClose={() => setSay(null)} />}
+
       <footer className="border-t border-white/10 px-4 py-2 text-center text-xs text-slate-400">{view.safetyFooter}</footer>
 
       {card && (

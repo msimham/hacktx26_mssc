@@ -1,6 +1,6 @@
 import type { LegalAction, PlayerView } from "@magicalsafety/engine";
 import { useEffect, useRef, useState } from "react";
-import { ease, look, setLook } from "../vision/look";
+import { ease, focusLook, look } from "../vision/look";
 import { artUrl, getArtManifest } from "../api";
 import { RoomArt } from "./RoomArt";
 import { Atmosphere, Characters } from "./SceneLife";
@@ -10,9 +10,11 @@ interface Props {
   onAct: (la: LegalAction) => void;
   /** False when the session doesn't use the mouse: the scene is for looking only. */
   canClick?: boolean;
+  /** A person the player just named: the scene leans toward them and they get a ring. */
+  focusId?: string | null;
 }
 
-export function SceneView({ view, onAct, canClick = true }: Props) {
+export function SceneView({ view, onAct, canClick = true, focusId = null }: Props) {
   const byKey = new Map(view.legal.map((l) => [l.key, l]));
   const [art, setArt] = useState<Set<string>>(new Set());
   const [broken, setBroken] = useState<Set<string>>(new Set());
@@ -28,8 +30,8 @@ export function SceneView({ view, onAct, canClick = true }: Props) {
     if (typeof window === "undefined" || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
     let raf = 0, x = 0, y = 0;
     const tick = () => {
-      const handFresh = performance.now() - look.at < 600;
-      const t = handFresh ? look : target.current;
+      const nowMs = performance.now();
+      const t = nowMs < focusLook.until ? { x: focusLook.x, y: 0 } : nowMs - look.at < 600 ? look : target.current;
       x = ease(x, t.x); y = ease(y, t.y);
       box.current?.style.setProperty("--lx", x.toFixed(3));
       box.current?.style.setProperty("--ly", y.toFixed(3));
@@ -75,7 +77,7 @@ export function SceneView({ view, onAct, canClick = true }: Props) {
         );
       })}
 
-      <Characters view={view} here={here} art={art} />
+      <Characters view={view} here={here} art={art} focusId={focusId} />
     </div>
   );
 }

@@ -37,10 +37,10 @@ function Avatar({ kind, talking }: { kind: "mouse" | "owl"; talking: boolean }) 
  * The story guide: tells the background once, then gives one short, goal-level nudge at a time.
  * `children` is where the microphone goes, so asking by voice sits right next to the guide.
  */
-export function GuideBar({ view, onHint, note, onSkipNote, children }: { view: PlayerView; onHint?: () => void; note?: string | null; onSkipNote?: () => void; children?: ReactNode }) {
+export function GuideBar({ view, onHint, note, onSkipNote, onStoryDone, children }: { view: PlayerView; onHint?: () => void; note?: string | null; onSkipNote?: () => void; onStoryDone?: () => void; children?: ReactNode }) {
   const guide = guideFor(view.worldId);
   const [introIdx, setIntroIdx] = useState(0); // index into the story; past the end means "playing"
-  const [autoRead, setAutoRead] = useState(false);
+  const [autoRead, setAutoRead] = useState(true); // instructions are written AND spoken; "Auto" turns the voice off
   const inStory = introIdx < guide.intro.length;
   const hint = view.you.hint;
   const line = useMemo(() => {
@@ -56,6 +56,8 @@ export function GuideBar({ view, onHint, note, onSkipNote, children }: { view: P
     speak(line.text);
   }, [autoRead, line.text]);
   useEffect(() => () => stopSpeaking(), []);
+  const storyDone = useRef(false);
+  useEffect(() => { if (!inStory && !storyDone.current) { storyDone.current = true; onStoryDone?.(); } }, [inStory, onStoryDone]);
 
   const ring = line.tone === "alert" ? "ring-rose-400/80" : line.tone === "done" ? "ring-emerald-400/70" : "ring-gold/50";
   return (

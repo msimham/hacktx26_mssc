@@ -1,5 +1,7 @@
 import type { PlayerView } from "@magicalsafety/engine";
+import { useEffect } from "react";
 import { artUrl } from "../api";
+import { focusOn } from "../vision/look";
 
 type Actor = PlayerView["actors"][number];
 
@@ -47,22 +49,26 @@ interface Person { id: string; name: string; label: string; bot: boolean; npc: b
  * Everyone in the room, standing in a loose row with the nearer ones drawn larger. They breathe while idle,
  * glide to a new spot when the group changes, and walk in when they arrive. Motion stops for people who ask for less of it.
  */
-export function Characters({ view, here, art }: { view: PlayerView; here: Actor[]; art: Set<string> }) {
+export function Characters({ view, here, art, focusId = null }: { view: PlayerView; here: Actor[]; art: Set<string>; focusId?: string | null }) {
   const portraitFor = (id: string | null) => (id && art.has(`portrait:${view.worldId}:${id}`) ? id : null);
   const people: Person[] = [
     { id: view.you.id, name: view.you.name, label: `You · ${view.you.name}`, bot: false, npc: false, you: true, portrait: portraitFor(view.you.portraitId) },
     ...here.map((a) => ({ id: a.id, name: a.name, label: `${a.name}${a.roleName && a.kind !== "npc" && a.roleName !== a.name ? ` · ${a.roleName}` : ""}`, bot: a.kind === "bot", npc: a.kind === "npc", you: false, portrait: a.kind === "npc" ? portraitFor(a.id) : null })),
   ];
   const n = people.length;
+  const xOf = (i: number) => (n === 1 ? 50 : 14 + (72 * i) / (n - 1));
+  const focusIdx = focusId ? people.findIndex((p) => p.id === focusId) : -1;
+  useEffect(() => { if (focusIdx >= 0) focusOn((xOf(focusIdx) - 50) / 50, performance.now()); // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusId, focusIdx]);
   return (
     <ul className="chars-layer pointer-events-none absolute inset-x-0 bottom-0 top-[38%]">
       {people.map((p, i) => {
-        const x = n === 1 ? 50 : 14 + (72 * i) / (n - 1);
+        const x = xOf(i);
         const near = hash(p.id) % 3; // 0, 1, 2: a little depth
         const distress = p.npc && view.condition === "critical" && /victim|duchess|guest|patient/i.test(`${p.id} ${p.name}`);
         return (
           <li key={p.id} className="char absolute flex flex-col items-center" style={{ left: `${x}%`, bottom: `${6 + near * 5}%`, height: `${34 + near * 6}%`, zIndex: 10 + near, ["--delay" as string]: `${-(hash(p.id) % 30) / 10}s` }}>
-            <div className={`char-body relative aspect-[3/5] h-full ${distress ? "char-distress" : ""}`}>
+            <div className={`char-body relative aspect-[3/5] h-full ${distress ? "char-distress" : ""} ${p.id === focusId ? "char-focus" : ""}`}>
               {p.portrait ? (
                 <img src={artUrl("portrait", view.worldId, p.portrait)} alt="" className="h-full w-full rounded-t-full object-cover object-top ring-2 ring-gold/70" style={{ maskImage: "linear-gradient(#000 70%, transparent)", WebkitMaskImage: "linear-gradient(#000 70%, transparent)" }} />
               ) : (

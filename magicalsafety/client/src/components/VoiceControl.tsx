@@ -14,13 +14,15 @@ interface Props {
   legal: LegalAction[];
   onSay: (to: string, text: string) => void;
   onAct: (la: LegalAction) => void;
+  /** The words recognized, so the scene can react to a name being said. */
+  onHeard?: (text: string) => void;
 }
 
 /**
  * Push-to-talk. The fallback chain is Muse Voice -> the browser's own speech recognition -> typing, and the
  * interface says which one produced the words. Nothing is acted on until the player confirms.
  */
-export function VoiceControl({ sessionId, token, legal, onSay, onAct }: Props) {
+export function VoiceControl({ sessionId, token, legal, onSay, onAct, onHeard }: Props) {
   const [phase, setPhase] = useState<"idle" | "recording" | "working" | "review">("idle");
   const [text, setText] = useState("");
   const [method, setMethod] = useState<Method>("muse");
@@ -43,7 +45,7 @@ export function VoiceControl({ sessionId, token, legal, onSay, onAct }: Props) {
   const finish = async (words: string, m: Method) => {
     const clean = words.trim();
     if (!clean) { setNote("I didn't catch anything. Try again, or type instead."); setPhase("idle"); return; }
-    setText(clean); setMethod(m); setPhase("review");
+    setText(clean); setMethod(m); setPhase("review"); onHeard?.(clean);
     setSuggest(await parseCommand(sessionId, token, clean).catch(() => ({ kind: "none" } as CommandResult)));
   };
 

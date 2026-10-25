@@ -63,3 +63,5 @@ button { transition: transform 80ms ease, background-color 120ms ease, box-shado
 
 .stage:fullscreen { max-width: none; padding: 1rem; overflow-y: auto; }
 .stage:fullscreen .room-enter { max-height: 66vh; }
+
+.char-focus { filter: drop-shadow(0 0 14px rgba(252, 211, 77, 0.95)); transform: scale(1.12); transition: transform 200ms ease; }

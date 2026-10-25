@@ -187,3 +187,9 @@ Sessions are persisted as **(config, seed, ordered input log)**, not as derived 
 - **Not WebXR.** There is no headset mode. "Follows you" is done with depth parallax: the room leans toward your hand (camera on) or your pointer, with nearer layers moving more. Motion is off for people who ask for reduced motion. A full-screen button gives a bigger view.
 - **Clicks are acknowledged.** Every click plays a tap right away and shows a "working" chip; then the result plays a sound that matches the action (move, look, talk, ask for help, delegate, fetch, use, hint), or a buzz plus the reason if the rules refused it. A second click is ignored until the first finishes. A real bug was fixed too: the characters layer sat on top of the clickable scene spots and swallowed clicks in the lower part of the scene.
 - **Gestures are taught.** The first time the camera turns on, the guide runs a 3-step warm-up (two fingers, a swipe, a held palm) that performs nothing. Buttons show "✋n" for how many fingers pick them.
+
+## Pop-ups instead of a side panel; saying a name
+
+- **The "Team & chat" drawer is gone.** Teammates' words and key events now appear as short speech bubbles over the scene (about 7 seconds, nothing to scroll). "🎭 My job" opens a pop-up with the role, what only you know (with a "Tell the team" button) and the team goals; it opens once when the story ends. "💬 Say" opens a small pop-up to type a message. The old chat, role card and map components still exist but are no longer on the game screen.
+- **Saying or typing a person's name** (name or role, e.g. "the guard") leans the scene toward them, rings them, and opens a small card with what you can do with them right now (ask them to do a task, or talk to them). Voice still never performs an action by itself: it needs a confirm, as before.
+- **The guide's words are written and spoken** by default (browser speech, respecting the mute button). "Auto" in the guide bar turns the voice off.
