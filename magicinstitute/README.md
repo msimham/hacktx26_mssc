@@ -1,7 +1,11 @@
-# Magic Institute for Societal Safety (built on the Agentic Enterprise Platform, AEP)
+# TALE: architecture
 
-Reusable agent infrastructure that turns four user choices (topic, audience, world, social level 1-3)
-into a playable, gesture-controlled fantasy VR training simulation.
+Everything described here is **TALE** (Training Agents for Learning Experiences): reusable agent infrastructure that turns the
+wizard's answers (topic, audience, world, social level 1-3 and guardrails) into a playable, gesture-controlled fantasy training simulation.
+The code lives in this folder; the Python package is named `aep`.
+
+**Magic Institute for Societal Safety** is only an example of a training built with TALE: the fire safety world produced by
+the offline template in `aep/library/` (extinguisher PASS, fire blanket rescue, evacuation).
 
 ```
 request ─► Director ─► ResourceScout ─► SkillDesigner ─► [ Storyteller ─► WorldBuilder ─► Validator ]×≤3 ─► SimulationSpec (JSON) ─► web player
@@ -50,7 +54,7 @@ level 1 -> (2) friends, school and work, then (3) the local community; level 2 -
   (https is required outside localhost). `user_location`, `user_hometown` and `user_friends` need App Review, or developer/tester roles in development mode.
 * Copy `.env.example` to `.env` for the keys. `.env` is gitignored: never commit it.
 
-## Reusing the platform for another simulation family
+## Reusing TALE for another simulation family
 Write new agents (or swap prompts/props/gestures), keep the `Context` + `Validator` pattern, and define a new spec model.
 
 ## Known gaps
