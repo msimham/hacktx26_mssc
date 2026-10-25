@@ -48,11 +48,13 @@ A large free-text box with a placeholder. Suggestion chips below it append their
 
 ## Files
 
-- `magicalsafety/client/src/routes/CreateTraining.tsx`: wizard state in one `useReducer`, all answers as strings.
-- `magicalsafety/client/src/routes/create/PromptStep.tsx`: reusable text box plus chips.
-- `magicalsafety/client/src/routes/create/steps.ts`: questions, placeholders and chips.
-- `magicalsafety/client/src/routes/create/Review.tsx`, `WizardShell.tsx`.
-- `magicalsafety/client/src/App.tsx`: register `/create`.
-- `magicalsafety/client/src/routes/Home.tsx`: add a "+ Create Training" button.
+A standalone Vite + React + TypeScript + Tailwind 4 app in `enterpriseplatform/app/`. Nothing under `magicalsafety/` is read, imported or changed.
+
+- `enterpriseplatform/app/src/App.tsx`: routes for `/` and `/create`.
+- `enterpriseplatform/app/src/routes/Home.tsx`: landing page with a "+ Create Training" button.
+- `enterpriseplatform/app/src/routes/CreateTraining.tsx`: wizard state in one `useReducer`, all answers as strings.
+- `enterpriseplatform/app/src/routes/create/PromptStep.tsx`: reusable text box plus chips.
+- `enterpriseplatform/app/src/routes/create/steps.ts`: questions, placeholders and chips.
+- `enterpriseplatform/app/src/routes/create/Review.tsx`, `WizardShell.tsx`.
 
 The build prompt for Sonnet is in `SONNET_PROMPT.md`.
