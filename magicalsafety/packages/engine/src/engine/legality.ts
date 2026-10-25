@@ -1,10 +1,10 @@
 import type { Action } from "../schemas/actions";
-import type { Actor, RuntimeState, Step } from "../types";
+import type { Actor, RuntimeState, Slot, Step } from "../types";
 import { REAL_WORLD } from "../content/safety/emergencyProtocol";
 import {
-  actors, curAct, distance, isAutonomous, MOVE_MS, playersOnly, roomName, roomSlot, stepRoom,
+  actors, curAct, distance, isAutonomous, MOVE_MS, playersOnly, roomName, roomSlots, slotRoom, stepRoom,
 } from "./core";
-import { stepBlocked, taskBlocked } from "./medicalHandler";
+import { handlerFor } from "./handlers";
 
 export type Check = { ok: true; step?: Step } | { ok: false; reason: string };
 const no = (reason: string): Check => ({ ok: false, reason });
@@ -40,7 +40,13 @@ export function stepForAction(s: RuntimeState, actor: Actor, action: Action): St
     case "perform": {
       const op = act.scenario.ops[action.capabilityId];
       if (!op) return "You don't know how to do that";
-      let slot = isAutonomous(actor) ? ((action.targetId as typeof op.at[number] | undefined) ?? op.at[0]!) : roomSlot(act, actor.roomId);
+      // Ops that work in any room: humans act where they stand; autonomous actors are told which room.
+      if (op.anywhere) return { kind: "perform", opId: op.id, at: "anywhere", roomId: isAutonomous(actor) ? (action.targetId ?? actor.roomId) : actor.roomId };
+      const here = roomSlots(act, actor.roomId);
+      const near = op.reachAdjacent ? (act.world.rooms.find((r) => r.id === actor.roomId)?.adjacent ?? []).flatMap((id) => roomSlots(act, id)) : [];
+      const slot = isAutonomous(actor)
+        ? ((action.targetId as Slot | undefined) ?? op.at[0]!)
+        : op.at.find((x) => here.includes(x)) ?? op.at.find((x) => near.includes(x));
       if (!slot || !op.at.includes(slot)) return `That can't be done from ${roomName(act, actor.roomId)}`;
       return { kind: "perform", opId: op.id, at: slot };
     }
@@ -51,21 +57,28 @@ export function stepForAction(s: RuntimeState, actor: Actor, action: Action): St
 }
 
 /** Checks a step against location, facts and scenario preconditions. */
-export function checkStep(s: RuntimeState, actor: Actor, step: Step): Check {
+export function checkStep(s: RuntimeState, actor: Actor, step: Step, phase: "start" | "finish" = "start"): Check {
   const act = curAct(s);
+  const h = handlerFor(s);
   if (step.kind === "move") {
     const here = act.world.rooms.find((r) => r.id === actor.roomId);
     if (!here?.adjacent.includes(step.roomId)) return no("You can't get there from here");
+    const blocked = h.moveBlocked(s, actor, step.roomId);
+    if (blocked) return no(blocked);
     return yes(step);
   }
   if (step.kind === "inspect") {
     const target = act.world.targets.find((t) => t.id === step.targetId);
-    if (!target) return no("There is nothing like that to look at");
+    if (!target || (target.onlyIn && target.onlyIn !== act.scenario.id) || (h.targetPresent && !h.targetPresent(s, target))) return no("There is nothing like that to look at");
     if (target.roomId !== actor.roomId) return no("That is not in this room");
     return yes(step);
   }
-  const room = stepRoom(act, step)!;
-  if (!isAutonomous(actor) && actor.roomId !== room) return no(`You need to be in ${roomName(act, room)}`);
+  const room = stepRoom(act, step);
+  if (!isAutonomous(actor) && room && actor.roomId !== room) {
+    // Some ops can be done from the next room over (e.g. unlocking a door from your side).
+    const reach = step.kind === "perform" && act.scenario.ops[step.opId]?.reachAdjacent && (act.world.rooms.find((r) => r.id === actor.roomId)?.adjacent ?? []).includes(room);
+    if (!reach) return no(`You need to be in ${roomName(act, room)}`);
+  }
   if (step.kind === "perform") {
     const op = act.scenario.ops[step.opId];
     if (!op) return no("Unknown action");
@@ -75,7 +88,7 @@ export function checkStep(s: RuntimeState, actor: Actor, step: Step): Check {
       if (missing.length) return no("You don't know enough yet. Ask your team what they know");
     }
   }
-  const blocked = stepBlocked(s, actor, step);
+  const blocked = h.stepBlocked(s, actor, step, phase);
   if (blocked) return no(blocked.reason);
   return yes(step);
 }
@@ -91,7 +104,7 @@ export function stepDurationMs(s: RuntimeState, actor: Actor, step: Step): numbe
     case "perform": base = act.scenario.ops[step.opId]!.durationMs; break;
   }
   if (isAutonomous(actor) && step.kind !== "move" && step.kind !== "inspect") {
-    const room = stepRoom(act, step)!;
+    const room = stepRoom(act, step) ?? actor.roomId;
     base += distance(act, actor.roomId, room) * MOVE_MS;
   }
   return base;
@@ -100,7 +113,7 @@ export function stepDurationMs(s: RuntimeState, actor: Actor, step: Step): numbe
 /** Facts a task needs, beyond what op-level checks cover for the assignee. */
 export function neededFacts(s: RuntimeState, taskId: string, assignee: Actor): string[] {
   const act = curAct(s);
-  const task = act.scenario.tasks[taskId]!;
+  const task = act.tasks[taskId]!;
   const out = new Set<string>(task.requiresFacts);
   for (const st of task.steps) {
     if (st.kind !== "perform") continue;
@@ -147,15 +160,16 @@ export function checkAction(s: RuntimeState, actor: Actor, action: Action): Chec
     }
   }
 
+  if (s.transitionUntilT !== null) return no("Responders are taking over. The next challenge begins in a moment");
   if (actor.current) return no("You are busy right now");
 
   if (action.kind === "delegate") {
     const target = s.actors[action.targetId];
     if (!target || target.id === actor.id) return no("Pick someone else");
     if (!reaches(s, actor, target)) return no("They can't hear you from here");
-    const task = act.scenario.tasks[action.taskId];
+    const task = act.tasks[action.taskId];
     if (!task) return no("Unknown task");
-    const blocked = taskBlocked(s, task.id);
+    const blocked = handlerFor(s).taskBlocked(s, task.id);
     if (blocked) return no(blocked);
     if (Object.values(s.assignments).some((a) => a.taskId === task.id && (a.status === "pending" || a.status === "accepted")))
       return no("Someone is already on it");
@@ -218,32 +232,36 @@ export function legalActions(s: RuntimeState, actorId: string): LegalAction[] {
       add({ label: L[op.id] ?? op.id, group: "act", action: { kind: "perform", capabilityId: op.id }, realWorld: REAL_WORLD[op.id] });
     }
   }
-  add({ label: L.fetch_kit ?? "Take the kit", group: "act", action: { kind: "fetch", itemId: "first_aid_kit" }, realWorld: REAL_WORLD.fetch_kit });
-  for (const item of actor.inventory)
-    add({ label: L.use_kit ?? "Use the item", group: "act", action: { kind: "use", itemId: item, targetId: "duchess" }, realWorld: REAL_WORLD.use_kit });
+  if (act.scenario.id === "medical_emergency") {
+    add({ label: L.fetch_kit ?? "Take the kit", group: "act", action: { kind: "fetch", itemId: "first_aid_kit" }, realWorld: REAL_WORLD.fetch_kit });
+    for (const item of actor.inventory)
+      add({ label: L.use_kit ?? "Use the item", group: "act", action: { kind: "use", itemId: item, targetId: "victim" }, realWorld: REAL_WORLD.use_kit });
+  }
 
-  for (const adj of act.world.rooms.find((r) => r.id === actor.roomId)?.adjacent ?? [])
-    add({ label: `Go to ${roomName(act, adj)}`, group: "move", action: { kind: "move", roomId: adj } });
+  for (const adj of act.world.rooms.find((r) => r.id === actor.roomId)?.adjacent ?? []) {
+    const warn = handlerFor(s).moveWarning?.(s, actor, adj);
+    add({ label: `Go to ${roomName(act, adj)}${warn ? ` (${warn})` : ""}`, group: "move", action: { kind: "move", roomId: adj } });
+  }
   for (const t of act.world.targets.filter((x) => x.roomId === actor.roomId))
     add({ label: `Look at ${t.label}`, group: "inspect", action: { kind: "inspect", targetId: t.id } });
 
   for (const other of actors(s)) {
     if (other.id === actor.id) continue;
-    for (const task of Object.values(act.scenario.tasks))
-      add({ label: `Ask ${other.name}: ${L[task.id] ?? task.id}`, group: "delegate", action: { kind: "delegate", targetId: other.id, taskId: task.id }, realWorld: REAL_WORLD[task.id] });
+    for (const task of Object.values(act.tasks))
+      add({ label: `Ask ${other.name}: ${L[task.id] ?? task.label ?? task.id}`, group: "delegate", action: { kind: "delegate", targetId: other.id, taskId: task.id }, realWorld: REAL_WORLD[task.id] });
   }
 
   // Talking (allowed while busy)
   for (const as of Object.values(s.assignments))
     if (as.toId === actor.id && as.status === "pending")
-      add({ label: `Accept: ${L[as.taskId] ?? as.taskId}`, group: "accept", action: { kind: "accept_delegation", assignmentId: as.id } });
+      add({ label: `Accept: ${L[as.taskId] ?? act.tasks[as.taskId]?.label ?? as.taskId}`, group: "accept", action: { kind: "accept_delegation", assignmentId: as.id } });
   for (const to of ["room", "team", ...playersOnly(s).filter((p) => p.id !== actor.id).map((p) => p.id)]) {
     const who = to === "room" ? "everyone here" : to === "team" ? "the team" : s.actors[to]!.name;
     add({ label: `Say to ${who}`, group: "talk", action: { kind: "say", text: "…", to }, needsText: true });
   }
   for (const f of actor.facts)
     for (const to of ["team", ...playersOnly(s).filter((p) => p.id !== actor.id).map((p) => p.id)]) {
-      const fact = act.scenario.facts.find((x) => x.id === f);
+      const fact = act.facts.find((x) => x.id === f);
       const who = to === "team" ? "the team" : s.actors[to]!.name;
       add({ label: `Tell ${who}: ${fact?.text ?? f}`, group: "talk", action: { kind: "share_fact", factId: f, to } });
     }

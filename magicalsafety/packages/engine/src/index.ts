@@ -6,15 +6,15 @@ export { createRuntime, startSession, tick, applyAction, type PlayerInit, type R
 export { legalActions, checkAction, actionKey, type LegalAction } from "./engine/legality";
 export { viewFor, type PlayerView, type FeedItem, type ViewActor } from "./engine/view";
 export { replay, type Input } from "./engine/replay";
-export { computeMetrics } from "./eval/metrics";
+export { computeMetrics, computeCrossActMetrics } from "./eval/metrics";
 export { botTurn } from "./engine/bots";
 export { compile, WORLDS, SCENARIOS, CompileError } from "./engine/compile";
 export { safetyFilter } from "./content/safety/safetyFilter";
 export { REAL_WORLD, SAFETY_FOOTER } from "./content/safety/emergencyProtocol";
 export { mulberry32, hashSeed } from "./util/rng";
 export type { LobbyView } from "./protocol";
-export { evalContext, detectWeaknesses, consistencyCheck, WEAKNESS_PRIORITY, WEAKNESS_COMPETENCY, type EvalContext, type DetectedWeakness } from "./eval/weaknesses";
-export { interpretWithRules, type RuleResult, type RuleOptions } from "./eval/ruleInterpreter";
+export { evalContext, detectWeaknesses, detectAcrossActs, consistencyCheck, consistencyCheckActs, WEAKNESS_PRIORITY, WEAKNESS_COMPETENCY, type EvalContext, type DetectedWeakness, type ActEvidence } from "./eval/weaknesses";
+export { interpretWithRules, evaluateSession, rubricMetrics, type RuleResult, type RuleOptions, type FullEvaluation } from "./eval/ruleInterpreter";
 export {
   buildRulePlan, enforceLevers, applyAdaptation, configDiff, hasChange, weaknessesForLever, planId, noChanges,
   LEVERS_BY_WEAKNESS, LEVER_LABEL, type DiffRow, type PlanInput,

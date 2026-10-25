@@ -25,6 +25,11 @@ export const SessionConfig = z.strictObject({
   }),
   inputMethods: z.array(InputMethod).min(1),
   difficulty: Difficulty,
+  /** Evacuation (act 2) settings. Adaptation levers: an earlier blockage, more people needing help. */
+  act2: z.strictObject({
+    exitBlockedAtSec: z.number().int().min(20).max(90),
+    needsAssistanceCount: z.union([z.literal(1), z.literal(2)]),
+  }).default({ exitBlockedAtSec: 50, needsAssistanceCount: 1 }),
   rules: z.strictObject({
     act1DurationSec: z.number().int().min(150).max(360),
     act2DurationSec: z.number().int().min(90).max(240),

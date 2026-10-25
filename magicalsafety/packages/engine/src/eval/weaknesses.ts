@@ -20,10 +20,10 @@ export function evalContext(state: RuntimeState, act: 1 | 2 = 1): EvalContext {
   const evs = state.events.filter((e) => e.act === act);
   const a = state.acts.find((x) => x.act === act)!;
   return {
-    criticalAfterMs: a.timing.criticalAfterMs,
+    criticalAfterMs: a.scenario.id === "medical_emergency" ? a.timing.criticalAfterMs : a.timing.durationMs,
     teamSize: Object.values(state.actors).filter((x) => x.kind !== "npc").length,
     helpersPresent: Object.values(state.actors).some((x) => x.kind === "npc" && x.npcKey !== "companion"),
-    anchorEventId: (evs.find((e) => e.type === "incident_started") ?? evs[0])?.id ?? "ev_001",
+    anchorEventId: (evs.find((e) => e.type === "incident_started") ?? evs.find((e) => e.type === "act_started") ?? evs[0])?.id ?? "ev_001",
   };
 }
 
@@ -34,6 +34,7 @@ const sec = (ms: unknown) => `${Math.round(Number(ms) / 1000)}s`;
 /** One predicate per weakness. Used both to detect weaknesses and to check a model's claims against the facts. */
 const CHECKS: Record<WeaknessCode, Check> = {
   late_help_seeking: (m, c) => {
+    if (!m.has("time_to_help_request_ms")) return { hit: false, detail: "" }; // not part of this act
     const v = val(m, "time_to_help_request_ms");
     const incident = val(m, "outcome") !== "no_incident";
     if (!incident) return { hit: false, detail: "" };
@@ -42,17 +43,23 @@ const CHECKS: Record<WeaknessCode, Check> = {
       : { hit: Number(v) > c.criticalAfterMs * 0.5, detail: `Help was called ${sec(v)} after the incident started` };
   },
   slow_recognition: (m) => {
+    if (!m.has("time_to_notice_ms")) return { hit: false, detail: "" };
     const v = val(m, "time_to_notice_ms");
     if (val(m, "outcome") === "no_incident") return { hit: false, detail: "" };
     return v === null ? { hit: true, detail: "Nobody realized what was happening" } : { hit: Number(v) > 15_000, detail: `It took ${sec(v)} for someone to notice` };
   },
   info_not_shared: (m) => {
+    // In the evacuation, someone walking into the smoke-filled exit means the warning never reached them.
+    if (Number(val(m, "blocked_exit_used") ?? 0) > 0) return { hit: true, detail: "Someone walked into the smoke-filled exit, so the warning didn't reach them" };
     const v = val(m, "info_shared_ratio");
     return { hit: v !== null && Number(v) < 0.6, detail: `Only ${Math.round(Number(v) * 100)}% of private information reached the team` };
   },
   poor_prioritization: (m) => ({ hit: val(m, "priority_order_ok") === false, detail: "Other tasks were handled before help was called" }),
   over_centralization: (m) => ({ hit: val(m, "centralized") === true, detail: `One player did ${Math.round(Number(val(m, "max_action_share")) * 100)}% of the critical actions` }),
-  uncoordinated_resources: (m) => ({ hit: Number(val(m, "redundant_efforts") ?? 0) >= 2, detail: "Two people did the same job" }),
+  uncoordinated_resources: (m) => {
+    if (val(m, "ran_out_of_time") === true) return { hit: true, detail: "The team ran out of time to check every room and get counted" };
+    return { hit: Number(val(m, "redundant_efforts") ?? 0) >= 2, detail: "Two people did the same job" };
+  },
   no_delegation: (m, c) => ({ hit: c.teamSize >= 2 && Number(val(m, "delegations_issued") ?? 0) === 0 && val(m, "outcome") !== "no_incident", detail: "Nobody asked anyone else to take on a task" }),
   helper_ignored: (m, c) => {
     const v = val(m, "helper_utilization");
@@ -93,10 +100,45 @@ export function detectWeaknesses(metrics: MetricResult[], ctx: EvalContext, emph
   for (const code of order) {
     const r = CHECKS[code](m, ctx);
     if (!r.hit) continue;
-    const ev = m.get(METRIC_FOR[code])?.evidenceEventIds ?? [];
+    const ev = (code === "info_not_shared" && Number(val(m, "blocked_exit_used") ?? 0) > 0 ? m.get("blocked_exit_used") : code === "uncoordinated_resources" && val(m, "ran_out_of_time") === true ? m.get("ran_out_of_time") : m.get(METRIC_FOR[code]))?.evidenceEventIds ?? [];
     out.push({ code, detail: r.detail, evidenceEventIds: ev.length ? ev : [ctx.anchorEventId] });
   }
   return out;
+}
+
+export interface ActEvidence {
+  act: 1 | 2;
+  metrics: MetricResult[];
+  ctx: EvalContext;
+}
+
+const ordering = (emphasis: Partial<Record<Competency, number>>) => (a: WeaknessCode, b: WeaknessCode) =>
+  (emphasis[WEAKNESS_COMPETENCY[b]] ?? 0) - (emphasis[WEAKNESS_COMPETENCY[a]] ?? 0) || WEAKNESS_PRIORITY.indexOf(a) - WEAKNESS_PRIORITY.indexOf(b);
+
+/** Weaknesses across every act that was played: one entry per code, evidence merged, ordered as detectWeaknesses orders them. */
+export function detectAcrossActs(acts: ActEvidence[], emphasis: Partial<Record<Competency, number>> = {}): DetectedWeakness[] {
+  const merged = new Map<WeaknessCode, DetectedWeakness>();
+  for (const a of acts) {
+    for (const w of detectWeaknesses(a.metrics, a.ctx, emphasis)) {
+      const prev = merged.get(w.code);
+      const detail = a.act === 2 ? `In the evacuation: ${w.detail.charAt(0).toLowerCase()}${w.detail.slice(1)}` : w.detail;
+      if (!prev) merged.set(w.code, { ...w, detail });
+      else merged.set(w.code, { ...prev, evidenceEventIds: [...new Set([...prev.evidenceEventIds, ...w.evidenceEventIds])].slice(0, 12), detail: `${prev.detail}; ${detail}` });
+    }
+  }
+  const cmp = ordering(emphasis);
+  return [...merged.values()].sort((x, y) => cmp(x.code, y.code));
+}
+
+/** A claimed weakness stands if the facts of ANY played act support it. */
+export function consistencyCheckActs(codes: WeaknessCode[], acts: ActEvidence[]): { kept: WeaknessCode[]; dropped: { code: WeaknessCode; reason: string }[] } {
+  const kept: WeaknessCode[] = [];
+  const dropped: { code: WeaknessCode; reason: string }[] = [];
+  for (const code of new Set(codes)) {
+    if (acts.some((a) => consistencyCheck([code], a.metrics, a.ctx).kept.length)) kept.push(code);
+    else dropped.push({ code, reason: `The recorded facts don't support "${code}"` });
+  }
+  return { kept, dropped };
 }
 
 /** Drops any claimed weakness the recorded facts contradict (e.g. "no delegation" when someone delegated). */

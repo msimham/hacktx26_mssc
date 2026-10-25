@@ -1,13 +1,8 @@
 import type { Actor, MedicalState, RuntimeState, Step } from "../types";
+import type { Blocked, HandlerView, ScenarioHandler } from "./handler";
 import { actors, curAct, emit, grantFact, inRoom, playersOnly, slotRoom } from "./core";
 
 export const DECLINE_RATE_WHILE_STAYING = 0.5;
-
-export interface Blocked {
-  reason: string;
-  /** The goal of this step is already achieved: queued steps skip it instead of failing. */
-  done?: boolean;
-}
 
 export function initMedicalState(): MedicalState {
   return {
@@ -18,11 +13,11 @@ export function initMedicalState(): MedicalState {
   };
 }
 
-const med = (s: RuntimeState) => s.actState;
+const med = (s: RuntimeState) => s.actState as MedicalState;
 
 export function setupMedical(s: RuntimeState): void {
   const act = curAct(s);
-  for (const fact of act.scenario.facts) {
+  for (const fact of act.facts) {
     if (!fact.heldBy) continue;
     for (const a of playersOnly(s)) if (a.roleId === fact.heldBy) grantFact(s, a, fact.id);
   }
@@ -148,7 +143,7 @@ export function settleMedical(s: RuntimeState): { outcome: string; success: bool
 }
 
 /** Scenario-specific reasons a step cannot start (beyond location/facts, checked generically). */
-export function stepBlocked(s: RuntimeState, actor: Actor, step: Step): Blocked | null {
+export function stepBlocked(s: RuntimeState, actor: Actor, step: Step, _phase: "start" | "finish" = "start"): Blocked | null {
   const m = med(s);
   const act = curAct(s);
   switch (step.kind) {
@@ -162,7 +157,7 @@ export function stepBlocked(s: RuntimeState, actor: Actor, step: Step): Blocked 
       return null;
     case "use":
       if (step.itemId !== "first_aid_kit" || !actor.inventory.includes("first_aid_kit")) return { reason: "You are not carrying the kit", done: m.kitDelivered };
-      if (step.targetId !== "duchess") return { reason: "Nothing to use it on" };
+      if (step.targetId !== "victim") return { reason: "Nothing to use it on" };
       if (m.kitDelivered) return { reason: "The kit is already at the Duchess's side", done: true };
       return null;
     case "perform":
@@ -235,7 +230,7 @@ export function applyStep(s: RuntimeState, actor: Actor, step: Step): string | n
       return null;
     case "inspect":
       emit(s, { type: "inspected", actor, payload: { targetId: step.targetId } });
-      if (step.targetId === "duchess" && m.incidentStarted && actor.roomId === slotRoom(act, "incident_site")) {
+      if (step.targetId === "victim" && m.incidentStarted && actor.roomId === slotRoom(act, "incident_site")) {
         // Looking closely is how a subtle collapse is recognised.
         notice(s, actor, "inspect");
       }
@@ -249,7 +244,7 @@ export function applyStep(s: RuntimeState, actor: Actor, step: Step): string | n
     case "use":
       actor.inventory = actor.inventory.filter((i) => i !== "first_aid_kit");
       m.kitDelivered = true;
-      emit(s, { type: "resource_used", actor, payload: { itemId: "first_aid_kit", targetId: "duchess" } });
+      emit(s, { type: "resource_used", actor, payload: { itemId: "first_aid_kit", targetId: "victim" } });
       emit(s, { type: "task_completed", actor, payload: { opId: "use_kit", critical: true } });
       return "kit_delivered";
   }
@@ -261,7 +256,7 @@ export function applyStep(s: RuntimeState, actor: Actor, step: Step): string | n
   };
   switch (step.opId) {
     case "check_responsiveness":
-      emit(s, { type: "inspected", actor, payload: { targetId: "duchess", via: "check_responsiveness" } });
+      emit(s, { type: "inspected", actor, payload: { targetId: "victim", via: "check_responsiveness" } });
       if (actor.roomId === slotRoom(act, "incident_site")) notice(s, actor, "checked");
       emit(s, { type: "task_completed", actor, payload: { opId: op.id, critical: false } });
       return "checked";
@@ -301,3 +296,39 @@ export function applyStep(s: RuntimeState, actor: Actor, step: Step): string | n
   return null;
 }
 
+
+function medicalView(s: RuntimeState, viewer: Actor): HandlerView {
+  const m = med(s);
+  const L = curAct(s).world.labels;
+  const knows = viewer.facts.includes("f_collapse");
+  const staying = actors(s).some((a) => a.staying);
+  return {
+    condition: knows ? m.condition : null,
+    roomStatus: {},
+    objectives: knows
+      ? [
+          { id: "help", label: L.obj_help ?? "Call for help", done: m.helpRequestedT !== null },
+          { id: "area", label: L.obj_area ?? "Clear the area", done: m.siteCleared },
+          { id: "kit", label: L.obj_kit ?? "Bring the first-aid supplies", done: m.kitDelivered },
+          { id: "stay", label: L.obj_stay ?? "Someone stays with the person", done: staying },
+          ...(m.secondStarted ? [{ id: "crowd", label: L.obj_crowd ?? "Calm the crowd", done: m.crowdResolved }] : []),
+          { id: "arrive", label: L.obj_arrive ?? "Help arrives", done: m.helpArrivedT !== null },
+        ]
+      : null,
+  };
+}
+
+export const medicalHandler: ScenarioHandler = {
+  init: () => initMedicalState(),
+  setup: setupMedical,
+  nextTimes,
+  accrue,
+  settle: settleMedical,
+  stepBlocked,
+  taskBlocked,
+  moveBlocked: () => null,
+  applyStep,
+  onEnterRoom,
+  startedT: (s) => med(s).incidentStartedT,
+  view: medicalView,
+};

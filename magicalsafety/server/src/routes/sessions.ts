@@ -2,7 +2,7 @@ import { randomBytes } from "node:crypto";
 import { Router, type Request, type Response } from "express";
 import { z } from "zod";
 import {
-  applyAdaptation, computeMetrics, DEFAULT_DIFFICULTY, Difficulty, hashSeed, InputMethod, replay, ScenarioId, SCENARIOS, SessionConfig as SessionConfigSchema, SocialEnvironment, WorldId, WORLDS,
+  applyAdaptation, DEFAULT_DIFFICULTY, evaluateSession, Difficulty, hashSeed, InputMethod, replay, ScenarioId, SCENARIOS, SessionConfig as SessionConfigSchema, SocialEnvironment, WorldId, WORLDS,
   type SessionConfig,
 } from "@magicalsafety/engine";
 import { SEEDED_ORG_ID } from "../orgs/seed";
@@ -33,6 +33,10 @@ const CreateBody = z.strictObject({
   }).default({ size: 3, roleAssignment: "random", fillWithBots: true }),
   inputMethods: z.array(InputMethod).min(1).max(4).default(["mouse", "keyboard", "text"]),
   difficulty: Difficulty.partial().default({}),
+  act2: z.strictObject({
+    exitBlockedAtSec: z.number().int().min(20).max(90).default(50),
+    needsAssistanceCount: z.union([z.literal(1), z.literal(2)]).default(1),
+  }).default({ exitBlockedAtSec: 50, needsAssistanceCount: 1 }),
   rules: z.strictObject({
     act1DurationSec: z.number().int().min(150).max(360).default(240),
     act2DurationSec: z.number().int().min(90).max(240).default(150),
@@ -68,14 +72,19 @@ export function sessionRoutes(env: Env, store: Store, agent: TrainingAgent, runL
     if (!store.getOrg(b.orgId)) return void res.status(400).json({ error: "That organization doesn't exist" });
     if (!WORLDS[b.worldId]) return void res.status(400).json({ error: `The ${b.worldId} world isn't available yet` });
     const missing = b.acts.find((a) => !SCENARIOS[a]);
-    if (missing) return void res.status(400).json({ error: `The ${missing.replace("_", " ")} scenario isn't available yet` });
+    if (missing) return void res.status(400).json({ error: `The ${missing.replace("_", " ")} scenario isn't available` });
+    const key = b.acts.join(">");
+    if (!["medical_emergency", "medical_emergency>evacuation", "evacuation"].includes(key))
+      return void res.status(400).json({ error: "Acts must be the emergency, or the emergency followed by the evacuation" });
+    // Starting straight at the evacuation (without earning it) is a development shortcut only.
+    if (key === "evacuation" && process.env.NODE_ENV === "production") return void res.status(400).json({ error: "The evacuation unlocks after the emergency is resolved" });
     if (b.socialEnvironment === "simulated" && !b.team.fillWithBots) return void res.status(400).json({ error: "A simulated team needs simulated teammates turned on" });
     const id = `ses_${randomFrom("abcdefghijklmnopqrstuvwxyz0123456789", 10)}`;
     let code = randomFrom(CODE_ALPHABET, 6);
     while (store.findByCode(code)) code = randomFrom(CODE_ALPHABET, 6);
     const parsed = SessionConfigSchema.safeParse({
       id, orgId: b.orgId, joinCode: code, worldId: b.worldId, acts: b.acts, socialEnvironment: b.socialEnvironment, team: b.team,
-      inputMethods: [...new Set(b.inputMethods)], difficulty: { ...DEFAULT_DIFFICULTY, ...b.difficulty }, rules: b.rules,
+      inputMethods: [...new Set(b.inputMethods)], difficulty: { ...DEFAULT_DIFFICULTY, ...b.difficulty }, act2: b.act2, rules: b.rules,
     });
     if (!parsed.success) return void res.status(400).json({ error: "Invalid session settings" });
     const config: SessionConfig = parsed.data;
@@ -106,8 +115,9 @@ export function sessionRoutes(env: Env, store: Store, agent: TrainingAgent, runL
       sessionId: m.id,
       status: state.phase === "ended" ? "ended" : "running",
       outcome: state.actOutcomes.at(-1) ?? null,
+      outcomes: state.actOutcomes,
       players: Object.values(state.actors).filter((a) => a.kind !== "npc").map((a) => ({ id: a.id, name: a.name, kind: a.kind, roleId: a.roleId })),
-      metrics: computeMetrics(state, 1),
+      metrics: evaluateSession(state).allMetrics,
       verifiedLog: { entries: log.head.seq + 1, head: log.head.hash.slice(0, 12) },
     });
   });
@@ -127,6 +137,8 @@ export function sessionRoutes(env: Env, store: Store, agent: TrainingAgent, runL
         isHost: !!caller.player && m.hostId === caller.player.id,
         isOrganizer: caller.organizer,
         replay: m.replay ?? null,
+        plannedActs: m.config.acts.length,
+        worldId: m.config.worldId,
         thankedAlready: !!caller.player && !!shout?.some((s) => s.from === caller.player!.id),
       });
     } catch (err) {

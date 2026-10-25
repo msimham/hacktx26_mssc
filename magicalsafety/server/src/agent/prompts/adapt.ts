@@ -4,6 +4,7 @@ export const ADAPT_SYSTEM = `You design the NEXT run of a team coordination exer
 Return JSON matching the schema. Hard limits (anything outside them is discarded by the server):
 - Only change levers listed for the weaknesses you base the plan on, and move each lever AT MOST ONE step harder than its current value.
 - A lever you do not change must be null.
+- exitBlockedAtSec and needsAssistanceCount only apply to the evacuation, and only if it is listed as reached.
 - "recommendations" are optional ideas about who plays or team size. They are only suggestions for a human organizer to approve; they are never applied automatically.
 - Cite evidenceEventIds from the provided ids only. Explain the change in rationale in plain language.
 - NEVER include medical advice, procedures, dosing, or diagnoses.
@@ -11,7 +12,7 @@ Return JSON only.`;
 
 export function adaptUser(args: {
   weaknesses: { code: WeaknessCode; detail: string; evidenceEventIds: string[] }[];
-  current: { difficulty: Difficulty; allowCrossRoomChat: boolean; teamSize: number; socialEnvironment: string };
+  current: { difficulty: Difficulty; allowCrossRoomChat: boolean; teamSize: number; socialEnvironment: string; evacuation: { reached: boolean; exitBlockedAtSec: number; needsAssistanceCount: number } };
   citeable: string[];
 }): string {
   return JSON.stringify({

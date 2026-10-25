@@ -17,6 +17,9 @@ export interface LobbyView {
   fillWithBots: boolean;
   socialEnvironment: string;
   worldId: string;
+  worldName: string;
+  /** Scenario ids in order. The second act only begins if the first is resolved. */
+  acts: string[];
   inputMethods: string[];
 }
 

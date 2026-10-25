@@ -1,7 +1,7 @@
 import { z } from "zod";
 import {
   AdaptationPlan, AdaptationProposal, applyAdaptation, Assessment, AssessmentInterpretation, buildRulePlan, competencyWeights,
-  computeMetrics, configDiff, DEFAULT_OBJECTIVES, evalContext, interpretWithRules, metricEmphasis, planId, REAL_WORLD, replay,
+  configDiff, DEFAULT_OBJECTIVES, evaluateSession, metricEmphasis, planId, REAL_WORLD, replay, rubricMetrics,
   scoreRubric, timelineFor, weaknessesForLever, WORLDS,
   type DiffRow, type OrgConfig, type OrgLens, type RuntimeState, type TimelineItem, type WeaknessCode,
 } from "@magicalsafety/engine";
@@ -62,12 +62,12 @@ export interface AgentDeps {
 const WEAKNESS_QUERY: Record<WeaknessCode, string> = {
   late_help_seeking: "call emergency help security report phone",
   slow_recognition: "notice recognize emergency signs aware",
-  info_not_shared: "communicate share information report tell",
+  info_not_shared: "communicate share information report tell exit warn",
   over_centralization: "delegate ask assign share tasks teammates",
   no_delegation: "delegate ask assign tasks teammates helpers",
   helper_ignored: "helper staff assign task ask",
   poor_prioritization: "priority first call help before",
-  uncoordinated_resources: "coordinate roles who responsible task",
+  uncoordinated_resources: "coordinate roles who responsible task evacuate exit counted assembly",
 };
 
 export class TrainingAgent {
@@ -150,24 +150,25 @@ export class TrainingAgent {
       spend: () => this.deps.usage.add(org?.id ?? "none", "model_calls", "session", sessionId),
     };
 
-    // EVALUATE: deterministic facts, scored against the organization's rubric.
-    const metrics = computeMetrics(state, 1);
-    const ectx = evalContext(state, 1);
+    // EVALUATE: deterministic facts for every act that was played, scored against the organization's rubric.
     const emphasisWeights = competencyWeights(lens);
-    const scored = scoreRubric(lens, metrics);
+    const first = evaluateSession(state, { emphasis: emphasisWeights });
+    const scored = scoreRubric(lens, rubricMetrics(first));
+    const metrics = first.allMetrics;
 
     // Which organization guidance applies to the weaknesses the facts show?
-    const first = interpretWithRules(state, metrics, ectx, 1, { emphasis: emphasisWeights });
     const overrideRefs = await this.deps.references?.(sessionId);
     const found = overrideRefs
       ? { byCode: new Map<WeaknessCode, string[]>(), chunks: new Map(overrideRefs.map((r) => [r.id, { id: r.id, docTitle: r.docTitle ?? r.id, heading: r.heading ?? "", text: r.text }])) }
       : await this.findSources(org, sessionId, first.weaknesses.slice(0, 3).map((w) => w.code));
     const refs = [...found.chunks.values()];
 
-    const rules = interpretWithRules(state, metrics, ectx, 1, { emphasis: emphasisWeights, sourcesFor: (c) => found.byCode.get(c) ?? [] });
-    const compact = compactEvents(state, 1);
+    const rules = evaluateSession(state, { emphasis: emphasisWeights, sourcesFor: (c) => found.byCode.get(c) ?? [] });
+    const ectx = rules.evidence[0]!.ctx;
+    const compact = compactEvents(state);
     const eventIds = new Set(state.events.map((e) => e.id));
     const humanIds = new Set(Object.values(state.actors).filter((a) => a.kind === "human").map((a) => a.id));
+    const act2Reached = rules.actsReached === 2;
 
     // DIAGNOSE
     const diag = await this.deps.runner.run({
@@ -179,27 +180,27 @@ export class TrainingAgent {
       }),
       schema: AssessmentInterpretation, schemaName: "assessment_interpretation",
       deterministic: () => rules.interpretation,
-      validate: (v) => validateInterpretation(v, { eventIds, humanIds, sourceIds: new Set(refs.map((r) => r.id)), metrics, ectx, rules: rules.interpretation }),
+      validate: (v) => validateInterpretation(v, { eventIds, humanIds, sourceIds: new Set(refs.map((r) => r.id)), acts: rules.evidence, rules: rules.interpretation }),
       fallback: () => rules.interpretation,
     });
 
     const outcomes = state.actOutcomes.map((o) => ({ act: o.act, outcome: o.outcome }));
-    const assessment: Assessment = { sessionId, generatedBy: diag.generatedBy, basedOnLogHash: logHash, facts: metrics, actsReached: 1, actOutcomes: outcomes, ...diag.value };
+    const assessment: Assessment = { sessionId, generatedBy: diag.generatedBy, basedOnLogHash: logHash, facts: metrics, actsReached: rules.actsReached, actOutcomes: outcomes, ...diag.value };
 
     // ADAPT: weaknesses come from the (validated) assessment, with the evidence the rules found for each.
     const chosen = rules.weaknesses.filter((w) => assessment.primaryWeaknesses.includes(w.code));
-    const rulePlan = buildRulePlan({ sessionId, config: state.config, weaknesses: chosen, anchorEventId: ectx.anchorEventId });
+    const rulePlan = buildRulePlan({ sessionId, config: state.config, weaknesses: chosen, anchorEventId: ectx.anchorEventId, act2Reached });
     const { id: _id, generatedBy: _g, targetAct: _t, ...ruleProposal } = rulePlan;
     const adapt = await this.deps.runner.run({
       scopeId: sessionId, step: "adapt", provider, system: ADAPT_SYSTEM, budget,
       user: adaptUser({
         weaknesses: chosen,
-        current: { difficulty: state.config.difficulty, allowCrossRoomChat: state.config.rules.allowCrossRoomChat, teamSize: state.config.team.size, socialEnvironment: state.config.socialEnvironment },
+        current: { difficulty: state.config.difficulty, allowCrossRoomChat: state.config.rules.allowCrossRoomChat, teamSize: state.config.team.size, socialEnvironment: state.config.socialEnvironment, evacuation: { reached: act2Reached, ...state.config.act2 } },
         citeable: [...new Set(chosen.flatMap((w) => w.evidenceEventIds))],
       }),
       schema: AdaptationProposal, schemaName: "adaptation_proposal",
       deterministic: () => ruleProposal,
-      validate: (v) => validateProposal(v, { config: state.config, primaryWeaknesses: assessment.primaryWeaknesses, eventIds, fallbackEvidence: ruleProposal.evidenceEventIds, fallbackRationale: ruleProposal.rationale }),
+      validate: (v) => validateProposal(v, { config: state.config, primaryWeaknesses: assessment.primaryWeaknesses, eventIds, act2Reached, fallbackEvidence: ruleProposal.evidenceEventIds, fallbackRationale: ruleProposal.rationale }),
       fallback: () => ruleProposal,
     });
 

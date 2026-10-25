@@ -1,6 +1,6 @@
 import {
-  consistencyCheck, enforceLevers, hasChange, safetyFilter,
-  type AdaptationProposal, type AssessmentInterpretation, type Claim, type EvalContext, type MetricResult,
+  consistencyCheckActs, enforceLevers, hasChange, safetyFilter,
+  type ActEvidence, type AdaptationProposal, type AssessmentInterpretation, type Claim,
   type SessionConfig, type WeaknessCode,
 } from "@magicalsafety/engine";
 
@@ -16,8 +16,8 @@ export interface DiagnoseContext {
   eventIds: ReadonlySet<string>;
   humanIds: ReadonlySet<string>;
   sourceIds: ReadonlySet<string>;
-  metrics: MetricResult[];
-  ectx: EvalContext;
+  /** Facts and context of every act that was played. */
+  acts: ActEvidence[];
   /** Rules answer: used to fill gaps the model left, and to decide whether dropping everything is a failure. */
   rules: AssessmentInterpretation;
 }
@@ -56,7 +56,7 @@ export function validateInterpretation(value: AssessmentInterpretation, ctx: Dia
     .map((i) => ({ playerId: i.playerId, strengths: clean(i.strengths, `${i.playerId}.strengths`), improvements: clean(i.improvements, `${i.playerId}.improvements`) }));
   for (const r of ctx.rules.individuals) if (!seen.has(r.playerId)) { individuals.push(r); notes.push(`individuals: added the rules-based card for ${r.playerId}`); }
 
-  const { kept, dropped } = consistencyCheck(value.primaryWeaknesses, ctx.metrics, ctx.ectx);
+  const { kept, dropped } = consistencyCheckActs(value.primaryWeaknesses, ctx.acts);
   for (const d of dropped) notes.push(`primaryWeaknesses: ${d.reason}`);
   let primaryWeaknesses: WeaknessCode[] = kept;
   if (primaryWeaknesses.length === 0 && ctx.rules.primaryWeaknesses.length > 0) {
@@ -70,6 +70,8 @@ export interface AdaptContext {
   config: SessionConfig;
   primaryWeaknesses: WeaknessCode[];
   eventIds: ReadonlySet<string>;
+  /** Whether the evacuation was reached; evacuation levers are off otherwise. */
+  act2Reached: boolean;
   fallbackEvidence: string[];
   fallbackRationale: string;
 }
@@ -77,7 +79,7 @@ export interface AdaptContext {
 export function validateProposal(value: AdaptationProposal, ctx: AdaptContext): Validation<AdaptationProposal> {
   const notes: string[] = [];
   const policy: PolicyDecision[] = [];
-  const { proposal, dropped } = enforceLevers(value, ctx.config, ctx.primaryWeaknesses, ctx.eventIds);
+  const { proposal, dropped } = enforceLevers(value, ctx.config, ctx.primaryWeaknesses, ctx.eventIds, ctx.act2Reached);
   for (const d of dropped) { notes.push(d); policy.push({ rule: "lever_bounds", action: "clamped", detail: d }); }
   if (proposal.basedOn.length === 0 && ctx.primaryWeaknesses.length > 0) { proposal.basedOn = ctx.primaryWeaknesses; notes.push("basedOn: set to the assessment's weaknesses"); }
   if (!hasChange(proposal.changes)) return { ok: false, errors: [`No permitted change remained. ${dropped.join("; ")}`] };

@@ -4,16 +4,12 @@ import type { Claim } from "@magicalsafety/engine";
 import { getAnalysis, getResults, sendShoutout, type Analysis, type ResultsPayload } from "../api";
 import { loadPlayerBySession } from "../session/storage";
 import { INDICATOR_INFO, type MetricKey } from "@magicalsafety/engine";
-import { COMPETENCY_LABEL, OUTCOMES, SHOUTOUT_REASONS, WEAKNESS_LABEL, describeTarget, fmtIndicator, fmtSeconds } from "../labels";
+import { COMPETENCY_LABEL, OUTCOMES, SHOUTOUT_REASONS, WEAKNESS_LABEL, describeTarget, fmtIndicator, fmtSeconds, formatMetric } from "../labels";
 import { EvidenceChip } from "../components/EvidenceChip";
 import { GeneratedBy } from "../components/GeneratedBy";
 
-function show(v: unknown): string {
-  if (v === null) return "n/a";
-  if (typeof v === "boolean") return v ? "yes" : "no";
-  if (typeof v === "object") return Object.entries(v as Record<string, unknown>).map(([k, x]) => `${k}: ${String(x)}`).join(", ");
-  return String(v);
-}
+type Tab = "act1" | "act2" | "change";
+const SHARED_KEYS = ["delegations_issued", "max_action_share", "info_shared_ratio", "centralized", "rejected_actions", "redundant_efforts"];
 
 export function Results() {
   const { sessionId = "" } = useParams();
@@ -22,6 +18,7 @@ export function Results() {
   const [a, setA] = useState<Analysis | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [thanked, setThanked] = useState(false);
+  const [tab, setTab] = useState<Tab>("act1");
   const [shout, setShout] = useState({ to: "", reason: "stayed_calm" as string });
   const token = loadPlayerBySession(sessionId)?.token ?? "";
 
@@ -44,7 +41,10 @@ export function Results() {
   if (!facts || !a) return <p className="p-6">Preparing your results…</p>;
 
   const as = a.assessment;
-  const outcome = OUTCOMES[String(as.actOutcomes.at(-1)?.outcome)] ?? { text: "Session ended", good: false };
+  const twoActs = as.actsReached === 2;
+  const locked = a.plannedActs === 2 && !twoActs;
+  const activeAct = tab === "act2" ? 2 : 1;
+  const outcomeFor = (act: number) => OUTCOMES[String(as.actOutcomes.find((o) => o.act === act)?.outcome)] ?? { text: "Session ended", good: false };
   const name = (id: string) => a.players.find((p) => p.id === id)?.roleName ?? a.players.find((p) => p.id === id)?.name ?? id;
   const mine = a.you ? as.individuals.find((i) => i.playerId === a.you) : undefined;
   const others = as.individuals.filter((i) => i.playerId !== a.you);
@@ -53,7 +53,8 @@ export function Results() {
   const refById = new Map(a.references.map((r) => [r.id, r]));
   const weightOf = new Map(a.emphasis.map((e) => [e.key, e.weight]));
   // The organization's rubric decides which facts lead. Everything else follows in its usual order.
-  const orderedMetrics = [...facts.metrics].sort((x, y) => (weightOf.get(y.key) ?? 0) - (weightOf.get(x.key) ?? 0));
+  const shownMetrics = tab === "change" ? facts.metrics.filter((m) => m.key.endsWith("_delta")) : facts.metrics.filter((m) => m.act === activeAct && !m.key.endsWith("_delta"));
+  const orderedMetrics = [...shownMetrics].sort((x, y) => (weightOf.get(y.key) ?? 0) - (weightOf.get(x.key) ?? 0));
 
   const ClaimCard = ({ c, tone }: { c: Claim; tone: "good" | "grow" }) => (
     <li className={`rounded-lg p-3 ring-1 ${tone === "good" ? "bg-emerald-950/50 ring-emerald-500/30" : "bg-amber-950/40 ring-amber-500/30"}`}>
@@ -75,12 +76,27 @@ export function Results() {
   return (
     <main className="mx-auto max-w-4xl space-y-6 p-6">
       <h1 className="font-display text-3xl text-gold">Training results</h1>
-      <div className={`rounded-xl p-5 text-lg font-semibold ${outcome.good ? "bg-emerald-900/60" : "bg-rose-900/50"}`}>{outcome.text}</div>
+      <div className="space-y-2">
+        {(twoActs ? [1, 2] : [1]).map((act) => (
+          <div key={act} className={`rounded-xl p-4 text-lg font-semibold ${outcomeFor(act).good ? "bg-emerald-900/60" : "bg-rose-900/50"}`}>
+            {twoActs || a.plannedActs === 2 ? <span className="mr-2 text-sm font-normal text-slate-300">Act {act}:</span> : null}{outcomeFor(act).text}
+          </div>
+        ))}
+        {locked && <div role="status" className="rounded-xl bg-night-2 p-4 text-sm ring-1 ring-white/15">🔒 <strong>Act 2 locked.</strong> Resolve the emergency to continue. The adapted replay starts again from Act 1, and the evacuation unlocks once a run succeeds.</div>}
+      </div>
+
+      {twoActs && (
+        <div role="tablist" aria-label="Results by act" className="flex gap-2">
+          {([["act1", "Act 1: Emergency"], ["act2", "Act 2: Evacuation"], ["change", "Change between acts"]] as const).map(([id, label]) => (
+            <button key={id} role="tab" aria-selected={tab === id} onClick={() => setTab(id)} className={`rounded-full px-4 py-1.5 text-sm ${tab === id ? "bg-gold font-semibold text-night" : "bg-night-2 ring-1 ring-white/15"}`}>{label}</button>
+          ))}
+        </div>
+      )}
 
       <section aria-label="Key moments" className="rounded-xl bg-night-2 p-4">
-        <h2 className="mb-2 font-display text-lg text-gold">What happened</h2>
+        <h2 className="mb-2 font-display text-lg text-gold">What happened{twoActs && tab !== "change" ? ` in Act ${activeAct}` : ""}</h2>
         <ol className="space-y-1 text-sm">
-          {a.timeline.map((t) => (
+          {a.timeline.filter((x) => !twoActs || tab === "change" || x.act === activeAct).map((t) => (
             <li key={t.id} id={t.id} className={`flex gap-3 rounded px-2 py-1 target:bg-gold/20 ${hash === `#${t.id}` ? "bg-gold/20" : ""}`}>
               <span className="w-12 shrink-0 text-right font-mono text-slate-400">{fmtSeconds(t.t)}</span>
               <span className={t.tone === "good" ? "text-emerald-300" : t.tone === "bad" ? "text-rose-300" : t.tone === "alert" ? "text-amber-300" : ""}>{t.text}</span>
@@ -120,13 +136,28 @@ export function Results() {
       <section aria-label="Recorded facts" className="rounded-xl border-l-4 border-slate-400 bg-night-2 p-4">
         <h2 className="font-display text-lg text-gold">Recorded facts <span className="ml-2 rounded bg-slate-600 px-2 py-0.5 font-sans text-xs">Measured, not opinion</span></h2>
         <p className="mb-2 text-xs text-slate-400">Computed directly from the event log. Each fact lists the events it came from.</p>
+        {tab === "change" && (
+          <div className="mb-3 rounded bg-night p-3 text-sm">
+            <p className="mb-2 text-xs text-slate-400">What the record shows changed from Act 1 to Act 2. This describes the record only; it doesn't claim anyone learned something.</p>
+            <table className="w-full text-left">
+              <thead className="text-slate-400"><tr><th className="py-1 pr-3">Measure</th><th className="pr-3">Act 1</th><th className="pr-3">Act 2</th></tr></thead>
+              <tbody>
+                {SHARED_KEYS.map((k) => {
+                  const m1 = facts.metrics.find((m) => m.act === 1 && m.key === k);
+                  const m2 = facts.metrics.find((m) => m.act === 2 && m.key === k);
+                  return m1 && m2 ? <tr key={k} className="border-t border-white/10"><td className="py-1.5 pr-3">{m1.description}</td><td className="pr-3 font-mono">{formatMetric(m1)}</td><td className="pr-3 font-mono">{formatMetric(m2)}</td></tr> : null;
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
         <table className="w-full text-left text-sm">
           <thead className="text-slate-400"><tr><th className="py-1 pr-3">What we measured</th><th className="pr-3">Value</th><th>Evidence</th></tr></thead>
           <tbody>
             {orderedMetrics.map((m) => (
               <tr key={m.key} className="border-t border-white/10 align-top">
                 <td className="py-2 pr-3">{weightOf.has(m.key) && <span className="mr-1 text-gold" title={`Emphasized by your rubric (weight ${weightOf.get(m.key)})`}>★</span>}{m.description}</td>
-                <td className="pr-3 font-mono">{show(m.value)}{m.unit && m.value !== null ? ` ${m.unit}` : ""}</td>
+                <td className="pr-3 font-mono">{formatMetric(m)}</td>
                 <td className="space-x-1">{m.evidenceEventIds.slice(0, 4).map((id) => <EvidenceChip key={id} id={id} timeline={a.timeline} sessionId={sessionId} />)}</td>
               </tr>
             ))}

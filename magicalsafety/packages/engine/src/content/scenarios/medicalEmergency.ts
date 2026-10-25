@@ -1,9 +1,9 @@
 import type { FactDef, OpDef, ScenarioDef, TaskDef } from "../../types";
 
 const facts: FactDef[] = [
-  { id: "f_collapse", text: "The Duchess collapsed in the ballroom and isn't responding normally.", keywords: ["collapse", "collapsed", "fainted", "unresponsive", "not responding", "isn't responding", "on the floor"], heldBy: undefined },
-  { id: "f_help_location", text: "The physician is waiting at the gatehouse by the courtyard, and the guards answer to you.", keywords: ["physician", "doctor", "gatehouse"], heldBy: "authority" },
-  { id: "f_cabinet_key", text: "You hold the key to the Steward's Cabinet where the first-aid chest is kept.", keywords: ["key", "cabinet", "first aid", "first-aid", "chest"], heldBy: "runner" },
+  { id: "f_collapse", text: "The Duchess collapsed in the ballroom and isn't responding normally.", keywords: ["collapse", "collapsed", "fainted", "unresponsive", "not responding", "isn't responding", "on the floor"], heldBy: undefined, track: true },
+  { id: "f_help_location", text: "The physician is waiting at the gatehouse by the courtyard, and the guards answer to you.", keywords: ["physician", "doctor", "gatehouse"], heldBy: "authority", track: true },
+  { id: "f_cabinet_key", text: "You hold the key to the Steward's Cabinet where the first-aid chest is kept.", keywords: ["key", "cabinet", "first aid", "first-aid", "chest"], heldBy: "runner", track: true },
   { id: "f_context", text: "You know the Duchess's companion, and that the Duchess had been dancing all evening (context only).", keywords: ["companion", "dancing"], heldBy: "liaison" },
   { id: "f_crowd", text: "A candelabra has fallen on the Grand Staircase and guests are crowding.", keywords: ["candelabra", "crowd", "crowding", "staircase"], heldBy: undefined },
 ];
@@ -26,7 +26,7 @@ const tasks: Record<string, TaskDef> = {
     steps: [
       { kind: "perform", opId: "open_cabinet", at: "resource_store" },
       { kind: "fetch", itemId: "first_aid_kit", at: "resource_store" },
-      { kind: "use", itemId: "first_aid_kit", targetId: "duchess", at: "incident_site" },
+      { kind: "use", itemId: "first_aid_kit", targetId: "victim", at: "incident_site" },
     ],
     fulfilledBy: "kit_delivered",
     requiresFacts: [],

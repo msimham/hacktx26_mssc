@@ -13,7 +13,7 @@ export function RoleCard({ view }: { view: PlayerView }) {
         <ul className="mt-1 list-disc space-y-1 pl-5 text-sm">{you.facts.map((f) => <li key={f.id}>{f.text}</li>)}</ul>
       )}
       {you.inventory.length > 0 && <p className="mt-2 text-sm">🎒 Carrying: first-aid supplies</p>}
-      {you.staying && <p className="mt-2 text-sm">🧍 You are staying with her.</p>}
+      {you.staying && <p className="mt-2 text-sm">🧍 You are staying with the person.</p>}
     </section>
   );
 }

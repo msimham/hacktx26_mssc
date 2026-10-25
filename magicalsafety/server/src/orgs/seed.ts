@@ -16,6 +16,9 @@ Say out loud what you see. Name a specific person for each task, for example "Al
 ## Sharing information
 Resident Assistants know where the AED and first-aid cabinets are kept. Tell responders everything you know about who was present and what happened.
 
+## Evacuating
+Use the nearest safe exit and never the elevator. Don't go back inside. If you can't safely help someone, tell responders exactly where they are. Go to the assembly point and make sure you are counted.
+
 ## Staying calm
 Keep bystanders back and keep the area clear. Stay with the person until help arrives.
 `;
@@ -32,6 +35,7 @@ export function riversideOrg(): OrgConfig {
       { id: "share_the_work", title: "Share the work", description: "Ask specific people to take on tasks.", competency: "delegation" },
       { id: "share_what_you_know", title: "Share what you know", description: "Say what only you know, out loud and early.", competency: "communication" },
       { id: "work_as_a_team", title: "Work as a team", description: "Avoid one person doing everything.", competency: "coordination" },
+      { id: "evacuate_safely", title: "Evacuate safely", description: "Check every room, look after people who need help, and get everyone counted outside.", competency: "prioritization" },
     ],
     rubric: [
       { objectiveId: "recognize_quickly", indicator: "time_to_notice_ms", direction: "at_most", target: 10_000, weight: 2 },
@@ -40,6 +44,8 @@ export function riversideOrg(): OrgConfig {
       { objectiveId: "share_the_work", indicator: "delegations_issued", direction: "at_least", target: 1, weight: 3 },
       { objectiveId: "share_what_you_know", indicator: "info_shared_ratio", direction: "at_least", target: 0.8, weight: 3 },
       { objectiveId: "work_as_a_team", indicator: "max_action_share", direction: "at_most", target: 0.6, weight: 2 },
+      { objectiveId: "evacuate_safely", indicator: "rooms_swept_ratio", direction: "at_least", target: 1, weight: 2 },
+      { objectiveId: "evacuate_safely", indicator: "blocked_exit_used", direction: "at_most", target: 0, weight: 3 },
     ],
     documents: [{ id: "quick_guide", title: "Emergency Response Quick Guide (sample)", text: GUIDE, source: "uploaded" }],
     model: { provider: "meta", modelId: "muse-spark-1.3", allowContributorMode: false },

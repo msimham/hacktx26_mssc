@@ -60,6 +60,9 @@ export const PlanChanges = z.strictObject({
   rotateRoles: z.boolean().nullable(),
   discovererRole: RoleIdSchema.nullable(),
   distractorFirst: z.boolean().nullable(),
+  // Evacuation (act 2) levers
+  exitBlockedAtSec: z.number().int().min(20).max(90).nullable(),
+  needsAssistanceCount: z.union([z.literal(1), z.literal(2)]).nullable(),
 });
 export type PlanChanges = z.infer<typeof PlanChanges>;
 export type Lever = keyof PlanChanges;

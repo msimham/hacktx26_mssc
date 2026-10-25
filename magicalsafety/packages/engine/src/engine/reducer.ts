@@ -12,9 +12,7 @@ import {
   slotRoom, stepRoom,
 } from "./core";
 import { checkAction, factsRideAlong, neededFacts, recipients, stepDurationMs, stepForAction } from "./legality";
-import {
-  accrue, applyStep, initMedicalState, nextTimes, onEnterRoom, setupMedical, settleMedical, stepBlocked,
-} from "./medicalHandler";
+import { handlerFor, handlerOf } from "./handlers";
 import { botLine } from "./bots";
 
 export interface PlayerInit {
@@ -68,7 +66,7 @@ export function createRuntime(init: RuntimeInit): RuntimeState {
   const state: RuntimeState = {
     sessionId: config.id, seed, phase: "lobby", startedAtMs: null, t: 0, config, acts, actIndex: 0,
     actors: {}, actorOrder: [], assignments: {}, nextAssignmentNum: 1, events: [], pending: [],
-    actState: initMedicalState(), actOutcomes: [],
+    actState: handlerOf(act.scenario.id).init({ t: 0 } as RuntimeState), actStartT: 0, actOutcomes: [], transitionUntilT: null,
   };
   const put = (a: Actor) => { state.actors[a.id] = a; state.actorOrder.push(a.id); };
   const homeOf = (r: RoleId) => slotRoom(act, world.roleSkins[r].startRoomSlot);
@@ -101,7 +99,7 @@ export function startSession(state: RuntimeState, nowMs: number): StepResult {
   s.phase = "running";
   s.startedAtMs = nowMs;
   s.t = 0;
-  setupMedical(s);
+  handlerFor(s).setup(s);
   emit(s, { type: "act_started", actorKind: "system", roomId: null, payload: { act: 1, scenario: curAct(s).scenario.id, title: curAct(s).scenario.title } });
   settle(s);
   flushEvents(s);
@@ -121,8 +119,10 @@ export function tick(state: RuntimeState, nowMs: number): StepResult {
 
 function advance(s: RuntimeState, targetT: number): void {
   while (s.phase === "running" && s.t < targetT) {
-    const next = Math.min(targetT, ...nextTimes(s));
-    accrue(s, s.t, next);
+    const h = handlerFor(s);
+    const times = s.transitionUntilT !== null ? [s.transitionUntilT] : h.nextTimes(s);
+    const next = Math.min(targetT, ...times);
+    if (s.transitionUntilT === null) h.accrue(s, s.t, next);
     s.t = next;
     settle(s);
   }
@@ -131,27 +131,67 @@ function advance(s: RuntimeState, targetT: number): void {
 /** Everything that can happen "now", repeated until stable. */
 function settle(s: RuntimeState): void {
   for (let i = 0; i < 6 && s.phase === "running"; i++) {
+    // Between acts nothing is in progress: wait out the beat, then start the next act.
+    if (s.transitionUntilT !== null) {
+      if (s.t >= s.transitionUntilT) { beginNextAct(s); continue; }
+      return;
+    }
+    const h = handlerFor(s);
     let changed = completeDue(s);
     changed = acceptDue(s) || changed;
     changed = pumpAll(s) || changed;
-    const res = settleMedical(s);
+    const res = h.settle(s);
     if (res) {
       finishAct(s, res);
-      return;
+      if (s.phase !== "running") return;
+      continue;
     }
     if (!changed) break;
   }
 }
 
+/** How long responders take over before the next act begins. */
+export const ACT_BEAT_MS = 5_000;
+
 function finishAct(s: RuntimeState, res: { outcome: string; success: boolean }): void {
   const act = curAct(s);
-  emit(s, { type: "act_completed", actorKind: "system", roomId: null, payload: { act: act.act, ...res } });
+  const hasNext = s.actIndex + 1 < s.acts.length;
+  emit(s, { type: "act_completed", actorKind: "system", roomId: null, payload: { act: act.act, ...res, continues: res.success && hasNext } });
   s.actOutcomes.push({ act: act.act, outcome: res.outcome, success: res.success, t: s.t });
-  if (!res.success && s.actIndex + 1 < s.acts.length)
+  for (const a of actors(s)) { a.current = null; a.queue = []; a.staying = false; }
+  for (const as of Object.values(s.assignments)) if (as.status === "pending" || as.status === "accepted") as.status = "failed";
+
+  if (res.success && hasNext) {
+    // The next act is earned: the responders take over, then the alarm sounds.
+    s.transitionUntilT = s.t + ACT_BEAT_MS;
+    return;
+  }
+  // Act 2 is never started after a failure.
+  if (!res.success && hasNext)
     emit(s, { type: "act_locked", actorKind: "system", roomId: null, payload: { act: act.act + 1, reason: "Resolve the emergency to continue." } });
   emit(s, { type: "session_ended", actorKind: "system", roomId: null, payload: { outcome: res.outcome } });
   s.phase = "ended";
-  for (const a of actors(s)) { a.current = null; a.queue = []; a.staying = false; }
+}
+
+function beginNextAct(s: RuntimeState): void {
+  s.transitionUntilT = null;
+  s.actIndex++;
+  const act = curAct(s);
+  const world = act.world;
+  // Players keep their rooms and roles. Knowledge and carried items belong to the previous act.
+  for (const a of actors(s)) {
+    a.facts = []; a.inventory = []; a.current = null; a.queue = []; a.staying = false; a.activated = false; a.sharedFacts = [];
+    a.lastActionT = s.t; a.lastDecisionT = s.t;
+    if (a.kind === "npc") {
+      const home = a.npcKey === "guard" ? world.npcs.guard : a.npcKey === "companion" ? world.npcs.companion : world.npcs.extraHelpers.find((h) => h.id === a.npcKey);
+      if (home) a.roomId = home.roomId;
+    }
+  }
+  s.assignments = {};
+  s.actStartT = s.t;
+  s.actState = handlerFor(s).init(s);
+  emit(s, { type: "act_started", actorKind: "system", roomId: null, payload: { act: act.act, scenario: act.scenario.id, title: act.scenario.title, alarm: act.scenario.id === "evacuation" } });
+  handlerFor(s).setup(s);
 }
 
 // ---------- steps ----------
@@ -189,15 +229,15 @@ function finishStep(s: RuntimeState, actor: Actor, cur: Current): void {
     const moved = actor.roomId !== room;
     actor.roomId = room;
     if (moved) emit(s, { type: "moved", actor, payload: { to: room, autonomous: true } });
-    if (moved) onEnterRoom(s, actor);
+    if (moved) handlerFor(s).onEnterRoom(s, actor);
   }
-  const blocked = cur.step.kind === "move" || cur.step.kind === "inspect" ? null : stepBlocked(s, actor, cur.step);
+  const blocked = cur.step.kind === "move" || cur.step.kind === "inspect" ? null : handlerFor(s).stepBlocked(s, actor, cur.step, "finish");
   let effect: string | null = null;
   if (blocked) {
     emit(s, { type: "task_failed", actor, payload: { reason: blocked.reason, redundant: !!blocked.done, step: describeStep(cur.step) } });
     if (!blocked.done && cur.assignmentId) failAssignment(s, cur.assignmentId, actor);
   } else {
-    effect = applyStep(s, actor, cur.step);
+    effect = handlerFor(s).applyStep(s, actor, cur.step);
   }
   if (effect) fulfil(s, actor, effect);
   if (cur.assignmentId) maybeCompleteQueued(s, actor, cur.assignmentId);
@@ -228,7 +268,7 @@ function failAssignment(s: RuntimeState, id: string, actor: Actor): void {
 function fulfil(s: RuntimeState, actor: Actor, effect: string): void {
   const act = curAct(s);
   for (const as of Object.values(s.assignments)) {
-    if (as.toId === actor.id && as.status === "accepted" && act.scenario.tasks[as.taskId]?.fulfilledBy === effect)
+    if (as.toId === actor.id && as.status === "accepted" && act.tasks[as.taskId]?.fulfilledBy === effect)
       completeAssignment(s, as.id, actor);
   }
 }
@@ -245,7 +285,7 @@ function acceptDue(s: RuntimeState): boolean {
     as.status = "accepted";
     as.acceptedT = as.acceptAtT;
     emit(s, { type: "delegation_accepted", actor: assignee, payload: { assignmentId: as.id, taskId: as.taskId, fromId: as.fromId, auto: true }, t: as.acceptAtT });
-    for (const step of curAct(s).scenario.tasks[as.taskId]!.steps) assignee.queue.push({ step, assignmentId: as.id });
+    for (const step of curAct(s).tasks[as.taskId]!.steps) assignee.queue.push({ step, assignmentId: as.id });
     any = true;
   }
   return any;
@@ -257,7 +297,7 @@ function pumpAll(s: RuntimeState): boolean {
   for (const actor of actors(s)) {
     while (!actor.current && actor.queue.length) {
       const item = actor.queue.shift()!;
-      const blocked = item.step.kind === "move" || item.step.kind === "inspect" ? null : stepBlocked(s, actor, item.step);
+      const blocked = item.step.kind === "move" || item.step.kind === "inspect" ? null : handlerFor(s).stepBlocked(s, actor, item.step, "start");
       if (blocked?.done) {
         if (item.assignmentId) maybeCompleteQueued(s, actor, item.assignmentId);
         any = true;
@@ -287,7 +327,7 @@ function addressedIds(s: RuntimeState, speaker: Actor, text: string, to: string)
   const lower = text.toLowerCase();
   const out = new Set<string>();
   if (!["room", "team"].includes(to)) out.add(to);
-  const STOP = new Set(["royal", "palace", "lady", "waiting", "the", "duchess's"]);
+  const STOP = new Set(["royal", "palace", "lady", "waiting", "the", "their", "campus", "student", "duchess's"]);
   for (const a of actors(s)) {
     if (a.id === speaker.id) continue;
     const aliases = a.name.toLowerCase().split(/[\s-]+/).filter((w) => w.length > 3 && !STOP.has(w));
@@ -348,7 +388,7 @@ function handle(s: RuntimeState, req: ActionRequest): void {
     }
     case "delegate": {
       const target = s.actors[action.targetId]!;
-      const task = act.scenario.tasks[action.taskId]!;
+      const task = act.tasks[action.taskId]!;
       const id = `as_${s.nextAssignmentNum++}`;
       // Delegating passes along the information the task needs.
       // Siloed information: knowledge only rides along with a request made in person.
@@ -376,7 +416,7 @@ function handle(s: RuntimeState, req: ActionRequest): void {
 function conveyFacts(s: RuntimeState, speaker: Actor, text: string, heard: Actor[], via: string): number {
   const lower = text.toLowerCase();
   let n = 0;
-  for (const fact of curAct(s).scenario.facts) {
+  for (const fact of curAct(s).facts) {
     if (!speaker.facts.includes(fact.id)) continue;
     if (!fact.keywords.some((k) => lower.includes(k))) continue;
     for (const h of heard) {

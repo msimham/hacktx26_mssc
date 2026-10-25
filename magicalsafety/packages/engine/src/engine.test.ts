@@ -52,7 +52,7 @@ describe("failure", () => {
     const d = new Driver(makeInit({ difficulty: { ambiguity: "subtle" } }), false);
     d.waitUntilT(d.state.acts[0]!.timing.incidentStartT + 5_000);
     expect(d.ofType("incident_noticed")).toHaveLength(0);
-    d.do("p1", { kind: "inspect", targetId: "duchess" });
+    d.do("p1", { kind: "inspect", targetId: "victim" });
     expect(d.ofType("incident_noticed")).toHaveLength(1);
   });
 });
@@ -185,10 +185,6 @@ describe("determinism and replay", () => {
 });
 
 describe("compile and difficulty levers", () => {
-  it("refuses worlds or scenarios that are not available", () => {
-    expect(() => createRuntime(makeInit({ config: { worldId: "campus" } }))).toThrow(CompileError);
-  });
-
   it("a second incident adds a competing demand that blocks success until resolved", () => {
     const d = new Driver(makeInit({ difficulty: { simultaneousIncidents: 2 } }), false);
     playWell(d);

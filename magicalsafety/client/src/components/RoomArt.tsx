@@ -40,12 +40,45 @@ const SHAPES: Record<string, ReactElement> = {
       <rect x="360" y="440" width="70" height="40" rx="8" fill="#a55a1c" />
     </>
   ),
+  gallery: (
+    <>
+      {[170, 400, 630, 850].map((x) => <rect key={x} x={x - 40} y="90" width="80" height="120" fill="#d4af37" opacity=".35" stroke="#d4af37" strokeWidth="3" />)}
+      <rect x="0" y="470" width="1000" height="14" fill="#0b1230" opacity=".5" />
+    </>
+  ),
+  passage: (
+    <>
+      <rect x="420" y="150" width="160" height="330" rx="10" fill="#1f1408" opacity=".7" />
+      <circle cx="545" cy="320" r="8" fill="#d4af37" />
+      {[120, 860].map((x) => <g key={x}><rect x={x - 5} y="100" width="10" height="40" fill="#d4af37" /><circle cx={x} cy="160" r="22" fill="#f7e08a" opacity=".8" /></g>)}
+    </>
+  ),
+  kitchens: (
+    <>
+      <circle cx="320" cy="260" r="120" fill="#555" opacity=".5" />
+      <circle cx="470" cy="200" r="150" fill="#666" opacity=".45" />
+      <circle cx="640" cy="250" r="130" fill="#444" opacity=".5" />
+      <rect x="100" y="400" width="800" height="40" fill="#2a1a10" opacity=".7" />
+    </>
+  ),
+  gardens: (
+    <>
+      <circle cx="800" cy="110" r="55" fill="#e8f2d0" opacity=".85" />
+      {[120, 300, 700, 880].map((x) => <ellipse key={x} cx={x} cy="430" rx="70" ry="45" fill="#0b3a22" opacity=".75" />)}
+      <ellipse cx="500" cy="470" rx="90" ry="22" fill="#9fd3e6" opacity=".5" />
+    </>
+  ),
   staircase: (
     <>
       <path d="M100 560 L100 460 L260 460 L260 380 L420 380 L420 300 L580 300 L580 220 L740 220 L740 560z" fill="#e5def0" opacity=".25" />
       {[260, 420, 580].map((x) => <g key={x}><rect x={x - 6} y="120" width="12" height="150" fill="#d4af37" /><circle cx={x} cy="110" r="18" fill="#f7e08a" /></g>)}
     </>
   ),
+};
+
+// Rooms in other worlds reuse the closest castle illustration.
+const ALIAS: Record<string, string> = {
+  atrium: "ballroom", desk: "dais", entrance: "courtyard", stairwell: "staircase", lounge: "gallery", eaststair: "passage", lab: "kitchens", lawn: "gardens",
 };
 
 export function RoomArt({ roomId, gradient }: { roomId: string; gradient: [string, string] }) {
@@ -58,7 +91,7 @@ export function RoomArt({ roomId, gradient }: { roomId: string; gradient: [strin
         </linearGradient>
       </defs>
       <rect width="1000" height="600" fill={`url(#g-${roomId})`} />
-      {SHAPES[roomId]}
+      {SHAPES[ALIAS[roomId] ?? roomId]}
       <rect y="520" width="1000" height="80" fill="#000" opacity=".25" />
     </svg>
   );

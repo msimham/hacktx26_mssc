@@ -1,11 +1,13 @@
-import type { ActTiming, RuntimeAct, ScenarioDef, Slot, World } from "../types";
+import type { ActTiming, FactDef, RuntimeAct, ScenarioDef, Slot, World } from "../types";
 import type { SessionConfig, ScenarioId } from "../schemas/session";
 import { mulberry32, randInt } from "../util/rng";
 import { medicalEmergency } from "../content/scenarios/medicalEmergency";
+import { evacuation } from "../content/scenarios/evacuation";
 import { castle } from "../content/worlds/castle";
+import { campus } from "../content/worlds/campus";
 
-export const WORLDS: Record<string, World> = { castle };
-export const SCENARIOS: Partial<Record<ScenarioId, ScenarioDef>> = { medical_emergency: medicalEmergency };
+export const WORLDS: Record<string, World> = { castle, campus };
+export const SCENARIOS: Partial<Record<ScenarioId, ScenarioDef>> = { medical_emergency: medicalEmergency, evacuation };
 
 const CONDITION_TRACK = {
   low: { worsen: 60_000, critical: 120_000, grace: 40_000, eta: 55_000 },
@@ -15,14 +17,22 @@ const CONDITION_TRACK = {
 
 export class CompileError extends Error {}
 
-export function bindSlots(world: World, scenario: ScenarioDef): Record<Slot, string> {
-  const out = {} as Record<Slot, string>;
+export function bindSlots(world: World, scenario: ScenarioDef): Partial<Record<Slot, string>> {
+  const out: Partial<Record<Slot, string>> = {};
   for (const slot of scenario.requiredSlots) {
-    const room = world.rooms.find((r) => r.slot === slot);
+    const room = world.rooms.find((r) => r.slots.includes(slot));
     if (!room) throw new CompileError(`World "${world.id}" has no room bound to slot "${slot}" required by "${scenario.id}"`);
     out[slot] = room.id;
   }
   return out;
+}
+
+/** Scenario fact wording is world-agnostic; each world supplies its own text and extra spoken keywords. */
+function skinFacts(world: World, scenario: ScenarioDef): FactDef[] {
+  return scenario.facts.map((f) => {
+    const skin = world.facts[f.id];
+    return { ...f, text: skin?.text ?? f.text, keywords: [...f.keywords, ...(skin?.keywords ?? [])] };
+  });
 }
 
 /**
@@ -30,12 +40,15 @@ export function bindSlots(world: World, scenario: ScenarioDef): Record<Slot, str
  * so a session is fully replayable from (config, seed, inputs).
  */
 export function compile(world: World, config: SessionConfig, seed: number): RuntimeAct[] {
+  // The evacuation continues the emergency; it is never the second half of anything else.
+  if (config.acts.length === 2 && !(config.acts[0] === "medical_emergency" && config.acts[1] === "evacuation"))
+    throw new CompileError("Two acts must be the emergency followed by the evacuation");
   const rng = mulberry32(seed);
   return config.acts.map((scenarioId, i) => {
     const scenario = SCENARIOS[scenarioId];
     if (!scenario) throw new CompileError(`Scenario "${scenarioId}" is not available`);
     const track = CONDITION_TRACK[config.difficulty.timePressure];
-    const second = config.difficulty.simultaneousIncidents === 2;
+    const second = config.difficulty.simultaneousIncidents === 2 && scenario.id === "medical_emergency";
     const incidentStartT = randInt(rng, 10, 25) * 1000;
     const durationSec = i === 0 ? config.rules.act1DurationSec : config.rules.act2DurationSec;
     const timing: ActTiming = {
@@ -47,12 +60,18 @@ export function compile(world: World, config: SessionConfig, seed: number): Runt
       guideBonusMs: 12_000,
       durationMs: durationSec * 1000,
       secondIncidentT: second ? incidentStartT + (config.adaptation?.distractorFirst ? -6_000 : 8_000) : null,
+      ...(scenario.id === "evacuation"
+        ? { evac: { exitBlockedAtMs: config.act2.exitBlockedAtSec * 1000, respondersAtMs: 30_000, needsAssistanceCount: config.act2.needsAssistanceCount } }
+        : {}),
     };
+    const slotRooms = bindSlots(world, scenario);
     return {
       act: (i + 1) as 1 | 2,
       scenario,
       world,
-      slotRooms: bindSlots(world, scenario),
+      slotRooms,
+      facts: skinFacts(world, scenario),
+      tasks: { ...scenario.tasks, ...(scenario.buildTasks?.(world, slotRooms) ?? {}) },
       timing,
       difficulty: config.difficulty,
     };

@@ -62,8 +62,13 @@ function Setup() {
       <section className={card}>
         <h2 className="mb-2 font-display text-lg text-gold">World and scenario</h2>
         <div className="grid gap-3 md:grid-cols-2">
-          <label className="text-sm">World<select className={`${field} mt-1`} value={s.worldId} onChange={(e) => set({ worldId: e.target.value })}><option value="castle">Cinderella's Palace</option><option value="campus" disabled>Campus (coming soon)</option></select></label>
-          <label className="text-sm">Acts<select className={`${field} mt-1`} value={s.acts.join(",")} onChange={(e) => set({ acts: e.target.value.split(",") })}><option value="medical_emergency">Emergency only</option><option value="medical_emergency,evacuation" disabled>Emergency → Evacuation (coming soon)</option></select></label>
+          <label className="text-sm">World<select className={`${field} mt-1`} value={s.worldId} onChange={(e) => set({ worldId: e.target.value })}><option value="castle">Cinderella's Palace</option><option value="campus">Riverside Student Union (campus)</option></select></label>
+          <label className="text-sm">Acts<select className={`${field} mt-1`} value={s.acts.join(",")} onChange={(e) => set({ acts: e.target.value.split(",") })}>
+            <option value="medical_emergency">Emergency only</option>
+            <option value="medical_emergency,evacuation">Emergency → Evacuation (the alarm sounds if the team succeeds)</option>
+            {import.meta.env.DEV && <option value="evacuation">Evacuation only (development shortcut)</option>}
+          </select></label>
+          <p className="text-xs text-slate-400 md:col-span-2">The same scenarios run in either world; only the setting and wording change.</p>
         </div>
       </section>
 
@@ -102,6 +107,13 @@ function Setup() {
           <label className="text-sm">How information is spread<select className={`${field} mt-1`} value={s.difficulty.infoDistribution} onChange={(e) => diff({ infoDistribution: e.target.value })}><option value="concentrated">Everyone knows where help is</option><option value="split">Split between roles</option><option value="siloed">Siloed (tell people in person)</option></select></label>
           <label className="flex items-end gap-2 pb-2 text-sm"><input type="checkbox" checked={s.difficulty.resourceScarcity} onChange={(e) => diff({ resourceScarcity: e.target.checked })} /> No helpers available (rely on each other)</label>
           <label className="text-sm">Emergency lasts up to: {Math.floor(s.rules.act1DurationSec / 60)}:{String(s.rules.act1DurationSec % 60).padStart(2, "0")}<input type="range" min={150} max={360} step={30} value={s.rules.act1DurationSec} onChange={(e) => rules({ act1DurationSec: Number(e.target.value) })} className="mt-2 w-full" /></label>
+          {s.acts.includes("evacuation") && (
+            <>
+              <label className="text-sm">Evacuation: main exit blocked after {s.act2.exitBlockedAtSec}s<input type="range" min={20} max={90} step={5} value={s.act2.exitBlockedAtSec} onChange={(e) => set({ act2: { ...s.act2, exitBlockedAtSec: Number(e.target.value) } })} className="mt-2 w-full" /></label>
+              <label className="text-sm">Evacuation: people who need help getting out<select className={`${field} mt-1`} value={s.act2.needsAssistanceCount} onChange={(e) => set({ act2: { ...s.act2, needsAssistanceCount: Number(e.target.value) as 1 | 2 } })}><option value={1}>1</option><option value={2}>2</option></select></label>
+              <label className="text-sm">Evacuation lasts up to: {Math.floor(s.rules.act2DurationSec / 60)}:{String(s.rules.act2DurationSec % 60).padStart(2, "0")}<input type="range" min={90} max={240} step={30} value={s.rules.act2DurationSec} onChange={(e) => rules({ act2DurationSec: Number(e.target.value) })} className="mt-2 w-full" /></label>
+            </>
+          )}
           <label className="flex items-end gap-2 pb-2 text-sm md:col-span-2"><input type="checkbox" checked={s.rules.allowCrossRoomChat} onChange={(e) => rules({ allowCrossRoomChat: e.target.checked })} /> Players can talk across rooms (otherwise they must meet, or ring the bell)</label>
         </div>
       </section>

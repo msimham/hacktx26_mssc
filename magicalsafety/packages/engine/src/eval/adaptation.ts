@@ -6,14 +6,14 @@ import { hashSeed } from "../util/rng";
 
 /** The only levers a weakness may pull. Enforced in code: a model chooses inside this table, never outside it. */
 export const LEVERS_BY_WEAKNESS: Record<WeaknessCode, Lever[]> = {
-  over_centralization: ["simultaneousIncidents", "extraHelpers", "infoDistribution", "rotateRoles"],
+  over_centralization: ["simultaneousIncidents", "extraHelpers", "infoDistribution", "rotateRoles", "needsAssistanceCount"],
   no_delegation: ["simultaneousIncidents", "extraHelpers", "infoDistribution", "rotateRoles"],
   helper_ignored: ["simultaneousIncidents", "extraHelpers", "infoDistribution", "rotateRoles"],
   late_help_seeking: ["ambiguity", "timePressure", "discovererRole"],
   slow_recognition: ["ambiguity", "timePressure", "discovererRole"],
-  info_not_shared: ["infoDistribution", "allowCrossRoomChat"],
+  info_not_shared: ["infoDistribution", "allowCrossRoomChat", "exitBlockedAtSec"],
   poor_prioritization: ["simultaneousIncidents", "distractorFirst"],
-  uncoordinated_resources: ["extraHelpers", "infoDistribution"],
+  uncoordinated_resources: ["extraHelpers", "infoDistribution", "needsAssistanceCount", "exitBlockedAtSec"],
 };
 const CHALLENGE_LEVERS: Lever[] = ["timePressure", "ambiguity"];
 
@@ -24,11 +24,12 @@ export const LEVER_LABEL: Record<Lever, string> = {
   timePressure: "Time pressure", ambiguity: "How obvious the emergency is", simultaneousIncidents: "Simultaneous incidents",
   extraHelpers: "Extra helpers", infoDistribution: "How information is spread", allowCrossRoomChat: "Talking across rooms",
   rotateRoles: "Roles", discovererRole: "Who sees it first", distractorFirst: "Distraction arrives before the emergency",
+  exitBlockedAtSec: "Seconds until the main exit is blocked", needsAssistanceCount: "People who need help getting out",
 };
 
 export const noChanges = (): PlanChanges => ({
   timePressure: null, ambiguity: null, simultaneousIncidents: null, extraHelpers: null, infoDistribution: null,
-  allowCrossRoomChat: null, rotateRoles: null, discovererRole: null, distractorFirst: null,
+  allowCrossRoomChat: null, rotateRoles: null, discovererRole: null, distractorFirst: null, exitBlockedAtSec: null, needsAssistanceCount: null,
 });
 
 export function currentValue(cfg: SessionConfig, lever: Lever): unknown {
@@ -37,14 +38,19 @@ export function currentValue(cfg: SessionConfig, lever: Lever): unknown {
     case "rotateRoles": return cfg.adaptation?.rotateRoles ?? false;
     case "discovererRole": return cfg.adaptation?.discovererRole ?? "discoverer";
     case "distractorFirst": return cfg.adaptation?.distractorFirst ?? false;
+    case "exitBlockedAtSec": return cfg.act2.exitBlockedAtSec;
+    case "needsAssistanceCount": return cfg.act2.needsAssistanceCount;
     default: return cfg.difficulty[lever];
   }
 }
 
-/** The single next, harder value for a lever, or undefined if it is already at its limit. */
-function nextStep(cfg: SessionConfig, lever: Lever): PlanChanges[Lever] | undefined {
+/** The single next, harder value for a lever, or undefined if it is already at its limit or not usable. */
+function nextStep(cfg: SessionConfig, lever: Lever, act2Reachable = cfg.acts.includes("evacuation")): PlanChanges[Lever] | undefined {
   const d = cfg.difficulty;
   switch (lever) {
+    // Evacuation levers only apply if the evacuation is part of this session and was earned (Act 1 succeeded).
+    case "exitBlockedAtSec": return act2Reachable && cfg.act2.exitBlockedAtSec > 20 ? Math.max(20, cfg.act2.exitBlockedAtSec - 15) : undefined;
+    case "needsAssistanceCount": return act2Reachable && cfg.act2.needsAssistanceCount === 1 ? 2 : undefined;
     case "timePressure": return PRESSURE[PRESSURE.indexOf(d.timePressure) + 1];
     case "ambiguity": return d.ambiguity === "clear" ? "subtle" : undefined;
     case "simultaneousIncidents": return d.simultaneousIncidents === 1 ? 2 : undefined;
@@ -62,6 +68,8 @@ function nextStep(cfg: SessionConfig, lever: Lever): PlanChanges[Lever] | undefi
 }
 
 export interface PlanInput {
+  /** Whether the evacuation was reached (Act 1 succeeded). If not, only Act 1 levers may be pulled. */
+  act2Reached?: boolean;
   sessionId: string;
   config: SessionConfig;
   weaknesses: { code: WeaknessCode; evidenceEventIds: string[]; detail: string }[];
@@ -71,6 +79,8 @@ export interface PlanInput {
 /** Deterministic fallback plan: pull each weakness's levers one step, then escalate if nothing changed. */
 export function buildRulePlan(input: PlanInput): AdaptationPlan {
   const { config, weaknesses } = input;
+  const act2 = input.act2Reached ?? false;
+  const step = (l: Lever) => nextStep(config, l, act2);
   const changes = noChanges();
   const set = <L extends Lever>(l: L, v: PlanChanges[L] | undefined) => { if (v !== undefined && v !== null && changes[l] === null) changes[l] = v; };
 
@@ -79,16 +89,16 @@ export function buildRulePlan(input: PlanInput): AdaptationPlan {
     const before = JSON.stringify(changes);
     for (const lever of LEVERS_BY_WEAKNESS[w.code]) {
       // Pulling several levers per weakness would stack too much at once: take the first available.
-      if (changes[lever] === null && nextStep(config, lever) !== undefined && JSON.stringify(changes) === before) set(lever, nextStep(config, lever) as never);
+      if (changes[lever] === null && step(lever) !== undefined && JSON.stringify(changes) === before) set(lever, step(lever) as never);
     }
     // poor_prioritization needs the distractor to exist before it can come first.
-    if (w.code === "poor_prioritization") { set("simultaneousIncidents", nextStep(config, "simultaneousIncidents") as never); set("distractorFirst", true); }
+    if (w.code === "poor_prioritization") { set("simultaneousIncidents", step("simultaneousIncidents") as never); set("distractorFirst", true); }
     if (JSON.stringify(changes) !== before) used.push(w.code);
   }
   let rationale: string;
   if (weaknesses.length === 0 || used.length === 0) {
     // Challenge mode: the team did well (or its levers are maxed), so raise the difficulty one step.
-    for (const lever of CHALLENGE_LEVERS) set(lever, nextStep(config, lever) as never);
+    for (const lever of CHALLENGE_LEVERS) set(lever, step(lever) as never);
     if (JSON.stringify(changes) === JSON.stringify(noChanges())) set("rotateRoles", true);
     rationale = weaknesses.length === 0
       ? "No clear weaknesses showed up, so the next run is a step harder to keep the team learning."
@@ -124,7 +134,7 @@ export interface Sanitized {
 }
 
 /** Clamps a (possibly model-written) proposal to the permitted levers and one step of change. */
-export function enforceLevers(p: AdaptationProposal, config: SessionConfig, allowedBasedOn: readonly WeaknessCode[], knownEventIds: ReadonlySet<string>): Sanitized {
+export function enforceLevers(p: AdaptationProposal, config: SessionConfig, allowedBasedOn: readonly WeaknessCode[], knownEventIds: ReadonlySet<string>, act2Reached = false): Sanitized {
   const dropped: string[] = [];
   const basedOn = p.basedOn.filter((w) => allowedBasedOn.includes(w));
   if (basedOn.length !== p.basedOn.length) dropped.push("basedOn: weaknesses not found in the assessment");
@@ -136,7 +146,7 @@ export function enforceLevers(p: AdaptationProposal, config: SessionConfig, allo
     if (!allowed.has(lever)) { dropped.push(`${lever}: not a permitted lever for ${basedOn.join(", ") || "challenge mode"}`); continue; }
     if (lever === "distractorFirst" && !basedOn.includes("poor_prioritization")) { dropped.push("distractorFirst: only for poor prioritization"); continue; }
     if (lever === "discovererRole" && !ROLE_ORDER.slice(0, config.team.size).includes(v as RoleId)) { dropped.push("discovererRole: role not in this team"); continue; }
-    const step = nextStep(config, lever);
+    const step = nextStep(config, lever, act2Reached);
     // Anything other than the single next, harder step is out of bounds.
     if (lever === "discovererRole" ? v === "discoverer" : step === undefined || v !== step) { dropped.push(`${lever}: ${String(v)} is more than one step from the current setting`); continue; }
     (changes as Record<string, unknown>)[lever] = v;
@@ -167,6 +177,8 @@ export function applyAdaptation(config: SessionConfig, plan: AdaptationPlan, ids
     ...(c.infoDistribution !== null && { infoDistribution: c.infoDistribution }),
   };
   if (c.allowCrossRoomChat !== null) next.rules.allowCrossRoomChat = c.allowCrossRoomChat;
+  if (c.exitBlockedAtSec !== null) next.act2.exitBlockedAtSec = c.exitBlockedAtSec;
+  if (c.needsAssistanceCount !== null) next.act2.needsAssistanceCount = c.needsAssistanceCount;
   if (c.rotateRoles) next.team.roleAssignment = "random";
   next.adaptation = {
     fromSessionId: config.id,
@@ -200,6 +212,8 @@ export function configDiff(a: SessionConfig, b: SessionConfig): DiffRow[] {
   const add = (path: string, label: string, x: unknown, y: unknown, lever: Lever | null) => { if (show(x) !== show(y)) rows.push({ path, label, before: show(x), after: show(y), lever }); };
   for (const k of ["timePressure", "ambiguity", "simultaneousIncidents", "extraHelpers", "infoDistribution"] as const)
     add(`difficulty.${k}`, LEVER_LABEL[k], a.difficulty[k], b.difficulty[k], k);
+  add("act2.exitBlockedAtSec", LEVER_LABEL.exitBlockedAtSec, a.act2.exitBlockedAtSec, b.act2.exitBlockedAtSec, "exitBlockedAtSec");
+  add("act2.needsAssistanceCount", LEVER_LABEL.needsAssistanceCount, a.act2.needsAssistanceCount, b.act2.needsAssistanceCount, "needsAssistanceCount");
   add("rules.allowCrossRoomChat", LEVER_LABEL.allowCrossRoomChat, a.rules.allowCrossRoomChat, b.rules.allowCrossRoomChat, "allowCrossRoomChat");
   add("adaptation.rotateRoles", LEVER_LABEL.rotateRoles, a.adaptation?.rotateRoles ? "same as chosen" : a.team.roleAssignment, b.adaptation?.rotateRoles ? "reshuffled" : b.team.roleAssignment, "rotateRoles");
   add("adaptation.discovererRole", LEVER_LABEL.discovererRole, a.adaptation?.discovererRole ?? "discoverer", b.adaptation?.discovererRole ?? "discoverer", "discovererRole");

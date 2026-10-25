@@ -18,7 +18,7 @@ npm test            # all workspaces
 npm run typecheck   # strict TypeScript, all workspaces
 ```
 
-Expected: engine 69 tests, server 93 tests, all green.
+Expected: engine 109 tests, server 103 tests, all green.
 
 What the engine tests prove:
 | Area | Test |
@@ -33,6 +33,17 @@ What the engine tests prove:
 | Determinism | Same seed + inputs → identical event log; replaying the stored inputs reproduces the state |
 | Safety | Dosing / CPR steps / diagnoses are blocked; approved coordination wording passes |
 | Privacy | `viewFor()` never includes another player's private knowledge; strangers' roles stay hidden until they introduce themselves |
+
+What the Phase 5 tests prove:
+| Area | Test |
+|---|---|
+| Reuse | Every scenario slot is bound in both worlds; `compile(campus, medical_emergency)` and `compile(campus, [medical_emergency, evacuation])` both succeed; the same scripted team wins the emergency in the castle and the campus; wording comes from the world |
+| Sequencing | A won emergency leads, after a 5 s beat (talk only), to the alarm; positions and roles carry over; knowledge and items reset; a failed emergency locks act 2 and ends the session; events keep their own act; the whole run replays exactly from its inputs |
+| Evacuation rules | Smoke source closed; second exit locked until someone who knows unlocks it (from next door); the main exit is blocked on time and only the Discoverer sees it; walking into it ends the run; helping a guest takes two people; the guard can take a guest out; reporting a guest is valid but only after responders arrive; a headcount counts only when everyone is out |
+| Full runs | A coordinated team of three completes emergency + evacuation in both worlds; one person alone cannot finish in time |
+| Evaluation | Per-act facts, cross-act deltas only when both acts were played, claims from both acts cite real events, a blocked-exit walk-in and running out of time are diagnosed, evacuation measures can anchor a rubric |
+| Adaptation | The blockage moves one step earlier only if the evacuation was earned; a model can't jump two steps; levers appear in the before/after diff; the replay restarts from act 1 |
+| Over the wire | Stored two-act sessions are replayed for results and analysis (castle and campus); sockets show the campus, the beat, the alarm and a fresh timer for the evacuation |
 
 What the Phase 4 tests prove:
 | Area | Test |
@@ -105,6 +116,28 @@ npm run dev      # then open http://localhost:5173
 4. **Create session** → you land in the lobby with a join code.
 
 **See objectives change the results:** play one quick game (or do nothing for ~2.5 minutes), open Results, and note the **goals** panel and the ★ on the emphasized facts. Edit the organization in the Builder (move weight to a different measure), play again, and compare. The first session's results keep the old snapshot.
+
+### Campus and the evacuation ✅
+
+In **Session Setup** choose **World: Riverside Student Union (campus)** and **Acts: Emergency → Evacuation**. Two new sliders appear: when the main exit is blocked, and how many people need help getting out.
+
+Quick path with 🤖 teammates (about 4 minutes):
+1. Play the emergency as in section 5 (type `A student collapsed! Peer Mentor, call campus security. Resident Assistant, move people back.`, then **Stay with the student**).
+2. When help arrives you see the beat banner ("Responders take over…"). Only chat works for 5 seconds.
+3. The **Act 2: Evacuation** title card and 🚨 ALARM appear; the header turns red. Your position and role are unchanged. The map now shows 🔥 (smoke: stay out), 🏁 (assembly point) and 🔒 (locked second exit).
+4. Tell the bots what to do: `Smoke! Peer Mentor, unlock the east door and check rooms. Resident Assistant, check rooms.` Use **Check this room and call out** yourself in each room you pass. The goals list counts rooms (n/7).
+5. After about 50 s the Main Stairwell fills with smoke. **Only you (the Student) are told.** Warn people (`Don't use the main stairs!`). A teammate who walks into it ends the evacuation immediately.
+6. Upstairs, a student can't manage stairs. Two people must be in the Lounge to **Help the student**; they then follow you out via the East Stairwell. Or wait for responders (30 s) and use **Tell responders who is still inside**.
+7. Get everyone to the Front Lawn and **Take the headcount** (it only counts when everyone is there).
+
+Without a team, try these on purpose:
+- Do nothing in Act 1 → results say **🔒 Act 2 locked**.
+- Check rooms alone in Act 2 → "Time ran out before every room was checked".
+- Walk into the smoke-filled stairwell → "Someone walked into the smoke-filled exit", and the diagnosis says the warning didn't reach them.
+
+On **Results**, the **Act 1 / Act 2 / Change between acts** tabs separate each act's facts and timeline; the change tab compares delegation, centralization and information sharing as *observed change in the record*, never as a claim of learning. **Plan the next run** shows the evacuation levers (blockage earlier, more people needing help) when the evacuation was reached.
+
+Development shortcut: choose **Evacuation only** in Setup (shown in `npm run dev` only) to test Act 2 without winning Act 1.
 
 ## 5. Play it in the browser ✅
 

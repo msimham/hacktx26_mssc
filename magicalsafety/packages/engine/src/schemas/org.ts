@@ -5,6 +5,8 @@ import { Competency } from "./assessment";
 export const MetricKey = z.enum([
   "succeeded", "time_to_notice_ms", "time_to_help_request_ms", "time_to_resource_ms", "max_action_share",
   "delegations_issued", "helper_utilization", "info_shared_ratio", "priority_order_ok", "rejected_actions", "redundant_efforts",
+  // Evacuation (act 2)
+  "time_to_headcount_ms", "rooms_swept_ratio", "blocked_exit_used",
 ]);
 export type MetricKey = z.infer<typeof MetricKey>;
 
@@ -32,6 +34,9 @@ export const INDICATOR_INFO: Record<MetricKey, IndicatorInfo> = {
   priority_order_ok: { label: "Help was called before distractions", kind: "bool", directions: ["is_true", "is_false"], defaultDirection: "is_true", defaultTarget: 0, min: 0, max: 0 },
   rejected_actions: { label: "Actions the rules rejected (confusion)", kind: "count", directions: ["at_most"], defaultDirection: "at_most", defaultTarget: 2, min: 0, max: 50 },
   redundant_efforts: { label: "Work done twice", kind: "count", directions: ["at_most"], defaultDirection: "at_most", defaultTarget: 0, min: 0, max: 20 },
+  time_to_headcount_ms: { label: "Evacuation: time to a complete headcount", kind: "time", directions: ["at_most"], defaultDirection: "at_most", defaultTarget: 120_000, min: 10_000, max: 300_000 },
+  rooms_swept_ratio: { label: "Evacuation: share of rooms checked", kind: "ratio", directions: ["at_least"], defaultDirection: "at_least", defaultTarget: 1, min: 0, max: 1 },
+  blocked_exit_used: { label: "Evacuation: people who walked into the smoke-filled exit", kind: "count", directions: ["at_most"], defaultDirection: "at_most", defaultTarget: 0, min: 0, max: 5 },
 };
 
 export const LearningObjective = z.strictObject({

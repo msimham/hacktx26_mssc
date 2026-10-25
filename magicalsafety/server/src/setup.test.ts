@@ -32,8 +32,10 @@ describe("session setup validates every setting", () => {
 
   it.each([
     ["unknown organization", { orgId: "org_nowhere" }, 400],
-    ["campus world (not built yet)", { worldId: "campus" }, 400],
-    ["evacuation act (not built yet)", { acts: ["medical_emergency", "evacuation"] }, 400],
+    ["acts in the wrong order", { acts: ["evacuation", "medical_emergency"] }, 400],
+    ["a repeated act", { acts: ["medical_emergency", "medical_emergency"] }, 400],
+    ["an exit blocked too early", { act2: { exitBlockedAtSec: 5 } }, 400],
+    ["more than two people needing help", { act2: { needsAssistanceCount: 3 } }, 400],
     ["simulated team without bots", { socialEnvironment: "simulated", team: { size: 3, roleAssignment: "random", fillWithBots: false } }, 400],
     ["team size out of range", { team: { size: 9, roleAssignment: "random", fillWithBots: true } }, 400],
     ["duration out of range", { rules: { act1DurationSec: 10 } }, 400],
@@ -43,6 +45,23 @@ describe("session setup validates every setting", () => {
   ])("rejects %s", async (_n, body, status) => {
     const b = await boot();
     expect((await post(b, body)).status).toBe(status);
+  });
+
+  it("accepts the campus world and the emergency → evacuation sequence, and stores the evacuation settings", async () => {
+    const b = await boot();
+    const res = await post(b, { worldId: "campus", acts: ["medical_emergency", "evacuation"], act2: { exitBlockedAtSec: 35, needsAssistanceCount: 2 } });
+    expect(res.status).toBe(201);
+    const { id } = (await res.json()) as { id: string };
+    expect(metaOf(id).config).toMatchObject({ worldId: "campus", acts: ["medical_emergency", "evacuation"], act2: { exitBlockedAtSec: 35, needsAssistanceCount: 2 } });
+  });
+
+  it("starting straight at the evacuation is a development shortcut, refused in production", async () => {
+    const b = await boot();
+    expect((await post(b, { acts: ["evacuation"] })).status).toBe(201);
+    const prev = process.env.NODE_ENV;
+    process.env.NODE_ENV = "production";
+    try { expect((await post(b, { acts: ["evacuation"] })).status).toBe(400); }
+    finally { process.env.NODE_ENV = prev; }
   });
 
   it("needs the organizer passcode", async () => {

@@ -6,7 +6,7 @@ Status words are used strictly:
 - **Mock / fallback**: the labeled fallback is what runs.
 - **Not built**: planned, not yet implemented.
 
-Last updated: 2026-10-24 (end of Phase 4). The implementer had no API keys, so nothing below is "Live".
+Last updated: 2026-10-24 (end of Phase 5). Phase 5 added no integrations. The implementer had no API keys, so nothing below is "Live".
 
 | Integration | Status | What uses it | Fallback (always labeled) | To go live |
 |---|---|---|---|---|

@@ -48,6 +48,12 @@ export class Driver {
     return evs;
   }
 
+  /** Advance until the condition holds (or the limit passes). */
+  waitFor(cond: () => boolean, maxMs = 120_000): void {
+    let spent = 0;
+    while (!cond() && spent < maxMs && this.state.phase === "running") { this.wait(500); spent += 500; }
+  }
+
   waitUntilT(t: number): void {
     if (t > this.state.t) this.wait(t - this.state.t);
   }

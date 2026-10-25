@@ -17,11 +17,13 @@ export const QUICK_START: Omit<SessionSetup, "orgId"> = {
   worldId: "castle", acts: ["medical_emergency"], socialEnvironment: "classmates",
   team: { size: 3, roleAssignment: "random", fillWithBots: true }, inputMethods: ["mouse", "keyboard", "text"],
   difficulty: { timePressure: "moderate", ambiguity: "clear", simultaneousIncidents: 1, extraHelpers: 0, infoDistribution: "split", resourceScarcity: false },
+  act2: { exitBlockedAtSec: 50, needsAssistanceCount: 1 },
   rules: { act1DurationSec: 240, act2DurationSec: 150, allowCrossRoomChat: true },
 };
 
 export interface Metric {
   key: string;
+  act: number;
   description: string;
   value: unknown;
   unit?: string;
@@ -31,6 +33,7 @@ export interface ResultsPayload {
   sessionId: string;
   status: "running" | "ended";
   outcome: { act: number; outcome: string; success: boolean; t: number } | null;
+  outcomes: { act: number; outcome: string; success: boolean; t: number }[];
   players: { id: string; name: string; kind: string; roleId: string | null }[];
   metrics: Metric[];
   verifiedLog: { entries: number; head: string };
@@ -66,6 +69,8 @@ export interface Analysis {
   isHost: boolean;
   isOrganizer: boolean;
   replay: { id: string; code: string } | null;
+  plannedActs: number;
+  worldId: string;
   thankedAlready: boolean;
 }
 
@@ -138,6 +143,7 @@ export const orgApi = {
 
 export interface SessionSetup {
   orgId: string;
+  act2: { exitBlockedAtSec: number; needsAssistanceCount: 1 | 2 };
   worldId: string;
   acts: string[];
   socialEnvironment: string;

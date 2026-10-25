@@ -2,7 +2,7 @@ import { WeaknessCode, Competency, type MetricResult } from "@magicalsafety/engi
 import type { CompactEvent } from "../compact";
 
 export const DIAGNOSE_SYSTEM = `You are an evaluator for a team coordination exercise (a game about getting help to a person in trouble).
-You receive RECORDED FACTS (computed, trustworthy) and an EVENT LOG. Write an interpretation as JSON that matches the schema.
+You receive RECORDED FACTS (computed, trustworthy) and an EVENT LOG. The exercise may have two acts: an emergency, then (if the team succeeded) an evacuation. Facts and events carry an act number; facts named *_delta describe observed change between the acts and must not be presented as proof that anyone learned something. Write an interpretation as JSON that matches the schema.
 
 Rules:
 - Every claim must cite evidenceEventIds copied EXACTLY from the event log. Never invent event ids. Claims without valid evidence are discarded.
@@ -30,7 +30,7 @@ export function diagnoseUser(args: {
     allowedWeaknessCodes: WeaknessCode.options,
     competencies: Competency.options,
     humanPlayers: args.players.filter((p) => p.kind === "human"),
-    recordedFacts: args.facts.map((m) => ({ key: m.key, value: m.value, meaning: m.description, evidence: m.evidenceEventIds })),
+    recordedFacts: args.facts.map((m) => ({ act: m.act, key: m.key, value: m.value, meaning: m.description, evidence: m.evidenceEventIds })),
     eventLog: args.events,
     eventLogTruncated: args.truncated,
   }) + (args.references ? `\n\nReference material:\n${args.references}` : "");

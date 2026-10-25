@@ -28,10 +28,12 @@ export function cloneState(s: RuntimeState): RuntimeState {
 
 export function emit(
   s: RuntimeState,
-  e: { type: GameEvent["type"]; actor?: Actor | null; actorKind?: GameEvent["actorKind"]; roomId?: string | null; payload?: Record<string, unknown>; t?: number },
+  e: { act?: 1 | 2; type: GameEvent["type"]; actor?: Actor | null; actorKind?: GameEvent["actorKind"]; roomId?: string | null; payload?: Record<string, unknown>; t?: number },
 ): void {
   const pe: PendingEvent = {
     t: Math.round(e.t ?? s.t),
+    // Stamped now, so an event emitted just before an act transition keeps its own act.
+    act: e.act ?? actNumber(s),
     type: e.type,
     actorId: e.actor?.id ?? "system",
     actorKind: e.actor ? e.actor.kind : (e.actorKind ?? "system"),
@@ -50,7 +52,7 @@ export function flushEvents(s: RuntimeState): void {
       id: `ev_${String(n).padStart(3, "0")}`,
       t: p.t,
       sessionId: s.sessionId,
-      act: actNumber(s),
+      act: p.act,
       actorId: p.actorId,
       actorKind: p.actorKind,
       type: p.type,
@@ -73,12 +75,22 @@ export function inRoom(s: RuntimeState, roomId: string): Actor[] {
   return actors(s).filter((a) => a.roomId === roomId);
 }
 
-export function roomSlot(act: RuntimeAct, roomId: string): Slot | undefined {
-  return act.world.rooms.find((r) => r.id === roomId)?.slot;
+export function roomSlots(act: RuntimeAct, roomId: string): Slot[] {
+  return act.world.rooms.find((r) => r.id === roomId)?.slots ?? [];
 }
 
 export function slotRoom(act: RuntimeAct, slot: Slot): string {
-  return act.slotRooms[slot];
+  const id = act.slotRooms[slot];
+  if (!id) throw new Error(`Slot "${slot}" is not bound in this world`);
+  return id;
+}
+
+/** The room a step happens in. Null for inspect (it happens where the target is). */
+export function stepRoom(act: RuntimeAct, step: Step): string | null {
+  if (step.kind === "move") return step.roomId;
+  if (step.kind === "inspect") return null;
+  if (step.kind === "perform" && step.at === "anywhere") return step.roomId ?? null;
+  return slotRoom(act, step.at as Slot);
 }
 
 export function roomName(act: RuntimeAct, roomId: string): string {
@@ -117,10 +129,6 @@ export function grantFact(s: RuntimeState, actor: Actor, factId: string): boolea
   if (actor.facts.includes(factId)) return false;
   actor.facts.push(factId);
   return true;
-}
-
-export function stepRoom(act: RuntimeAct, step: Step): string | null {
-  return step.kind === "move" ? step.roomId : step.kind === "inspect" ? null : slotRoom(act, step.at);
 }
 
 export function findActorByName(s: RuntimeState, text: string): Actor | undefined {

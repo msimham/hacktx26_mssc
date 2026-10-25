@@ -2,7 +2,10 @@ import type { GameEvent } from "./schemas/events";
 import type { SessionConfig } from "./schemas/session";
 import type { Difficulty } from "./schemas/difficulty";
 
-export type Slot = "incident_site" | "authority_post" | "outside_access" | "resource_store" | "side_hall";
+export type Slot =
+  | "incident_site" | "authority_post" | "outside_access" | "resource_store" | "side_hall"
+  // Act 2 (evacuation) slots
+  | "hazard_origin" | "exit_primary" | "exit_secondary" | "assembly_point" | "upper_floor";
 export type RoleId = "discoverer" | "authority" | "runner" | "liaison";
 export const ROLE_ORDER: readonly RoleId[] = ["discoverer", "authority", "runner", "liaison"];
 export type ActorKind = "human" | "bot" | "npc";
@@ -22,7 +25,8 @@ export interface Hotspot {
 export interface Room {
   id: string;
   name: string;
-  slot?: Slot;
+  /** Roles this room plays in scenarios. One room can serve several (e.g. a staircase is a side hall and an exit). */
+  slots: Slot[];
   adjacent: string[];
   art: { prompt: string; fallbackGradient: [string, string] };
   hotspots: Hotspot[];
@@ -32,6 +36,8 @@ export interface TargetDef {
   id: string;
   label: string;
   roomId: string;
+  /** Only present while this scenario runs (e.g. evacuation guests). */
+  onlyIn?: "medical_emergency" | "evacuation";
   /** Authored, non-medical flavor text shown on inspect. */
   text: string;
 }
@@ -44,6 +50,8 @@ export interface NpcSkin {
 
 export interface World {
   id: "castle" | "campus";
+  /** World wording for each fact, plus extra words that count as saying it. */
+  facts: Record<string, { text: string; keywords?: string[] }>;
   name: string;
   theme: { bg: string; accent: string; fontClass: string };
   rooms: Room[];
@@ -55,7 +63,9 @@ export interface World {
   vocabulary: string[];
 }
 
-export type FactId = "f_collapse" | "f_help_location" | "f_cabinet_key" | "f_context" | "f_crowd";
+export type FactId =
+  | "f_collapse" | "f_help_location" | "f_cabinet_key" | "f_context" | "f_crowd"
+  | "f_smoke_origin" | "f_exit_blocked" | "f_roster" | "f_secondary_exit" | "f_mobility";
 
 export interface FactDef {
   id: FactId;
@@ -63,10 +73,13 @@ export interface FactDef {
   /** Lowercase keywords: speaking one of these while knowing the fact tells the listeners. */
   keywords: string[];
   heldBy?: RoleId; // role that starts knowing it (otherwise granted by events)
+  /** Counted in the "private information shared" metric. */
+  track?: boolean;
 }
 
 export type Step =
-  | { kind: "perform"; opId: string; at: Slot }
+  /** `roomId` names the target room for ops that work in any room (autonomous actors need it; humans use where they stand). */
+  | { kind: "perform"; opId: string; at: Slot | "anywhere"; roomId?: string }
   | { kind: "fetch"; itemId: string; at: Slot }
   | { kind: "use"; itemId: string; targetId: string; at: Slot }
   | { kind: "move"; roomId: string }
@@ -76,6 +89,10 @@ export interface OpDef {
   id: string;
   durationMs: number;
   at: Slot[];
+  /** Works in whatever room the actor is in. */
+  anywhere?: boolean;
+  /** A human may do it from a room next to the slot's room. */
+  reachAdjacent?: boolean;
   requiresFacts: FactId[];
   critical: boolean;
   distractor?: boolean;
@@ -86,6 +103,8 @@ export interface OpDef {
 
 export interface TaskDef {
   id: string;
+  /** Label when the world has none (generated tasks such as "sweep <room>"). */
+  label?: string;
   steps: Step[];
   /** Effect key emitted when the task's goal is achieved by the assignee. */
   fulfilledBy: string;
@@ -101,6 +120,8 @@ export interface ScenarioDef {
   facts: FactDef[];
   ops: Record<string, OpDef>;
   tasks: Record<string, TaskDef>;
+  /** Extra tasks generated from the world's rooms (e.g. one sweep task per room). */
+  buildTasks?: (world: World, slotRooms: Partial<Record<Slot, string>>) => Record<string, TaskDef>;
   helpChannels: string[];
 }
 
@@ -113,6 +134,8 @@ export interface ActTiming {
   guideBonusMs: number;
   durationMs: number;
   secondIncidentT: number | null;
+  /** Evacuation only: times relative to the start of the act. */
+  evac?: { exitBlockedAtMs: number; respondersAtMs: number; needsAssistanceCount: 1 | 2 };
 }
 
 /** A scenario bound to a world and a difficulty: everything the reducer needs for one act. */
@@ -120,7 +143,11 @@ export interface RuntimeAct {
   act: 1 | 2;
   scenario: ScenarioDef;
   world: World;
-  slotRooms: Record<Slot, string>;
+  slotRooms: Partial<Record<Slot, string>>;
+  /** Scenario facts with the world's wording applied. */
+  facts: FactDef[];
+  /** Scenario tasks plus any generated from the world. */
+  tasks: Record<string, TaskDef>;
   timing: ActTiming;
   difficulty: Difficulty;
 }
@@ -189,7 +216,32 @@ export interface MedicalState {
   crowdResolved: boolean;
   bellRung: boolean;
 }
-export type ActState = MedicalState;
+export interface Guest {
+  id: string;
+  roomId: string;
+  escortId: string | null;
+  outcome: "none" | "reached" | "reported";
+}
+
+export interface EvacState {
+  kind: "evac";
+  /** Session time when this act began. Evac timings are relative to it. */
+  actStartT: number;
+  exitBlocked: boolean;
+  exitBlockedT: number | null;
+  secondaryOpen: boolean;
+  /** roomId -> actor who swept it */
+  swept: Record<string, string>;
+  respondersArrivedT: number | null;
+  guests: Guest[];
+  headcountCompleteT: number | null;
+  headcounts: number;
+  blockedExitUsedBy: string | null;
+  blockedExitUsedT: number | null;
+  reportedT: number | null;
+}
+
+export type ActState = MedicalState | EvacState;
 
 export interface ActOutcome {
   act: 1 | 2;
@@ -200,6 +252,7 @@ export interface ActOutcome {
 
 export interface PendingEvent {
   t: number;
+  act: 1 | 2;
   type: GameEvent["type"];
   actorId: string;
   actorKind: GameEvent["actorKind"];
@@ -223,5 +276,9 @@ export interface RuntimeState {
   events: GameEvent[];
   pending: PendingEvent[];
   actState: ActState;
+  /** Session time when the current act began. */
+  actStartT: number;
   actOutcomes: ActOutcome[];
+  /** Set between acts: the short beat while responders take over before the next act begins. */
+  transitionUntilT: number | null;
 }

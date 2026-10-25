@@ -347,6 +347,8 @@ export class SessionHub {
       fillWithBots: meta.config.team.fillWithBots,
       socialEnvironment: meta.config.socialEnvironment,
       worldId: meta.config.worldId,
+      worldName: WORLDS[meta.config.worldId]!.name,
+      acts: meta.config.acts,
       inputMethods: meta.config.inputMethods,
     };
   }

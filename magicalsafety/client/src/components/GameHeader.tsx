@@ -18,10 +18,11 @@ export function GameHeader({ view, localT }: { view: PlayerView; localT: () => n
   const hasBots = view.actors.some((a) => a.kind === "bot");
 
   return (
-    <header className="flex flex-wrap items-center gap-3 border-b border-white/10 px-4 py-2">
+    <header className={`flex flex-wrap items-center gap-3 border-b px-4 py-2 ${view.alarm ? "border-rose-500/70 bg-rose-950/60" : "border-white/10"}`}>
       <h1 className="font-display text-xl text-gold">{view.worldName}</h1>
       <span className="text-sm text-slate-300">Act {view.act}: {view.actTitle}</span>
-      {cond && <span className={`rounded-full px-3 py-0.5 text-xs font-bold ${condClass}`} role="status">Duchess: {cond}</span>}
+      {view.alarm && <span className="pulse-critical rounded-full bg-rose-600 px-3 py-0.5 text-xs font-bold" role="status">🚨 ALARM</span>}
+      {cond && <span className={`rounded-full px-3 py-0.5 text-xs font-bold ${condClass}`} role="status">Condition: {cond}</span>}
       {hasBots && <span className="rounded-full bg-amber-100 px-3 py-0.5 text-xs font-semibold text-amber-900" title="Empty roles are played by deterministic simulated teammates">🤖 Simulated teammates</span>}
       <span className="ml-auto font-mono text-lg tabular-nums" aria-label="Time remaining">⏱ {fmt(remaining)}</span>
     </header>

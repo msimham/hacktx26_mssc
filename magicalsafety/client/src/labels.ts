@@ -23,7 +23,28 @@ export const OUTCOMES: Record<string, { text: string; good: boolean }> = {
   help_arrived_too_late: { text: "Help didn't arrive in time", good: false },
   incomplete_support: { text: "Help arrived, but the person wasn't fully supported", good: false },
   no_incident: { text: "Nothing happened before time ran out", good: false },
+  success_all_clear: { text: "Everyone got out safely and was counted", good: true },
+  blocked_exit_used: { text: "Someone walked into the smoke-filled exit", good: false },
+  incomplete_sweep: { text: "Time ran out before every room was checked", good: false },
+  guest_not_accounted_for: { text: "Someone who needed help wasn't accounted for", good: false },
+  no_complete_headcount: { text: "Nobody took a complete headcount in time", good: false },
 };
+
+export const GUEST_OUTCOME: Record<string, string> = { "1": "reached the assembly point", "0.5": "location reported to responders", "0": "not accounted for" };
+
+/** A recorded fact, formatted for people. */
+export function formatMetric(m: { key: string; value: unknown; unit?: string }): string {
+  const v = m.value;
+  if (v === null || v === undefined) return "n/a";
+  if (m.key === "assisted_person_outcome" && typeof v === "object")
+    return Object.entries(v as Record<string, number>).map(([k, x]) => `${k.replace("_", " ")}: ${GUEST_OUTCOME[String(x)] ?? x}`).join("; ");
+  if (m.key.endsWith("_delta") && typeof v === "number") return `${v > 0 ? "+" : ""}${m.key.startsWith("info") || m.key.startsWith("max") ? `${Math.round(v * 100)}%` : v}`;
+  if (m.unit === "ms" && typeof v === "number") return `${Math.round(v / 1000)}s`;
+  if (typeof v === "boolean") return v ? "yes" : "no";
+  if (typeof v === "object") return Object.entries(v as Record<string, unknown>).map(([k, x]) => `${k}: ${String(x)}`).join(", ");
+  if (m.key.endsWith("_ratio") && typeof v === "number") return `${Math.round(v * 100)}%`;
+  return String(v);
+}
 
 export const SHOUTOUT_REASONS = [
   ["stayed_calm", "Stayed calm"],

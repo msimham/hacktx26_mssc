@@ -14,7 +14,8 @@ export function Lobby() {
     <main className="mx-auto max-w-2xl space-y-5 p-6">
       <header>
         <h1 className="font-display text-3xl text-gold">Waiting room</h1>
-        {lobby.orgName && <p className="text-sm text-slate-400">Training: {lobby.orgName}</p>}
+        {lobby.orgName && <p className="text-sm text-slate-400">Training: {lobby.orgName} · {lobby.worldName}</p>}
+        {lobby.acts.length > 1 && <p className="text-sm text-slate-300">Two acts: first the emergency, then an evacuation. The evacuation only begins if the team resolves the emergency.</p>}
         <p className="text-slate-300">Share this code with your team:</p>
         <div className="mt-2 flex items-center gap-3">
           <span className="rounded bg-night-2 px-4 py-2 font-mono text-3xl tracking-[0.3em]" aria-label={`Join code ${lobby.code.split("").join(" ")}`}>{lobby.code}</span>
