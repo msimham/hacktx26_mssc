@@ -179,10 +179,10 @@ describe("headers and the built client", () => {
       expect(csp).toContain("object-src 'none'");
       expect(csp).toContain("frame-ancestors 'none'");
       expect(csp).not.toContain("facebook"); // not configured = not allowed
-      expect(csp).toMatch(/script-src 'self'(;|$)/);
+      expect(csp).toMatch(/script-src 'self' 'wasm-unsafe-eval'(;|$)/);
       expect(page.headers.get("x-content-type-options")).toBe("nosniff");
       expect(page.headers.get("referrer-policy")).toBe("no-referrer");
-      expect(page.headers.get("permissions-policy")).toBe("camera=(), geolocation=(), microphone=(self)");
+      expect(page.headers.get("permissions-policy")).toBe("camera=(self), geolocation=(), microphone=(self)");
       const api = await fetch(`${plain.base}/api/nope`);
       expect(api.status).toBe(404);
       expect(api.headers.get("content-type")).toContain("application/json");

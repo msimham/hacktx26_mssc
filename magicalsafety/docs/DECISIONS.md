@@ -160,3 +160,12 @@ Sessions are persisted as **(config, seed, ordered input log)**, not as derived 
 
 - **`DISABLE_ORGANIZER_AUTH=true`** (local demos only, ignored in production) removes the passcode from the organizer screens: organizations, creating sessions, run logs and the Inspector. It deliberately does not touch player data: results, analysis, replay approvals and recap images still need a player token or the real passcode, so turning the passcode off never lets one session read another's results (tested).
 - **The crash screen now shows what broke** (the error message and the page). Rendering every game state with real data, and the real first lobby and game payloads from a live server, did not reproduce a crash, so a render-time bug in those screens is unlikely. The remaining suspects are effects that only run in a real browser; the message will say which.
+
+## Hand gestures and agent-chosen research (added after Phase 8)
+
+- **Gestures run on the device.** `client/src/vision/` reads one hand with MediaPipe Hand Landmarker (new dependency `@mediapipe/tasks-vision@0.10.21`, client only). Video never leaves the tab, nothing is stored, and the camera has a visible "Camera on" badge and an off button. The input method `gesture` is off unless the host ticks it in Setup.
+- **A gesture is only a shortcut for a legal action.** 1 to 4 fingers or a swipe highlights an option; a held open palm (0.8 s) confirms; a held fist cancels. Confirm needs a highlight, can't repeat without the hand changing, and the highlight clears when the hand leaves the frame. Typed-text actions are excluded. The server still validates the action with `checkAction`.
+- **Permissions-Policy is now `camera=(self)`** (was `camera=()`), and the CSP adds `'wasm-unsafe-eval'` to `script-src` because the tracker is WebAssembly. Tracker files are self-hosted from `/vision` (no CDN).
+- **Not verified:** nothing here has run against a real camera or the real model. Gesture thresholds are tested on synthetic landmarks only and will need tuning on real hands.
+- **Agent-chosen research** (`POST /api/orgs/:id/research/auto`): the model only decides `{needed, query, why}`. The query is cleaned, safety-filtered, and falls back to the organizer's own words. The search runs through `executeTool` as `requestedBy: "agent"` (allowlist, daily limit, audit). Results are suggestions; saving one still needs the organizer's approval. No key means labeled sample results.
+- **Self-improvement was deferred** at the owner's request.

@@ -28,7 +28,7 @@ export function contentSecurityPolicy(env: Pick<Env, "fbAppId">): string {
     "object-src 'none'",
     "frame-ancestors 'none'",
     "form-action 'self'",
-    `script-src 'self'${fb ? " https://connect.facebook.net" : ""}`,
+    `script-src 'self' 'wasm-unsafe-eval'${fb ? " https://connect.facebook.net" : ""}`,
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src https://fonts.gstatic.com",
     `img-src 'self' data: blob:${fb ? " https://*.fbcdn.net https://*.facebook.com" : ""}`,

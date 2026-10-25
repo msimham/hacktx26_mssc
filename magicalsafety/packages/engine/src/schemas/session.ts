@@ -8,7 +8,7 @@ export type ScenarioId = z.infer<typeof ScenarioId>;
 export const SocialEnvironment = z.enum(["friends", "classmates", "coworkers", "assigned_team", "strangers", "simulated"]);
 export type SocialEnvironment = z.infer<typeof SocialEnvironment>;
 export const RoleIdSchema = z.enum(["discoverer", "authority", "runner", "liaison"]);
-export const InputMethod = z.enum(["text", "voice", "mouse", "keyboard"]);
+export const InputMethod = z.enum(["text", "voice", "mouse", "keyboard", "gesture"]);
 
 /** What this run looks like. Independent of the org layer (what to teach/evaluate). */
 export const SessionConfig = z.strictObject({

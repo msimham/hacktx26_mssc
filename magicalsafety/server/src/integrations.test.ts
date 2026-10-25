@@ -660,6 +660,48 @@ describe("Builder research", () => {
   });
 });
 
+describe("Agent-chosen research", () => {
+  const auto = (b: Awaited<ReturnType<typeof boot>>, topic: string) => b.org("/org_riverside/research/auto", { method: "POST", body: { topic } });
+  const plan = (data: unknown) => new Scripted(() => ({ data, model: "muse-spark-1.3", usage: null }));
+  type Auto = { plan: { needed: boolean; query: string }; searched: boolean; mock?: boolean; fallbackUsed: boolean; results: { url: string }[] };
+
+  it("the agent picks the query and the search goes through the tool pipeline as the agent, saving nothing", async () => {
+    const s = stub(() => json({ organic_results: [{ title: "Calling early", link: "https://example.org/a", snippet: "x" }] }));
+    const b = await boot({ fetchImpl: s.fn, envExtra: KEYS, provider: plan({ needed: true, query: "teaching teams to call for help early", why: "background" }) });
+    const r = (await (await auto(b, "calling for help")).json()) as Auto;
+    expect(r).toMatchObject({ searched: true, mock: false, plan: { query: "teaching teams to call for help early" } });
+    expect(s.calls).toHaveLength(1);
+    expect(s.calls[0]!.url).toContain("q=teaching+teams+to+call+for+help+early");
+    expect(kit.server!.store.getOrg("org_riverside")!.documents).toHaveLength(1);
+    const audit = (await (await b.org("/org_riverside/audit")).json()) as { audit: { tool: string; requestedBy: string }[] };
+    expect(audit.audit.some((a) => a.tool === "serpapi.search" && a.requestedBy === "agent")).toBe(true);
+  });
+
+  it("does not search when the agent says it is not needed, or when the query is unsafe", async () => {
+    const s = stub(() => json({ organic_results: [] }));
+    const none = await boot({ fetchImpl: s.fn, envExtra: KEYS, provider: plan({ needed: false, query: "", why: "clear already" }) });
+    expect(((await (await auto(none, "delegation basics")).json()) as Auto).searched).toBe(false);
+    expect(s.calls).toHaveLength(0);
+  });
+
+  it("falls back to the organizer's own words when the model output is invalid, and uses sample results without a key", async () => {
+    const s = stub(() => json({}));
+    const b = await boot({ fetchImpl: s.fn, provider: plan({ nonsense: true }) });
+    const r = (await (await auto(b, "bystander effect in teams")).json()) as Auto;
+    expect(r).toMatchObject({ fallbackUsed: true, searched: true, mock: true, plan: { query: "bystander effect in teams" } });
+    expect(s.calls).toHaveLength(0);
+  });
+
+  it("is organizer-only and still obeys the org's search limit", async () => {
+    const s = stub(() => json({ organic_results: [] }));
+    const b = await boot({ fetchImpl: s.fn, envExtra: KEYS, provider: plan({ needed: true, query: "team communication", why: "x" }) });
+    expect((await b.org("/org_riverside/research/auto", { method: "POST", body: { topic: "abc def" }, pass: null })).status).toBe(401);
+    const org = kit.server!.store.getOrg("org_riverside")!;
+    await kit.server!.store.saveOrg({ ...org, limits: { ...org.limits, maxSearchesPerDay: 0 } });
+    expect((await auto(b, "abc def")).status).toBe(403);
+  });
+});
+
 void kit;
 
 describe("with every external service failing (the network is down)", () => {

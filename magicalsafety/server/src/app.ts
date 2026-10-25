@@ -22,8 +22,8 @@ export function createApp(env: Env, deps?: { store: Store; hub: SessionHub; kit:
   app.use((_req, res, next) => {
     res.setHeader("X-Content-Type-Options", "nosniff");
     res.setHeader("Referrer-Policy", "no-referrer");
-    // Only the microphone is ever needed, and only by this page.
-    res.setHeader("Permissions-Policy", "camera=(), geolocation=(), microphone=(self)");
+    // Only the microphone (voice) and the camera (on-device hand gestures) are ever needed, and only by this page.
+    res.setHeader("Permissions-Policy", "camera=(self), geolocation=(), microphone=(self)");
     next();
   });
 

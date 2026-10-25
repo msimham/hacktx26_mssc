@@ -7,3 +7,4 @@ server/data
 server/assets-cache
 *.log
 .DS_Store
+client/public/vision/

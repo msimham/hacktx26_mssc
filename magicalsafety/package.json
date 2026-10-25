@@ -17,7 +17,8 @@
     "sim": "npm run sim -w @magicalsafety/engine",
     "gen:assets": "tsx scripts/gen-assets.ts",
     "demo:seed": "tsx scripts/demo-seed.ts",
-    "check:secrets": "tsx scripts/check-secrets.ts"
+    "check:secrets": "tsx scripts/check-secrets.ts",
+    "vision:setup": "mkdir -p client/public/vision && cp -R node_modules/@mediapipe/tasks-vision/wasm client/public/vision/wasm"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",

@@ -1,3 +1,4 @@
+import { GestureControl } from "../components/GestureControl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import type { LegalAction } from "@magicalsafety/engine";
@@ -81,6 +82,7 @@ export function Game() {
       {view.transition && <p role="status" className="bg-gold px-4 py-2 text-center font-display text-night">{view.transition.text}</p>}
       <div className="grid flex-1 gap-4 p-4 lg:grid-cols-[260px_minmax(0,1fr)_320px]">
         <aside className="space-y-4"><RoleCard view={view} />
+          {methods.has("gesture") && view.phase !== "ended" && <GestureControl legal={view.legal} onAct={act} />}
           {view.objectives && (
             <section aria-label="Objectives" className="rounded-xl bg-night-2 p-3">
               <h3 className="mb-2 font-display text-sm text-gold">Team goals</h3>

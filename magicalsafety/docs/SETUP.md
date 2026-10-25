@@ -52,3 +52,9 @@ After a real request works, tell the implementer the date and model id so `docs/
 ## Hosting it for others
 
 `npm run build && npm start` serves the built client and API from one process on `PORT` (default 3001). It is a single long-lived Node process (WebSockets need one), so use a host that allows that rather than a serverless platform. Set `ORGANIZER_PASSCODE`, and `PUBLIC_ORIGIN` if browsers will reach it through a different address. The server sends a Content-Security-Policy, which has been tested for its headers but **not yet verified in a real browser**.
+
+## Hand gestures (optional)
+
+1. `TODO(USER)`: download MediaPipe's `hand_landmarker.task` and save it as `client/public/vision/hand_landmarker.task` (see `client/src/vision/handTracker.ts`).
+2. Run `npm run vision:setup` once (copies the tracker's WebAssembly files to `client/public/vision/wasm`; this folder is git-ignored).
+3. In Setup, tick "Hand gestures", then press "Turn on camera" in the game. Browsers allow the camera only on `localhost` or HTTPS.

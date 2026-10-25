@@ -19,7 +19,7 @@ export function ChatPanel({ view, onSay, onAct, canType = true, extra }: { view:
     [view.legal],
   );
   const tells = view.legal.filter((l) => l.action.kind === "share_fact" && (l.action as { to: string }).to === "team");
-  useEffect(() => endRef.current?.scrollIntoView({ block: "end" }), [view.feed.length]);
+  useEffect(() => { endRef.current?.scrollIntoView({ block: "end" }); }, [view.feed.length]); // braces: an effect must not return scrollIntoView's result
 
   const send = () => {
     const t = text.trim();

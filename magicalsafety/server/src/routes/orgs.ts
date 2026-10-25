@@ -5,6 +5,7 @@ import type { Env } from "../config/env";
 import { rateLimit, type OrganizerGuard } from "../auth";
 import type { AgentKit } from "../agent";
 import { draftObjectives } from "../agent/builderDraft";
+import { planResearch } from "../agent/researchAgent";
 import type { Store } from "../store/store";
 import { SEEDED_ORG_ID } from "../orgs/seed";
 import { SAMPLE_RESULTS } from "../tools/serpapi";
@@ -18,6 +19,7 @@ const NewDoc = z.strictObject({
 });
 const Search = z.strictObject({ query: z.string().trim().min(1).max(300), k: z.number().int().min(1).max(5).optional() });
 const Research = z.strictObject({ query: z.string().trim().min(3).max(200) });
+const AutoResearch = z.strictObject({ topic: z.string().trim().min(3).max(600) });
 const Approve = z.strictObject({
   title: z.string().trim().min(1).max(200),
   url: z.string().url().max(500).refine((u) => /^https?:\/\//i.test(u)),
@@ -153,6 +155,29 @@ export function orgRoutes(env: Env, store: Store, kit: AgentKit, guard: Organize
     const result = await kit.tools.executeTool({ tool: "serpapi.search", args: { query: body.data.query, num: 5 }, orgId: o.id, requestedBy: "organizer" });
     if (!result.ok) return void res.status(403).json({ error: result.reason });
     res.json({ mock: false, ...(result.output as object) });
+  });
+
+  // The agent decides whether to search and what to type, then the search runs through the same tool pipeline as an organizer's.
+  // Results are only suggestions: nothing is saved until the organizer approves one below.
+  r.post("/:id/research/auto", async (req, res) => {
+    const o = get(req, res);
+    if (!o) return;
+    const body = AutoResearch.safeParse(req.body);
+    if (!body.success) return void res.status(400).json({ error: "Describe the topic you want researched" });
+    const budget = { max: o.limits.maxBuilderDraftsPerDay, used: () => kit.usage.get(o.id, "draft_calls", "day"), spend: () => kit.usage.add(o.id, "draft_calls", "day") };
+    try {
+      const planned = await planResearch({ runner: kit.runner, provider: kit.providerFor(o), scopeId: o.id, topic: body.data.topic, budget });
+      const plan = planned.value;
+      const meta = { plan, generatedBy: planned.generatedBy, fallbackUsed: planned.fallbackUsed };
+      if (!plan.needed) return void res.json({ ...meta, searched: false, results: [] });
+      if (!env.serpApiKey) return void res.json({ ...meta, searched: true, mock: true, results: SAMPLE_RESULTS });
+      const result = await kit.tools.executeTool({ tool: "serpapi.search", args: { query: plan.query, num: 5 }, orgId: o.id, requestedBy: "agent" });
+      if (!result.ok) return void res.status(403).json({ error: result.reason });
+      res.json({ ...meta, searched: true, mock: false, ...(result.output as object) });
+    } catch (err) {
+      console.error("[research]", err instanceof Error ? err.message : "failed");
+      res.status(500).json({ error: "Could not run the research" });
+    }
   });
 
   r.post("/:id/research/approve", async (req, res) => {
