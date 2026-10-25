@@ -41,9 +41,9 @@ Questions are grouped into 8 categories. A segmented build-progress ring (one se
 | 5 | People | How many people will take part? | Solo · 2 people · 3–5 people · 6+ people |
 | 6 | Experience | How should people interact? | Voice · Text · Motion |
 | 7 | Knowledge | What should your agent know? | Our policies · Training objectives · Industry guidelines · Past sessions |
-| 8 | Capabilities | What should the AI be able to use or do? | Search the web · Use your knowledge base · Read the simulation · Create scenarios · Evaluate participants · Adapt difficulty |
+| 8 | Capabilities | What should your agent be able to use or do? | Search the web · Use your knowledge base · Read the simulation · Create scenarios · Evaluate participants · Adapt difficulty |
 | 9 | Guardrails | What should your agent never do? | Share private scores · Go off topic · Give medical or legal advice · Ignore real emergencies |
-| 10 | Guardrails | What should the AI need permission to do? | Change the scenario · Share results · Message participants · Use outside sources |
+| 10 | Guardrails | What should your agent need permission to do? | Change the scenario · Share results · Message participants · Use outside sources |
 | 11 | Success | How will you know it worked? | Clearer communication · Faster decisions · Everyone speaks up · Better each round |
 | Review | | Here's what you're creating | One editable card per answer, labeled by category; Create stays disabled until every question is answered |
 
