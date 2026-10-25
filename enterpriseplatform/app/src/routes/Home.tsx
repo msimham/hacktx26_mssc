@@ -42,7 +42,7 @@ export function Home() {
           <span className="bg-gradient-to-r from-violet-600 via-fuchsia-500 to-orange-400 bg-clip-text text-transparent">
             training simulation agent
           </span>{" "}
-          for your people.
+          that prepares your people before it counts.
         </h1>
         <p className="mx-auto mt-6 max-w-xl text-lg text-slate-600">
           Describe what your team needs to practice, and Training Studio builds a custom training simulation agent that runs the simulation, plays the other roles and coaches each person. Ready in about a minute.
