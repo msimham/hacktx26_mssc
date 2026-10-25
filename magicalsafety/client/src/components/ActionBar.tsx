@@ -71,6 +71,9 @@ export function ActionBar({ view, localT, onAct, canClick = true, showKeys = tru
         </div>
       )}
       <Section canClick={canClick} showKeys={showKeys} title="What you can do" items={groups.act} onAct={onAct} empty="Nothing to do here right now. Move, look around, or talk to your team." />
+      <details className="rounded-xl bg-night-2/60 p-2">
+        <summary className="cursor-pointer text-sm text-slate-300">More: move, look around, ask a teammate</summary>
+        <div className="mt-2 space-y-3">
       <Section canClick={canClick} showKeys={showKeys} title="Move" items={groups.move} onAct={onAct} />
       <Section canClick={canClick} showKeys={showKeys} title="Look" items={groups.inspect} onAct={onAct} />
       {delegateByTarget.size > 0 && (
@@ -95,6 +98,8 @@ export function ActionBar({ view, localT, onAct, canClick = true, showKeys = tru
           </div>
         </div>
       )}
+        </div>
+      </details>
     </div>
   );
 }

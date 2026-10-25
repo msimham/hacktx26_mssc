@@ -1,3 +1,4 @@
+import { GuideBar } from "../components/GuideBar";
 import { GestureControl } from "../components/GestureControl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
@@ -19,6 +20,8 @@ export function Game() {
   const [toast, setToast] = useState<string | null>(null);
   const [card, setCard] = useState<{ act: number; title: string; alarm: boolean } | null>(null);
   const lastAct = useRef(0);
+  const [panel, setPanel] = useState(false);
+  const [seen, setSeen] = useState(0);
   const cardTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const methods = new Set(view?.inputMethods ?? ['mouse', 'keyboard', 'text']);
 
@@ -76,34 +79,41 @@ export function Game() {
   }, [actNow]);
 
   if (!view) return <GameSkeleton />;
+  const unread = panel ? 0 : Math.max(0, view.feed.filter((f) => f.tone === "speech").length - seen);
 
   return (
     <div className={`flex min-h-full flex-col ${view.alarm ? "ring-2 ring-inset ring-rose-600/70" : ""}`}>
       <GameHeader view={view} localT={localT} />
       {!connected && <p role="alert" className="bg-rose-700 px-4 py-2 text-center text-sm font-semibold">Connection lost. Reconnecting… your game is saved and you will rejoin automatically.</p>}
       {view.transition && <p role="status" className="bg-gold px-4 py-2 text-center font-display text-night">{view.transition.text}</p>}
-      <div className="grid flex-1 gap-4 p-4 lg:grid-cols-[260px_minmax(0,1fr)_320px]">
-        <aside className="space-y-4"><RoleCard view={view} />
-          {methods.has("gesture") && view.phase !== "ended" && <GestureControl legal={view.legal} onAct={act} />}
-          {view.objectives && (
-            <section aria-label="Objectives" className="rounded-xl bg-night-2 p-3">
-              <h3 className="mb-2 font-display text-sm text-gold">Team goals</h3>
-              <ul className="space-y-1 text-sm">{view.objectives.map((o) => <li key={o.id}>{o.done ? "✅" : "⬜"} {o.label}</li>)}</ul>
-            </section>
-          )}
-        </aside>
-        <main className="space-y-4">
+      <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-3 p-3 sm:p-4">
+        <div className="relative">
           <SceneView view={view} onAct={act} canClick={methods.has("mouse")} />
-          {toast && <p role="alert" className="rounded bg-rose-900/70 p-2 text-sm">{toast}</p>}
-          <ActionBar view={view} localT={localT} onAct={act} canClick={methods.has("mouse")} showKeys={methods.has("keyboard")} />
-        </main>
-        <aside className="flex min-h-0 flex-col gap-4">
-          <Minimap view={view} />
-          <div className="min-h-[260px] flex-1">
-            <ChatPanel view={view} onAct={act} canType={methods.has("text")} extra={methods.has("voice") && sessionId ? <VoiceControl sessionId={sessionId} token={loadPlayerBySession(sessionId)?.token ?? ""} legal={view.legal} onSay={(to, text) => void send({ kind: "say", to, text }).then((r) => r && setToast(r))} onAct={act} /> : null} onSay={(to, text) => void send({ kind: "say", to, text }).then((r) => r && setToast(r))} />
-          </div>
-        </aside>
+          {methods.has("gesture") && view.phase !== "ended" && <div className="absolute right-3 top-3 z-20"><GestureControl legal={view.legal} onAct={act} /></div>}
+          <button type="button" onClick={() => { setPanel(true); setSeen(view.feed.length); }} className="absolute bottom-3 right-3 z-20 rounded-full bg-night/85 px-4 py-2 text-sm font-semibold text-gold shadow ring-1 ring-gold/40">
+            👥 Team &amp; chat{unread > 0 && <span className="ml-2 rounded-full bg-rose-600 px-2 py-0.5 text-xs text-white">{unread}</span>}
+          </button>
+        </div>
+        {toast && <p role="alert" className="rounded bg-rose-900/70 p-2 text-sm">{toast}</p>}
+        <GuideBar view={view}>{methods.has("voice") && sessionId ? <VoiceControl sessionId={sessionId} token={loadPlayerBySession(sessionId)?.token ?? ""} legal={view.legal} onSay={(to, text) => void send({ kind: "say", to, text }).then((r) => r && setToast(r))} onAct={act} /> : null}</GuideBar>
+        <ActionBar view={view} localT={localT} onAct={act} canClick={methods.has("mouse")} showKeys={methods.has("keyboard")} />
       </div>
+      {panel && (
+        <div className="fixed inset-0 z-30 flex justify-end bg-black/50" onClick={() => setPanel(false)}>
+          <aside className="flex h-full w-[min(92vw,380px)] flex-col gap-3 overflow-y-auto bg-night p-3 shadow-2xl" role="dialog" aria-label="Team and chat" onClick={(e) => e.stopPropagation()}>
+            <button type="button" onClick={() => setPanel(false)} className="self-end rounded bg-white/10 px-3 py-1 text-sm">Close ✕</button>
+            <RoleCard view={view} />
+            {view.objectives && (
+              <section aria-label="Objectives" className="rounded-xl bg-night-2 p-3">
+                <h3 className="mb-2 font-display text-sm text-gold">Team goals</h3>
+                <ul className="space-y-1 text-sm">{view.objectives.map((o) => <li key={o.id}>{o.done ? "✅" : "⬜"} {o.label}</li>)}</ul>
+              </section>
+            )}
+            <Minimap view={view} />
+            <div className="min-h-[280px] flex-1"><ChatPanel view={view} onAct={act} canType={methods.has("text")} extra={null} onSay={(to, text) => void send({ kind: "say", to, text }).then((r) => r && setToast(r))} /></div>
+          </aside>
+        </div>
+      )}
       <footer className="border-t border-white/10 px-4 py-2 text-center text-xs text-slate-400">{view.safetyFooter}</footer>
 
       {card && (

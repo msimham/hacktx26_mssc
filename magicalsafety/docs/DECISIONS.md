@@ -169,3 +169,10 @@ Sessions are persisted as **(config, seed, ordered input log)**, not as derived 
 - **Not verified:** nothing here has run against a real camera or the real model. Gesture thresholds are tested on synthetic landmarks only and will need tuning on real hands.
 - **Agent-chosen research** (`POST /api/orgs/:id/research/auto`): the model only decides `{needed, query, why}`. The query is cleaned, safety-filtered, and falls back to the organizer's own words. The search runs through `executeTool` as `requestedBy: "agent"` (allowlist, daily limit, audit). Results are suggestions; saving one still needs the organizer's approval. No key means labeled sample results.
 - **Self-improvement was deferred** at the owner's request.
+
+## Simpler game screen with a story guide
+
+- **The scene is the main thing.** The game screen is now the scene, a story guide, and the action buttons. Role card, team goals, map and chat moved into a "Team & chat" slide-out with an unread badge. In the action list, Move, Look and Ask-a-teammate are folded into a "More" section (the scene hotspots and number keys still do the same things).
+- **The guide** (Gus the mouse in the castle, Professor Hoot the owl on campus) tells the story once, then gives one nudge at a time. All guide text is authored by hand (`client/src/guide/guides.ts`), never model-generated. It points at the team's next unfinished goal and the player's own role, **not at the exact button**, so working out the right move stays part of what is assessed.
+- **Reading aloud** uses the browser's speech synthesis. The verified Meta API facts include speech-to-text (Muse Voice Transcribe, the microphone) but no text-to-speech model, so no Muse TTS is called (`TODO(VERIFY)` in `guide/speak.ts`). The microphone button sits in the guide bar.
+- **Camera box** is a small corner overlay on the scene.

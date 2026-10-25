@@ -52,23 +52,23 @@ export function GestureControl({ legal, onAct }: { legal: LegalAction[]; onAct: 
 
   const chosen = pick >= 0 ? options[pick] : undefined;
   return (
-    <div className="rounded-lg bg-night-2 p-3 text-sm" aria-label="Hand gestures">
-      <div className="flex items-center justify-between gap-2">
-        <span className="font-semibold">✋ Hand gestures</span>
-        {state === "on" && <span role="status" className="rounded bg-rose-700 px-2 py-0.5 text-xs">● Camera on (stays on this device)</span>}
-        <button type="button" disabled={state === "starting" || !cameraAvailable()} onClick={() => (state === "on" ? stop() : void start())} className="rounded bg-white/10 px-2 py-1 disabled:opacity-50">
-          {state === "on" ? "Turn off" : state === "starting" ? "Starting…" : "Turn on camera"}
+    <div className="w-44 rounded-lg bg-night/90 p-2 text-xs shadow ring-1 ring-white/20" aria-label="Hand gestures">
+      <div className="flex items-center justify-between gap-1">
+        <span className="font-semibold">✋ Camera</span>
+        <button type="button" disabled={state === "starting" || !cameraAvailable()} onClick={() => (state === "on" ? stop() : void start())} className="rounded bg-white/10 px-2 py-0.5 disabled:opacity-50">
+          {state === "on" ? "Off" : state === "starting" ? "…" : "On"}
         </button>
       </div>
-      <video ref={video} playsInline muted className={state === "on" ? "mt-2 w-full -scale-x-100 rounded" : "hidden"} />
+      <video ref={video} playsInline muted className={state === "on" ? "mt-1 w-full -scale-x-100 rounded" : "hidden"} />
       {state === "on" && (
-        <div className="mt-2 space-y-1" aria-live="polite">
-          <p>{chosen ? <>Selected <b>{chosen.hotkey}. {chosen.label}</b>. Hold an open palm to confirm, a fist to cancel.</> : "Show 1 to 4 fingers, or swipe, to pick an option."}</p>
-          {progress && <div className="h-2 rounded bg-white/10"><div className={`h-2 rounded ${progress.intent === "confirm" ? "bg-emerald-500" : "bg-rose-500"}`} style={{ width: `${Math.round(progress.value * 100)}%` }} /></div>}
+        <div className="mt-1" aria-live="polite">
+          <p className="rounded bg-rose-700 px-1 text-[10px]" role="status">● On this device only</p>
+          <p className="mt-1">{chosen ? <><b>{chosen.hotkey}. {chosen.label}</b>: hold your palm to confirm</> : "1–4 fingers or swipe to pick"}</p>
+          {progress && <div className="mt-1 h-1.5 rounded bg-white/10"><div className={`h-1.5 rounded ${progress.intent === "confirm" ? "bg-emerald-500" : "bg-rose-500"}`} style={{ width: `${Math.round(progress.value * 100)}%` }} /></div>}
         </div>
       )}
-      {error && <p role="alert" className="mt-2 text-rose-300">{error}</p>}
-      {!cameraAvailable() && state === "off" && !error && <p className="mt-2 opacity-70">{WHY.no_camera}</p>}
+      {error && <p role="alert" className="mt-1 text-rose-300">{error}</p>}
+      {!cameraAvailable() && state === "off" && !error && <p className="mt-1 opacity-70">{WHY.no_camera}</p>}
     </div>
   );
 }
