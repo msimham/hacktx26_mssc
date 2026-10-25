@@ -27,8 +27,7 @@ export function PromptStep({ step, accent, value, onChange, onChip }: Props) {
         onChange={(e) => onChange(e.target.value)}
         className={`mt-5 w-full resize-y rounded-2xl border-2 border-slate-200 bg-white p-4 text-base shadow-sm placeholder:text-slate-400 focus:outline-none focus:ring-4 ${accent.field}`}
       />
-      <p className={`mt-4 text-sm font-semibold ${accent.text}`}>Need a spark? Tap to add</p>
-      <ul className="mt-2 flex flex-wrap gap-2">
+      <ul className="mt-4 flex flex-wrap gap-2">
         {step.chips.map((chip) => (
           <li key={chip}>
             <button
