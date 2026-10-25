@@ -1,4 +1,5 @@
 import { useReducer, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { accentAt } from "./create/accents";
 import { BuildProgress } from "./create/BuildProgress";
 import { BuildRing } from "./create/BuildRing";
@@ -9,10 +10,11 @@ import { Review } from "./create/Review";
 import { buttonGhost, buttonPrimary, WizardShell } from "./create/WizardShell";
 import { createProgram, type Program } from "./create/api";
 import { initialState, isFilled, reducer } from "./create/state";
-import { STEPS } from "./create/steps";
+import { STEPS, type Answers } from "./create/steps";
 
 export function CreateTraining() {
-  const [state, dispatch] = useReducer(reducer, {}, initialState);
+  const seed = useLocation().state as Partial<Answers> | null;
+  const [state, dispatch] = useReducer(reducer, seed ?? {}, initialState);
   const [program, setProgram] = useState<Program | null>(null);
   const [submitError, setSubmitError] = useState("");
   const { answers, index } = state;

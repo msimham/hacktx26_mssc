@@ -7,7 +7,7 @@ from typing import Literal
 from urllib.parse import parse_qs
 
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Request
-from fastapi.responses import RedirectResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from pydantic import BaseModel
 from fastapi.staticfiles import StaticFiles
 
@@ -239,6 +239,17 @@ def ask(req: AskRequest):
         return {"answer": voice.answer(q, req.context, llm, rules=[RULE_TEXT[r] for r in policy.rules if r in RULE_TEXT] if policy else [])}
     except RuntimeError:
         raise HTTPException(502, "The guide could not answer right now. Try again.")
+
+
+@app.get("/", include_in_schema=False)
+@app.get("/create/{path:path}", include_in_schema=False)
+def create_app(path: str = ""):
+    """TALE (built into web/create) is the home page and a single-page app: real files are served as-is, any other path gets its index.html."""
+    root = (ROOT / "web" / "create").resolve()
+    f = (root / path).resolve()
+    if not (root / "index.html").is_file():
+        raise HTTPException(404, "Build the frontend first: npm --prefix frontend run build")
+    return FileResponse(f if path and f.is_file() and f.is_relative_to(root) else root / "index.html")
 
 
 # static mounts last so they never shadow the API routes

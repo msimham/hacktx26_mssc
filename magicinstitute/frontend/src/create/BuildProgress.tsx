@@ -24,6 +24,11 @@ export function BuildProgress({ initial, onRetry }: Props) {
     return () => clearTimeout(t);
   }, [program, lost]);
 
+  // a finished build opens straight into its world
+  useEffect(() => {
+    if (program.status === "ready") window.location.assign(playUrl(program.id));
+  }, [program]);
+
   const done = program.phases.filter((p) => p.status === "done").length;
   const pct = Math.round((done / program.phases.length) * 100);
 
@@ -31,7 +36,7 @@ export function BuildProgress({ initial, onRetry }: Props) {
     <section className="animate-pop">
       <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">Building your training</p>
       <h1 role="status" className="mt-2 font-display text-3xl font-extrabold tracking-tight sm:text-4xl">
-        {program.status === "ready" ? "Your agent is ready 🚀" : program.status === "failed" ? "We couldn't finish building it" : "Building your training…"}
+        {program.status === "ready" ? "Your agent is ready. Opening your world… 🚀" : program.status === "failed" ? "We couldn't finish building it" : "Building your training…"}
       </h1>
       <ul className="mt-6 space-y-2">
         {program.phases.map((p) => (

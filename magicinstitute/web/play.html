@@ -12,7 +12,7 @@
 <body>
 <canvas id="view"></canvas>
 
-<section id="setup" class="panel">
+<section id="setup" class="panel" hidden>
   <h1>✨ Magic Institute for Societal Safety</h1>
   <p class="sub">Pick your story. We'll build the world, and you'll play its heroine, learning a real skill inside it.</p>
   <label>Topic <input id="topic" value="fire safety"></label>
@@ -24,24 +24,12 @@
     <label class="radio"><input type="radio" name="level" value="2"> 2 · Friends / team</label>
     <label class="radio"><input type="radio" name="level" value="3" checked> 3 · Community</label>
   </fieldset>
-  <details id="circle">
-    <summary>Optional: your circle, for finding groups later</summary>
-    <label>School <input id="school" placeholder="e.g. UT Austin" autocomplete="off"></label>
-    <label>Workplace or club <input id="org" autocomplete="off"></label>
-    <label>City <input id="city" placeholder="e.g. Austin, Texas" autocomplete="off"></label>
-    <p class="sub">Nothing is searched or sent until you press <b>Find your people</b> at the end.</p>
-    <div id="fbrow" hidden>
-      <button type="button" id="fbconnect" class="alt">Connect Facebook (optional)</button>
-      <span id="fbstate" class="sub"></span>
-      <label class="check"><input type="checkbox" id="usefb"> Use my Facebook location or hometown to find nearby groups</label>
-    </div>
-  </details>
   <button id="go">Weave my world</button>
   <p id="status" class="sub"></p>
-  <p class="sub"><a href="/assets.html">Asset library</a> · <a href="/">About</a></p>
+  <p class="sub"><a href="/assets.html">Asset library</a> · <a href="/">Home</a></p>
 </section>
 
-<div id="loading" hidden><span>✧</span><b id="loadtext">Preparing lights &amp; materials…</b></div>
+<div id="loading"><span>✧</span><b id="loadtext">Preparing lights &amp; materials…</b></div>
 
 <section id="hud" hidden>
   <div id="act"></div>
@@ -75,6 +63,18 @@
   <h3>Find your people</h3>
   <p class="sub" id="ladderintro">Next, bring this to your friends, school or work, then to your community. We'll search the public web for real groups, clubs and places.</p>
   <p class="sub" id="ladderdisclose"></p>
+  <details id="circle">
+    <summary>Optional: your school, work or city, to find groups near you</summary>
+    <label>School <input id="school" placeholder="e.g. UT Austin" autocomplete="off"></label>
+    <label>Workplace or club <input id="org" autocomplete="off"></label>
+    <label>City <input id="city" placeholder="e.g. Austin, Texas" autocomplete="off"></label>
+    <p class="sub">Nothing is searched or sent until you press <b>Find your people</b>.</p>
+    <div id="fbrow" hidden>
+      <button type="button" id="fbconnect" class="alt">Connect Facebook (optional)</button>
+      <span id="fbstate" class="sub"></span>
+      <label class="check"><input type="checkbox" id="usefb"> Use my Facebook location or hometown to find nearby groups</label>
+    </div>
+  </details>
   <button id="findpeople" class="alt">Find your people</button>
   <div id="ladder"></div>
   <div id="newassets" hidden><h3>✨ New assets created for this world</h3><p class="sub">They look good? Keep them in the library so future stories can reuse them.</p><ul id="assetlist"></ul></div>

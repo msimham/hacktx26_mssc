@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Link } from "react-router-dom";
 import type { Accent } from "./accents";
 import { ACCENTS } from "./accents";
 
@@ -19,7 +20,7 @@ export function WizardShell({ label, progress, accent = ACCENTS[0]!, aside, chil
       <div className={`relative mx-auto flex min-h-screen flex-col px-4 py-6 sm:py-10 ${aside ? "max-w-5xl" : "max-w-2xl"}`}>
         <header className="mb-8">
           <div className="mb-3 flex items-center justify-between text-sm">
-            <a href="/" className="font-display font-extrabold tracking-tight">Magic Institute for Societal Safety ✨</a>
+            <Link to="/" className="font-display font-extrabold tracking-tight">TALE ✨</Link>
             <span className={`rounded-full px-3 py-1 font-medium ${accent.badge}`}>{label}</span>
           </div>
           {progress && (

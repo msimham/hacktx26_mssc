@@ -32,4 +32,6 @@ export const createProgram = (answers: Answers): Promise<Program> =>
 export const getProgram = (id: string): Promise<Program> =>
   fetch(`/api/training-programs/${encodeURIComponent(id)}`).then((r) => json<Program>(r));
 
-export const playUrl = (id: string): string => `/play.html?program=${encodeURIComponent(id)}`;
+/** The player is served by the platform; in `npm run dev` that is the API server on :8000. */
+export const playUrl = (id: string): string =>
+  `${import.meta.env.DEV ? "http://localhost:8000" : ""}/play.html?program=${encodeURIComponent(id)}`;

@@ -19,7 +19,7 @@ export function wavOf(chunks, inRate) {
   return new Blob([buf], { type: "audio/wav" });
 }
 
-export function initAsk(getContext) {
+export function initAsk(getContext, programId = "") {
   const btn = $("askbtn"), panel = $("askpanel"), qEl = $("askq"), aEl = $("aska");
   let rec = null, busy = false, voiceOK = true;
   fetch("/api/voice/status").then(r => r.json()).then(s => { voiceOK = s.transcribe; if (!voiceOK) btn.textContent = "💬 Ask"; }).catch(() => {});
@@ -29,7 +29,7 @@ export function initAsk(getContext) {
   async function ask(question) {
     if (busy) return; busy = true; btn.disabled = true; show(question, "Thinking…");
     try {
-      const r = await fetch("/api/ask", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question, context: getContext() }) });
+      const r = await fetch("/api/ask", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question, context: getContext(), program_id: programId }) });
       const j = await r.json(); show(question, r.ok ? j.answer : j.detail || "Could not answer.", !r.ok);
     } catch { show(question, "Could not reach the guide.", true); }
     busy = false; btn.disabled = false;

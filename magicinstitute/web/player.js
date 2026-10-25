@@ -13,6 +13,8 @@ renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFShadowMap;
 const camera = new THREE.PerspectiveCamera(65, 1, 0.1, 200);
 const resize = () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); };
 addEventListener("resize", resize); resize();
+// the TALE wizard builds the training and sends the learner here with its id; coming back from Facebook login drops the query, so remember it
+const PROGRAM = QS.get("program") || (QS.has("fb") ? sessionStorage.getItem("program") || "" : "");
 
 // icon, label, how-to (first person: she is the one doing it) for every gesture in the vocabulary
 const G = {
@@ -45,7 +47,7 @@ initAsk(() => {
   const act = spec.acts[actIdx], it = act.interactions[itIdx] || {}, g = G[it.gesture] || ["", "", ""];
   return { topic: spec.request.topic, audience: spec.request.audience, act_title: act.title, skill: act.skill.name, steps: act.skill.steps.map(s => s.name),
     step_index: itIdx, step_prompt: it.prompt || "", learning_point: it.learning_point || "", gesture_hint: it.gesture ? `${g[1]}: ${g[2]}` : "" };
-});
+}, PROGRAM);
 
 $("keysbtn").onclick = () => { $("keys").hidden = !$("keys").hidden; };
 
@@ -174,12 +176,12 @@ async function findPeople() {
   if (navigator.geolocation) coords = await new Promise(r => navigator.geolocation.getCurrentPosition(p => r(p.coords), () => r(null), { timeout: 6000 }));
   try {
     const res = await fetch("/api/next-steps", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
-      topic: spec.request.topic, audience: spec.request.audience, social_level: spec.request.social_level, use_facebook: fb.connected && $("usefb").checked,
+      topic: spec.request.topic, audience: spec.request.audience, social_level: spec.request.social_level, program_id: PROGRAM, use_facebook: fb.connected && $("usefb").checked,
       circle: { ...c, lat: coords ? +coords.latitude.toFixed(3) : null, lng: coords ? +coords.longitude.toFixed(3) : null } }) });   // location rounded to ~100 m
     const out = await res.json(); if (!res.ok) throw new Error(out.detail || res.statusText);
     const friends = fb.connected && fb.friends_using_app != null ? `<p class="lsub">Facebook shows ${fb.friends_using_app} of your friends who also use this app.</p>` : "";
     $("ladder").innerHTML = (out.levels.map(l => `<h4>Level ${l.level} · ${esc(l.title)}</h4><p class="lsub">${esc(l.subtitle)}</p>${l.level === 2 ? friends : ""}<ul>${
-      l.items.map(i => `<li><a href="${esc(safeUrl(i.url))}" target="_blank" rel="noopener noreferrer">${esc(i.title)}</a><span class="tag">${esc(KIND[i.source] || i.source)}</span><small>${esc(i.why)}${i.address ? " · " + esc(i.address) : ""}${i.rating ? " · ★" + esc(i.rating) : ""}</small>${i.snippet && i.source !== "maps" ? `<small>${esc(i.snippet)}</small>` : ""}</li>`).join("") || "<li>No public groups found. Try adding a school, club or city on the start page.</li>"}</ul>`).join("")
+      l.items.map(i => `<li><a href="${esc(safeUrl(i.url))}" target="_blank" rel="noopener noreferrer">${esc(i.title)}</a><span class="tag">${esc(KIND[i.source] || i.source)}</span><small>${esc(i.why)}${i.address ? " · " + esc(i.address) : ""}${i.rating ? " · ★" + esc(i.rating) : ""}</small>${i.snippet && i.source !== "maps" ? `<small>${esc(i.snippet)}</small>` : ""}</li>`).join("") || "<li>No public groups found. Try adding a school, club or city above.</li>"}</ul>`).join("")
       || `<p class="sub">${esc((out.notes || []).join(" ") || "Nothing to show yet.")}</p>`)
       + (out.sent?.length ? `<details><summary>What was searched</summary>${out.sent.map(q => `<div>${esc(q)}</div>`).join("")}</details>` : "") + ((out.configured && out.notes?.length) ? `<p class="sub">${esc(out.notes.join(" "))}</p>` : "");
   } catch (e) { $("ladder").innerHTML = `<p class="sub">Couldn't search just now: ${esc(e.message)}</p>`; }
@@ -187,14 +189,20 @@ async function findPeople() {
 }
 $("findpeople").onclick = findPeople;
 
+// the circle fields sit on the end screen, so the disclosure follows what the learner types
+function disclose() {
+  const c = circle(), parts = [c.school && `your school (${c.school})`, c.organization && `your workplace or club (${c.organization})`, (c.city || (fb.connected && $("usefb").checked && (fb.location || fb.hometown))) && "your city", "your approximate location if you allow it"].filter(Boolean);
+  $("ladderdisclose").textContent = `Pressing the button sends search words made from your topic, ${parts.join(", ")} to SerpAPI. Nothing is posted, joined or scraped; you only get links.`;
+}
+["school", "org", "city", "usefb"].forEach(id => $(id).addEventListener("input", disclose));
+
 // ---- end / new game -----------------------------------------------------------------------------------------------
 function finish() {
   $("hud").hidden = true; $("end").hidden = false;
   $("outro").textContent = `Your story is complete, and what you practiced is real.`;
   $("learned").innerHTML = spec.acts.map(a => `<h4>${a.skill.name}</h4><ol>${a.skill.steps.map(st => `<li><b>${st.name}.</b> ${st.why}</li>`).join("")}</ol>`).join("");
   $("disclaimer").textContent = spec.disclaimer;
-  const c = circle(), parts = [c.school && `your school (${c.school})`, c.organization && `your workplace or club (${c.organization})`, (c.city || (fb.connected && $("usefb").checked && (fb.location || fb.hometown))) && "your city", "your approximate location if you allow it"].filter(Boolean);
-  $("ladderdisclose").textContent = `Pressing the button sends search words made from your topic, ${parts.join(", ")} to SerpAPI. Nothing is posted, joined or scraped; you only get links.`;
+  disclose();
   const fresh = (trace.find(x => x.new_assets)?.new_assets) || [];
   if (fresh.length) { $("newassets").hidden = false; $("assetlist").innerHTML = fresh.map(k => `<li><span>${k.replace(/_/g, " ")}</span><button class="keep" data-kind="${k}">Keep in library</button></li>`).join("");
     $("assetlist").onclick = async e => { const k = e.target.dataset?.kind; if (!k) return; const r = await fetch(`/api/assets/${k}/approve`, { method: "POST" }); e.target.textContent = r.ok ? "Saved ✓" : "Failed"; e.target.disabled = true; }; }
@@ -203,22 +211,41 @@ function finish() {
   render(null); navigator.geolocation?.getCurrentPosition(p => render(p.coords), () => {}, { timeout: 8000 });
 }
 
+async function play(out) {
+  spec = out.spec; trace = out.trace; actIdx = 0;
+  $("setup").hidden = true; $("hud").hidden = false;
+  await showAct();
+  startHands($("video"), $("overlay"), f => { hand = { ...f, t: performance.now() }; $("seen").textContent = f.pose === "none" ? "no hand" : (f.gesture !== f.pose && f.gesture !== "none" ? f.gesture : f.pose); }, () => spec && !locked ? currentStep().gesture : null)
+    .then(ok => { camOn = ok; if (!ok) $("seen").textContent = "no camera: use the keys"; });
+}
+
 $("go").onclick = async () => {
   $("go").disabled = true; $("status").textContent = "The agents are weaving your world… (director → skills → storyteller → builder → validator)";
   try {
     const res = await fetch("/api/simulations", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
       topic: $("topic").value, audience: $("audience").value, world: $("world").value, social_level: +document.querySelector("input[name=level]:checked").value }) });
     if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
-    const out = await res.json(); spec = out.spec; trace = out.trace; actIdx = 0;
-    $("setup").hidden = true; $("hud").hidden = false;
-    await showAct();
-    startHands($("video"), $("overlay"), f => { hand = { ...f, t: performance.now() }; $("seen").textContent = f.pose === "none" ? "no hand" : (f.gesture !== f.pose && f.gesture !== "none" ? f.gesture : f.pose); }, () => spec && !locked ? currentStep().gesture : null)
-      .then(ok => { camOn = ok; if (!ok) $("seen").textContent = "no camera: use the keys"; });
+    await play(await res.json());
   } catch (e) { $("status").textContent = "Something went wrong: " + e.message; console.error(e); }
   $("go").disabled = false;
 };
+
+// opens a training built from the TALE wizard straight into its world (waits if it is still building)
+async function loadProgram(id) {
+  veil(true, "Opening your world…");
+  try {
+    for (;;) {
+      const res = await fetch(`/api/training-programs/${encodeURIComponent(id)}`), p = await res.json();
+      if (!res.ok) throw new Error(p.detail || res.statusText);
+      if (p.status === "failed") throw new Error(p.error || "the build failed");
+      if (p.status === "ready") { try { sessionStorage.setItem("program", id); } catch {} return await play(p.simulation); }
+      veil(true, "Your world is still being built…"); await new Promise(r => setTimeout(r, 1000));
+    }
+  } catch (e) { veil(true, `Couldn't open this training: ${e.message}`); console.error(e); }
+}
 $("again").onclick = () => location.reload();
 
-// idle backdrop behind the setup form
-swapStage(PREVIEW, []).then(() => { resetCamera(PREVIEW); veil(false); });
+// trainings are created on the TALE home page; without one there is nothing to play
+if (PROGRAM) loadProgram(PROGRAM);
+else location.replace("/");
 window.__realm = { camera, player, keys, get spec() { return spec; }, get stage() { return stage; }, get progress() { return [actIdx, itIdx, locked]; }, finish, get props() { return Object.fromEntries(stage?.byId ?? []); } };  // test hook

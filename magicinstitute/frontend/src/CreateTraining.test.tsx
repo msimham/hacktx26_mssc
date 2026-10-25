@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router-dom";
 import { CreateTraining } from "./CreateTraining";
 import { initialState, reducer } from "./create/state";
 import { categoryProgress } from "./create/categories";
@@ -8,7 +9,12 @@ import { emptyAnswers, STEPS } from "./create/steps";
 
 afterEach(cleanup);
 
-const setup = () => render(<CreateTraining />);
+const setup = () =>
+  render(
+    <MemoryRouter>
+      <CreateTraining />
+    </MemoryRouter>,
+  );
 
 describe("reducer", () => {
   it("appends chips with a separator and clamps navigation", () => {

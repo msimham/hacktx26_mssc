@@ -15,8 +15,8 @@ request ─► Director ─► ResourceScout ─► SkillDesigner ─► [ Story
 - `aep/library/`: offline templates (fire safety, fully worked) and the curated resource catalog.
 - **Visual standard:** the worlds are rendered to the detail bar of the Magical School of Safety pack: see [docs/VISUAL_STANDARD.md](docs/VISUAL_STANDARD.md). The agents design a set + palette + scenery; the player renders the hall, props, rigged characters and effects. Approved custom assets are saved in `asset_library/` and reused (`/assets.html`).
 - **You are the heroine:** the story addresses you in the second person ("You are Sleeping Beauty. What would you do?"), plain and direct. Gestures include motion gestures (pull, push, lift, sweep, swipe, trace, circle) alongside static poses.
-- **Create wizard + control plane:** `/create/` (React, source in `frontend/`) asks 11 plain-language questions and POSTs them to `POST /api/training-programs`. `aep/control/` then standardizes the answers into an `AgentSpec` (Standardization agent), applies security (SecurityAgent recommends from a closed rule list; `PolicyEngine` enforces, deny by default), derives a resource plan, plans evaluation, and the orchestrator runs the pipeline above. The wizard polls `GET /api/training-programs/{id}` for the 7 build phases, then sends the learner to `/play.html?program=<id>`. See "Create wizard" below.
-- `web/index.html`: landing site. `web/play.html`: the player (loads a built training, 3D player, end screen); with no `?program=` it redirects to `/create/`. three.js player. Arrow keys move; MediaPipe webcam hand tracking recognizes grab / point / open palm / pinch / wave / thumbs-up.
+- **TALE home page + create wizard + control plane:** `/` is the TALE home page and `/create` its wizard (React, source in `frontend/`, built into `web/create`). The wizard asks 11 plain-language questions and POSTs them to `POST /api/training-programs`. `aep/control/` then standardizes the answers into an `AgentSpec` (Standardization agent), applies security (SecurityAgent recommends from a closed rule list; `PolicyEngine` enforces, deny by default), derives a resource plan, plans evaluation, and the orchestrator runs the pipeline above. The wizard polls `GET /api/training-programs/{id}` for the 7 build phases, then sends the learner straight into the built world at `/play.html?program=<id>`. See "Create wizard" below.
+- `web/play.html`: the player (opens the built training directly, 3D player, end screen); it asks no questions of its own, and with no `?program=` it redirects to the TALE home page. The optional school / work / city fields for Find my people are on the end screen. three.js player. Arrow keys move; MediaPipe webcam hand tracking recognizes grab / point / open palm / pinch / wave / thumbs-up.
   Keys 1-6 simulate gestures as a fallback.
 - Social levels are cumulative: level N plays acts 1..N (1 self, 2 friends/team, 3 community).
 - End screen: recap plus real-world links. The fire station map uses browser geolocation.
@@ -27,7 +27,7 @@ python -m venv .venv && .venv/bin/pip install -e . && npm install      # npm: th
 # put MUSE_API_KEY=... (or ANTHROPIC_API_KEY) in .env (gitignored); with neither, offline templates are used
 # AEP_PROVIDER=muse|anthropic, AEP_MUSE_MODEL=muse-spark-1.3, AEP_MUSE_REASONING=low
 npm --prefix frontend install && npm --prefix frontend run build    # builds the wizard into web/create (gitignored)
-.venv/bin/uvicorn aep.server:app --port 8000    # open http://localhost:8000/create/
+.venv/bin/uvicorn aep.server:app --port 8000    # open http://localhost:8000/
 .venv/bin/python -m pytest && node tests/gestures.test.mjs && npm --prefix frontend test
 # wizard dev server with hot reload: npm --prefix frontend run dev  (http://localhost:5174, proxies /api to :8000)
 ```
@@ -71,7 +71,7 @@ the question instead; offline, the answer is the step's lesson point.
 ## Create wizard and control plane
 
 ```
-/create/ (11 answers) -> POST /api/training-programs -> Standardize -> AgentSpec -> Security/Policy -> Resources -> Evaluation -> Orchestrator -> pipeline -> /play.html?program=<id>
+TALE / -> /create (11 answers) -> POST /api/training-programs -> Standardize -> AgentSpec -> Security/Policy -> Resources -> Evaluation -> Orchestrator -> pipeline -> /play.html?program=<id>
 ```
 
 - `aep/control/standardize.py`: free text to a closed-vocabulary intent (LLM when online, keyword rules offline or if the LLM output fails validation).
