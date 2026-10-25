@@ -14,6 +14,7 @@ const pack = {
     narrCollapse: "AFTER THE TOAST THE DUCHESS COLLAPSES!", narrWorsening: "She looks worse.", companionBackstory: ["A stranger offered the Duchess a tonic.", "You do not know what was in it."],
   },
   guidance: [{ text: "Stay with the person until help arrives.", tag: "stay" as const, sourceIds: ["s1"] }],
+  plan: [],
   sources: [{ id: "s1", title: "Source", url: "https://www.cdc.gov/x", snippet: "Stay with the person." }],
 };
 

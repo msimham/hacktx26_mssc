@@ -2,7 +2,7 @@ import { recordApiCall } from "../apiLog";
 import type { z } from "zod";
 import { costUsd } from "./providers/metaMuse";
 import { health } from "./health";
-import { ProviderError, type ModelProvider } from "./providers/types";
+import { ProviderError, type AgentStep, type ModelProvider } from "./providers/types";
 import type { AgentRun, RunLog } from "./runLog";
 import type { PolicyDecision, Validation } from "./validate";
 
@@ -21,7 +21,7 @@ export interface Budget {
 
 export interface StructuredCall<I, O> {
   scopeId: string;
-  step: "diagnose" | "adapt" | "builder" | "command" | "npc";
+  step: AgentStep;
   provider: ModelProvider;
   system: string;
   user: string;
@@ -71,13 +71,13 @@ export class StructuredRunner {
       let retryAfterMs: number | undefined;
       let giveUp = false;
 
-      if (provider.id === "meta" && a.budget && a.budget.used() >= a.budget.max) {
+      if (provider.id !== "mock" && a.budget && a.budget.used() >= a.budget.max) {
         errors = [`limit: this organization allows ${a.budget.max} model calls here`];
         policy = [{ rule: "model_call_limit", action: "dropped", detail: `limit ${a.budget.max}` }];
         giveUp = true;
       } else {
         try {
-          if (provider.id === "meta") a.budget?.spend();
+          if (provider.id !== "mock") a.budget?.spend();
           const res = await provider.complete({ step: a.step, system: a.system, user, schemaName: a.schemaName, schema: a.schema, deterministic: a.deterministic, ...(a.timeoutMs ? { timeoutMs: a.timeoutMs } : {}) });
           model = res.model;
           usage = res.usage;
@@ -89,19 +89,19 @@ export class StructuredRunner {
             if (v.ok) { ok = true; value = v.value; output = v.value; notes = v.notes; policy = v.policy; }
             else errors = v.errors;
           }
-          if (provider.id === "meta") health.record("meta_spark", true, model);
+          if (provider.id !== "mock") health.record(provider.id === "gemini" ? "gemini" : "meta_spark", true, model);
         } catch (err) {
           const pe = err instanceof ProviderError ? err : new ProviderError("unavailable", "Unexpected provider error");
           errors = [`${pe.kind}: ${pe.message}`];
           retryAfterMs = pe.retryAfterMs;
           giveUp = !(pe.retryable || pe.kind === "timeout"); // auth errors, bad requests and unreachable hosts will not fix themselves
-          if (provider.id === "meta") health.record("meta_spark", false);
+          if (provider.id !== "mock") health.record(provider.id === "gemini" ? "gemini" : "meta_spark", false);
         }
       }
 
       // Which service answered: the real Meta model, or the built-in rules (no outside call at all).
-      recordApiCall(provider.id === "meta"
-        ? { service: "Meta Muse (Spark, text)", op: `${a.step}/${a.schemaName}`, mode: "real", ok, ms: this.clock() - startedAt, note: ok ? `attempt ${attempt}` : (errors[0] ?? "failed").slice(0, 80) }
+      recordApiCall(provider.id !== "mock"
+        ? { service: provider.id === "gemini" ? "Google Gemini (text)" : "Meta Muse (Spark, text)", op: `${a.step}/${a.schemaName}`, mode: "real", ok, ms: this.clock() - startedAt, note: ok ? `attempt ${attempt}` : (errors[0] ?? "failed").slice(0, 80) }
         : { service: "Built-in rules", op: `${a.step}/${a.schemaName}`, mode: "rules", ok: true, ms: this.clock() - startedAt, note: "no API call" });
       const last = !ok && (attempt === (a.attempts ?? 2) || giveUp);
       await this.deps.runLog.append({

@@ -89,7 +89,7 @@ export function sessionRoutes(env: Env, store: Store, agent: TrainingAgent, runL
       if (!p || p.status !== "approved") return void res.status(400).json({ error: "That scenario pack hasn't been approved" });
       if (p.worldId !== b.worldId) return void res.status(400).json({ error: "That scenario pack was written for a different world" });
       if (!b.acts.includes("medical_emergency")) return void res.status(400).json({ error: "A scenario pack needs the emergency act" });
-      pack = { id: p.id, title: p.title, theme: p.theme, flavor: p.flavor, guidance: p.guidance, sources: p.sources };
+      pack = { id: p.id, title: p.title, theme: p.theme, flavor: p.flavor, guidance: p.guidance, plan: p.plan, sources: p.sources };
     }
     const id = `ses_${randomFrom("abcdefghijklmnopqrstuvwxyz0123456789", 10)}`;
     let code = randomFrom(CODE_ALPHABET, 6);
@@ -153,7 +153,7 @@ export function sessionRoutes(env: Env, store: Store, agent: TrainingAgent, runL
         replay: m.replay ?? null,
         plannedActs: m.config.acts.length,
         worldId: m.config.worldId,
-        pack: m.config.pack ? { title: m.config.pack.title, guidance: m.config.pack.guidance, sources: m.config.pack.sources } : null,
+        pack: m.config.pack ? { title: m.config.pack.title, guidance: m.config.pack.guidance, plan: m.config.pack.plan, sources: m.config.pack.sources } : null,
         thankedAlready: !!caller.player && !!shout?.some((s) => s.from === caller.player!.id),
       });
     } catch (err) {

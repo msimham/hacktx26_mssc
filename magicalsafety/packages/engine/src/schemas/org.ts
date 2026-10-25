@@ -86,7 +86,7 @@ export const OrgConfig = z.strictObject({
   /** Scenario packs drafted by the research agent. Only "approved" ones can be used in a session. */
   packs: z.array(StoredPack).max(10).default([]),
   model: z.strictObject({
-    provider: z.enum(["meta", "mock"]),
+    provider: z.enum(["meta", "gemini", "mock"]),
     modelId: z.enum(["muse-spark-1.3", "muse-spark-1.3-contributor"]),
     /** Contributor mode may let Meta train on content. Requires this AND the server's META_ALLOW_CONTRIBUTOR. */
     allowContributorMode: z.boolean(),

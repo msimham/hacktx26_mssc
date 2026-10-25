@@ -8,6 +8,8 @@ import { draftObjectives } from "../agent/builderDraft";
 import { planResearch } from "../agent/researchAgent";
 import { buildPack } from "../agent/scenarioAgent";
 import type { Store } from "../store/store";
+import { artKey, promptHash, type ArtCache } from "../assets/artCache";
+import { looksLikeWebp } from "../tools/museImage";
 import { SEEDED_ORG_ID } from "../orgs/seed";
 import { SAMPLE_RESULTS } from "../tools/serpapi";
 import { randomBytes } from "node:crypto";
@@ -33,7 +35,7 @@ const Draft = z.strictObject({ orgId: z.string().optional(), description: z.stri
 
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 40) || "doc";
 
-export function orgRoutes(env: Env, store: Store, kit: AgentKit, guard: OrganizerGuard): Router {
+export function orgRoutes(env: Env, store: Store, kit: AgentKit, guard: OrganizerGuard, artCache?: ArtCache): Router {
   const r = Router();
 
   // Everything here is organizer-only. Same 404 for "no such org" and "not allowed to see it" is unnecessary
@@ -170,10 +172,17 @@ export function orgRoutes(env: Env, store: Store, kit: AgentKit, guard: Organize
     if (o.packs.length >= 10) return void res.status(400).json({ error: "Delete an old pack first (up to 10 are kept)" });
     const world = WORLDS[body.data.worldId];
     if (!world) return void res.status(400).json({ error: "That world isn't available" });
-    const budget = { max: o.limits.maxBuilderDraftsPerDay * 2, used: () => kit.usage.get(o.id, "draft_calls", "day"), spend: () => kit.usage.add(o.id, "draft_calls", "day") };
+    const budget = { max: o.limits.maxBuilderDraftsPerDay * 3, used: () => kit.usage.get(o.id, "draft_calls", "day"), spend: () => kit.usage.add(o.id, "draft_calls", "day") };
     try {
       const pack = await buildPack({
-        runner: kit.runner, provider: kit.providerFor(o), run: (r) => kit.tools.executeTool(r), orgId: o.id, scopeId: o.id,
+        runner: kit.runner, provider: kit.providerFor(o), reviewer: kit.reviewerFor(o), run: (r) => kit.tools.executeTool(r), orgId: o.id, scopeId: o.id,
+        allowImage: !!env.metaApiKey && !!artCache && o.tools.allowed.includes("muse.image"),
+        saveCover: async (packId, b64, model, prompt) => {
+          const bytes = Buffer.from(b64, "base64");
+          if (!artCache || !looksLikeWebp(bytes)) return false;
+          await artCache.put(artKey("room", world.id, packId), promptHash(model, prompt), model, bytes);
+          return true;
+        },
         topic: body.data.topic, audience: o.audience || "college students", world, hasSerpKey: !!env.serpApiKey, budget,
       });
       const next = OrgConfig.parse({ ...o, packs: [...o.packs, pack] });

@@ -124,6 +124,7 @@ export function Results() {
       {a.pack && a.pack.guidance.length > 0 && (
         <section aria-label="What the sources say" className="rounded-xl bg-night-2 p-4">
           <h2 className="font-display text-lg text-gold">What the sources say</h2>
+          {a.pack.plan.length > 0 && <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm">{a.pack.plan.map((p, i) => <li key={i}><strong>{p.title}</strong>: {p.why}</li>)}</ol>}
           <ul className="mt-2 space-y-2 text-sm">
             {a.pack.guidance.map((g, i) => (
               <li key={i}>• {g.text}{" "}{g.sourceIds.map((id) => { const s = a.pack!.sources.find((x) => x.id === id); return s?.url ? <a key={id} href={s.url} target="_blank" rel="noopener noreferrer" className="ml-1 rounded bg-sky-900 px-1.5 py-0.5 text-xs underline">{s.title.slice(0, 40)}</a> : <span key={id} className="ml-1 rounded bg-sky-900 px-1.5 py-0.5 text-xs">{s?.title.slice(0, 40) ?? id}</span>; })}</li>

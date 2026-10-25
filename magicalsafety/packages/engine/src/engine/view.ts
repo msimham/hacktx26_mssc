@@ -67,6 +67,8 @@ export interface PlayerView {
   safetyFooter: string;
   worldId: string;
   worldName: string;
+  /** The team plan from an approved scenario pack, if the session uses one. */
+  plan: { title: string; why: string }[] | null;
   socialEnvironment: string;
   allowCrossRoomChat: boolean;
   inputMethods: string[];
@@ -210,6 +212,7 @@ export function viewFor(s: RuntimeState, playerId: string): PlayerView | null {
     worldName: act.world.name,
     socialEnvironment: s.config.socialEnvironment,
     allowCrossRoomChat: s.config.rules.allowCrossRoomChat,
+    plan: s.config.pack?.plan?.length ? s.config.pack.plan.map((p) => ({ title: p.title, why: p.why })) : null,
     inputMethods: s.config.inputMethods.slice(),
   };
 }

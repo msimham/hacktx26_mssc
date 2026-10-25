@@ -237,8 +237,8 @@ function Builder() {
             <h2 className="font-display text-lg text-gold">AI, tools and limits</h2>
             <div className="grid gap-3 md:grid-cols-2">
               <label className="text-sm">Interpretation by
-                <select className={`${field} mt-1`} value={org.model.provider} onChange={(e) => edit({ model: { ...org.model, provider: e.target.value as "meta" | "mock" } })}>
-                  <option value="meta">Muse Spark (when a key is set, otherwise rules)</option><option value="mock">Rules only (no AI)</option>
+                <select className={`${field} mt-1`} value={org.model.provider} onChange={(e) => edit({ model: { ...org.model, provider: e.target.value as "meta" | "gemini" | "mock" } })}>
+                  <option value="meta">Muse Spark (when a key is set, otherwise rules)</option><option value="gemini">Gemini (needs GEMINI_API_KEY; check Google's data terms first)</option><option value="mock">Rules only (no AI)</option>
                 </select>
               </label>
               <label className="text-sm">Model

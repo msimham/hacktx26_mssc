@@ -29,6 +29,11 @@ export const GuidanceTag = z.enum(["recognize", "call", "stay", "share", "meet_r
 export const PackGuidance = z.strictObject({ text: line(220), tag: GuidanceTag, sourceIds: z.array(z.string().max(12)).min(1).max(2) });
 export type PackGuidance = z.infer<typeof PackGuidance>;
 
+/** The things a plan step can be about. They are the same jobs the exercise already has, so a plan can never invent a new action. */
+export const PlanCapability = z.enum(["recognize", "call_help", "stay_with", "share_information", "meet_responders", "bring_kit", "keep_back"]);
+export const PlanStep = z.strictObject({ capability: PlanCapability, title: line(60), why: line(160), sourceIds: z.array(z.string().max(12)).min(1).max(2) });
+export type PlanStep = z.infer<typeof PlanStep>;
+
 export const PackSource = z.strictObject({ id: z.string().max(12), title: z.string().max(200), url: z.string().max(500), snippet: z.string().max(500) });
 export type PackSource = z.infer<typeof PackSource>;
 
@@ -39,6 +44,8 @@ export const AppliedPack = z.strictObject({
   theme: PackTheme,
   flavor: PackFlavor,
   guidance: z.array(PackGuidance).max(8),
+  /** An ordered action plan for the team, drafted by the plan agent from the same sources. Shown to players as their team plan. */
+  plan: z.array(PlanStep).max(6).default([]),
   sources: z.array(PackSource).max(10),
 });
 export type AppliedPack = z.infer<typeof AppliedPack>;
@@ -53,6 +60,12 @@ export const StoredPack = AppliedPack.extend({
   reviewedBy: z.string().max(60),
   /** True when the sources were sample text (no SerpApi key) or the accuracy check dropped a lot. A person must look closely. */
   needsAttention: z.boolean(),
+  /** Which agents ran, on which model, and what they did. Shown to the organizer so nothing is a black box. */
+  trace: z.array(z.strictObject({ agent: z.string().max(20), via: z.string().max(60), ok: z.boolean(), ms: z.number().int().min(0), note: z.string().max(140) })).max(16).default([]),
+  /** True when a different model family did the fact-check than the one that drafted. */
+  independentReview: z.boolean().default(false),
+  /** True when a cover image was generated and saved (served as room art `room:{world}:{packId}`). */
+  cover: z.boolean().default(false),
   mockSources: z.boolean(),
   dropped: z.array(z.strictObject({ text: z.string().max(220), note: z.string().max(200) })).max(8),
 });

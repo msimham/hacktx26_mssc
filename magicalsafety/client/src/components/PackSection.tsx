@@ -40,11 +40,27 @@ export function PackSection({ org, onOrg, guard }: { org: OrgConfig; onOrg: (o: 
             <span className={`rounded px-2 py-0.5 text-xs font-bold ${STATUS[p.status]}`}>{p.status}</span>
             <span className="text-xs text-slate-400">for {p.worldId} · drafted by {p.generatedBy} · checked by {p.reviewedBy}</span>
           </div>
+          {p.trace.length > 0 && (
+            <details open>
+              <summary className="cursor-pointer text-slate-300">Agent team: {p.trace.map((t) => t.agent).join(" → ")}</summary>
+              <ul className="mt-1 space-y-1 text-xs text-slate-300">
+                {p.trace.map((t, i) => <li key={i}><strong>{t.agent}</strong> on <em>{t.via}</em> {t.ok ? "✓" : "↩ fallback"} · {t.ms} ms · {t.note}</li>)}
+              </ul>
+              <p className="mt-1 text-xs text-slate-400">{p.independentReview ? "🔎 Fact-checked by a different model than the one that wrote it." : "⚠ The same model family checked its own work (only one AI key is set)."}</p>
+            </details>
+          )}
+          {p.cover && <img src={`/api/art/room/${p.worldId}/${p.id}.webp`} alt="Cover illustration made by the research agent" className="max-h-40 rounded" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />}
           {p.needsAttention && <p role="alert" className="rounded bg-amber-900/60 p-2 text-amber-100">⚠ Read this one closely before approving: it used authored text, or the check removed or doubted some lines. Also have your campus health office review the wording.</p>}
           <details>
             <summary className="cursor-pointer text-slate-300">Story wording</summary>
             <ul className="mt-1 list-disc space-y-1 pl-5 text-slate-200"><li>{p.flavor.narrCollapse}</li><li>{p.flavor.victimText}</li><li>{p.flavor.companionText}</li></ul>
           </details>
+          {p.plan.length > 0 && (
+            <div>
+              <h3 className="font-semibold">Team action plan (players see this)</h3>
+              <ol className="mt-1 list-decimal space-y-1 pl-5">{p.plan.map((s, i) => <li key={i}><strong>{s.title}</strong>: {s.why}</li>)}</ol>
+            </div>
+          )}
           <div>
             <h3 className="font-semibold">Guidance shown after the exercise</h3>
             <ul className="mt-1 space-y-2">

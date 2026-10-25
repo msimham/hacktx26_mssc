@@ -5,9 +5,9 @@ import { redactDeep } from "./redact";
 export const AgentRun = z.strictObject({
   id: z.string(),
   sessionId: z.string(),
-  step: z.enum(["observe", "evaluate", "diagnose", "adapt", "builder", "command", "npc"]),
+  step: z.enum(["observe", "evaluate", "diagnose", "adapt", "builder", "command", "npc", "orchestrate", "research", "story", "plan", "review"]),
   attempt: z.number().int(),
-  provider: z.enum(["meta", "mock", "rules"]),
+  provider: z.enum(["meta", "gemini", "mock", "rules"]),
   model: z.string(),
   startedAt: z.number(),
   latencyMs: z.number(),

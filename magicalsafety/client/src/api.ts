@@ -73,7 +73,7 @@ export interface Analysis {
   plannedActs: number;
   worldId: string;
   thankedAlready: boolean;
-  pack: { title: string; guidance: { text: string; tag: string; sourceIds: string[] }[]; sources: { id: string; title: string; url: string }[] } | null;
+  pack: { title: string; guidance: { text: string; tag: string; sourceIds: string[] }[]; plan: { capability: string; title: string; why: string; sourceIds: string[] }[]; sources: { id: string; title: string; url: string }[] } | null;
 }
 
 export async function getAnalysis(sessionId: string, token: string): Promise<Analysis> {

@@ -540,7 +540,7 @@ describe("Facebook route", () => {
     const meta = kit.server!.store.getMeta(id)!;
     expect(meta.players[0]!.name).toBe("Ana Lee");
     expect(meta.players[0]!.fb).toEqual({ name: "Ana Lee", pictureUrl: "https://scontent.xx.fbcdn.net/a.jpg" });
-    expect(JSON.stringify(meta)).not.toMatch(/user-token|fb-secret|999/);
+    expect(JSON.stringify(meta)).not.toMatch(/user-token|fb-secret|1234567890/);
   });
 
   it("is unavailable when Facebook isn't configured, and needs a player of that session", async () => {
@@ -780,6 +780,124 @@ describe("API call log", () => {
     const after = (await (await fetch(`${rules.url}/api/api-log`)).json()) as { summary: { service: string; mode: string }[] };
     expect(after.summary.find((x) => x.service === "Built-in rules")).toMatchObject({ mode: "rules" });
     expect(after.summary.some((x) => x.service.startsWith("Meta Muse") && x.mode === "real")).toBe(false);
+  });
+});
+
+describe("The agent team (orchestrator and sub-agents)", () => {
+  const gov = (n: number) => ({ title: `CDC overdose guidance ${n}`, link: `https://www.cdc.gov/overdose/${n}`, snippet: "Call emergency services right away if a person is very hard to wake or their breathing is slow. Stay with the person until help arrives. Tell responders what the person may have taken." });
+  const flavor = { collapseFact: "The student collapsed after the party and is barely responsive.", contextFact: "A friend says the student took something earlier and nobody knows what it was.", victimText: "The student is on the floor, hard to wake, breathing slowly.", companionText: "Their friend is shaken: they took something and I do not know what.", narrCollapse: "A student collapses after the party!", narrWorsening: "The student looks worse.", companionBackstory: ["You saw them take something.", "You do not know what it was."] };
+  const g = (text: string, tag: string) => ({ text, tag, sourceIds: ["s1"] });
+  const guidance = [g("Call emergency services right away if a person is very hard to wake.", "call"), g("Stay with the person until help arrives.", "stay"), g("Tell responders what the person may have taken.", "share")];
+  const step = (capability: string, title: string, why: string, ids = ["s1"]) => ({ capability, title, why, sourceIds: ids });
+  const plan = [step("call_help", "Call emergency services", "Call right away if a person is very hard to wake."), step("stay_with", "Stay with them", "Stay with the person until help arrives."), step("share_information", "Tell responders what you know", "Tell responders what the person may have taken.")];
+  const webp = Buffer.concat([Buffer.from("RIFF"), Buffer.from([0, 0, 0, 0]), Buffer.from("WEBP"), Buffer.alloc(32)]).toString("base64");
+  const orchestration = (o: object = {}) => ({ steps: ["research", "story", "plan", "review"].map((agent) => ({ agent, focus: `focus for ${agent}` })), maxSearches: 2, wantCover: true, ...o });
+
+  /** A model that answers each agent by name. `research` is the list of tool choices it makes, in order. */
+  const model = (research: object[], extra: Record<string, (req: { user: string }) => unknown> = {}, label = "primary-model") => {
+    let r = 0;
+    const answers: Record<string, (req: { user: string }) => unknown> = {
+      orchestration_plan: () => orchestration(),
+      research_step: () => research[Math.min(r++, research.length - 1)],
+      scenario_pack_draft: () => ({ flavor, guidance }),
+      action_plan: () => ({ steps: plan }),
+      scenario_pack_review: (q) => ({ claims: (JSON.parse(q.user.split("\n")[0]!) as { items: unknown[] }).items.map((_, index) => ({ index, supported: true, note: "ok" })), issues: [] }),
+      ...extra,
+    };
+    const p = new Scripted((req) => ({ data: answers[req.schemaName]?.(req as never) ?? {}, model: label, usage: null }));
+    p.label = label;
+    return p;
+  };
+  const search = (argument: string) => ({ action: "search", argument, why: "needed" });
+  const image = { action: "image", argument: "a quiet softly lit hallway after a party", why: "cover" };
+  const finish = { action: "finish", argument: "", why: "done" };
+
+  async function run(primary: Scripted, reviewer: Scripted | null, o: { hasKey?: boolean; allowImage?: boolean } = {}) {
+    const calls: { url: string }[] = [];
+    const fetchImpl = ((url: string) => {
+      calls.push({ url });
+      if (url.includes("images/generations")) return Promise.resolve(json({ data: [{ b64_json: webp }] }));
+      return Promise.resolve(json({ organic_results: [gov(1), gov(2)] }));
+    }) as never;
+    const b = await boot({ fetchImpl, envExtra: KEYS, provider: primary });
+    const saved: string[] = [];
+    const { buildPack } = await import("./agent/scenarioAgent");
+    const { WORLDS } = await import("@magicalsafety/engine");
+    const pack = await buildPack({
+      runner: kit.server!.kit.runner, provider: primary, ...(reviewer ? { reviewer: { provider: reviewer, independent: true } } : {}),
+      run: (r) => kit.server!.kit.tools.executeTool(r), orgId: "org_riverside", scopeId: "org_riverside", topic: "Helping a student who may have overdosed", audience: "college students",
+      world: WORLDS.campus!, hasSerpKey: o.hasKey ?? true, allowImage: o.allowImage ?? true, saveCover: async (id) => { saved.push(id); return true; },
+    });
+    return { pack, calls, saved, b };
+  }
+  const reviewerModel = () => { const p = model([finish], {}, "reviewer-model"); (p as { id: string }).id = "gemini"; return p; };
+
+  it("runs research, story, plan and review as separate agents on separate models, and records what each did", async () => {
+    const primary = model([search("what bystanders should do if someone may be overdosing"), image, finish]);
+    const reviewer = reviewerModel();
+    const { pack, calls, saved } = await run(primary, reviewer);
+    expect(pack.trace.map((t) => t.agent)).toEqual(["orchestrator", "research", "story", "plan", "review"]);
+    expect(pack.trace.find((t) => t.agent === "review")!.via).toBe("reviewer-model"); // a different model checked the work
+    expect(pack.trace.find((t) => t.agent === "story")!.via).toBe("primary-model");
+    expect(pack.independentReview).toBe(true);
+    expect(calls.filter((c) => c.url.includes("serpapi")).length).toBe(1);
+    expect(calls.filter((c) => c.url.includes("images/generations")).length).toBe(1);
+    expect(saved).toEqual([pack.id]);
+    expect(pack.cover).toBe(true);
+    expect(pack.guidance).toHaveLength(3);
+    expect(pack.plan.map((p) => p.capability)).toEqual(["call_help", "stay_with", "share_information"]);
+    expect(pack.sources.every((x) => x.url.includes("cdc.gov"))).toBe(true);
+    expect(pack.needsAttention).toBe(false);
+    expect(reviewer.of("review").length).toBeGreaterThan(0);
+    expect(primary.of("review")).toHaveLength(0); // the drafting model never graded itself
+  });
+
+  it("keeps the agents inside their limits: no more searches or images than allowed, and nothing unsafe", async () => {
+    const greedy = model([search("first reputable query here"), search("second query"), search("third query"), image, image, finish], { orchestration_plan: () => orchestration({ maxSearches: 1 }) });
+    const { calls } = await run(greedy, reviewerModel());
+    expect(calls.filter((c) => c.url.includes("serpapi")).length).toBe(1);
+    expect(calls.filter((c) => c.url.includes("images/generations")).length).toBe(1);
+
+    const unsafe = model([search("is two mg of it safe for a person"), finish]);
+    const r = await run(unsafe, reviewerModel());
+    const q = decodeURIComponent(r.calls.find((c) => c.url.includes("serpapi"))!.url);
+    expect(q).not.toMatch(/\bmg\b/); // the model's unsafe query was refused; the default query ran instead
+  });
+
+  it("does not use the image tool when no cover is wanted or allowed", async () => {
+    const off = await run(model([search("reputable query about overdose response"), image, finish], { orchestration_plan: () => orchestration({ wantCover: false }) }), reviewerModel());
+    expect(off.calls.some((c) => c.url.includes("images/generations"))).toBe(false);
+    expect(off.pack.cover).toBe(false);
+    const denied = await run(model([search("reputable query about overdose response"), image, finish]), reviewerModel(), { allowImage: false });
+    expect(denied.calls.some((c) => c.url.includes("images/generations"))).toBe(false);
+  });
+
+  it("flags the pack when the check was not independent, or a line is doubted", async () => {
+    const same = await run(model([search("reputable query about overdose response"), finish]), null);
+    expect(same.pack.independentReview).toBe(false);
+    expect(same.pack.needsAttention).toBe(true);
+    const doubting = reviewerModel();
+    const rev = new Scripted((req) => ({ data: { claims: (JSON.parse(req.user.split("\n")[0]!) as { items: unknown[] }).items.map((_, index) => ({ index, supported: index !== 4, note: "not in the source" })), issues: [] }, model: "reviewer-model", usage: null }));
+    (rev as { id: string }).id = "gemini";
+    const withPlan = await run(model([search("reputable query about overdose response"), finish], { action_plan: () => ({ steps: [...plan, step("keep_back", "Keep people back", "Make space around them.")] }) }), rev);
+    expect(withPlan.pack.plan.map((p) => p.capability)).not.toContain("keep_back"); // the doubted plan step was removed
+    expect(withPlan.pack.dropped.length).toBeGreaterThan(0);
+    void doubting;
+  });
+
+  it("refuses a plan that cites no real source, and uses the authored plan instead", async () => {
+    const bad = model([search("reputable query about overdose response"), finish], { action_plan: () => ({ steps: [step("call_help", "Call", "Call now.", ["nope"]), step("stay_with", "Stay", "Stay.", ["nope"]), step("recognize", "Notice", "Notice.", ["nope"])] }) });
+    const { pack } = await run(bad, reviewerModel());
+    expect(pack.plan.length).toBeGreaterThanOrEqual(3);
+    expect(pack.plan.every((p) => p.sourceIds.includes("auth") || pack.sources.some((s) => p.sourceIds.includes(s.id)))).toBe(true);
+    expect(pack.trace.find((t) => t.agent === "plan")!.note).toContain("authored plan");
+  });
+
+  it("with no key it does no research and falls back to the authored pack with a plan", async () => {
+    const { pack, calls } = await run(model([finish]), reviewerModel(), { hasKey: false });
+    expect(calls.some((c) => c.url.includes("serpapi"))).toBe(false);
+    expect(pack).toMatchObject({ generatedBy: "authored", needsAttention: true });
+    expect(pack.plan.length).toBeGreaterThanOrEqual(3);
   });
 });
 

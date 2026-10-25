@@ -58,7 +58,7 @@ export function createApp(env: Env, deps?: { store: Store; hub: SessionHub; kit:
     app.use("/api/sessions", sessionRoutes(env, deps.store, deps.kit.agent, deps.kit.runLog, guard, deps.kit.auditLog));
     app.use("/api/sessions", playRoutes(deps.store, deps.hub, deps.kit));
     app.use("/api/art", artRoutes(deps.artCache));
-    app.use("/api/orgs", orgRoutes(env, deps.store, deps.kit, guard));
+    app.use("/api/orgs", orgRoutes(env, deps.store, deps.kit, guard, deps.artCache));
   }
 
   // Unknown API paths answer in JSON, never an HTML page.

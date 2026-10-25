@@ -1,6 +1,6 @@
 import type { z } from "zod";
 
-export type AgentStep = "diagnose" | "adapt" | "builder" | "command" | "npc";
+export type AgentStep = "diagnose" | "adapt" | "builder" | "command" | "npc" | "orchestrate" | "research" | "story" | "plan" | "review";
 
 export interface CompletionRequest<T> {
   step: AgentStep;
@@ -30,7 +30,7 @@ export class ProviderError extends Error {
 }
 
 export interface ModelProvider {
-  id: "meta" | "mock";
+  id: "meta" | "gemini" | "mock";
   /** What a result written through this provider is labeled as. */
   label: string;
   complete<T>(req: CompletionRequest<T>): Promise<Completion>;

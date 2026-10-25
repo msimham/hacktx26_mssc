@@ -10,7 +10,7 @@ dotenv.config({ path: path.resolve(here, "../../../.env"), quiet: true });
 export type IntegrationState = "mock" | "cached" | "configured" | "live" | "degraded";
 
 export interface IntegrationStatus {
-  id: "meta_spark" | "meta_image" | "meta_voice" | "serpapi" | "facebook";
+  id: "gemini" | "meta_spark" | "meta_image" | "meta_voice" | "serpapi" | "facebook";
   label: string;
   /** "configured" means a key is present. It is NOT "live": only a successful request makes it live. */
   state: IntegrationState;
@@ -25,8 +25,11 @@ export interface Env {
   metaImageModel: string;
   metaTranscribeModel: string;
   allowContributor: boolean;
+  geminiModel: string;
+  geminiBaseUrl: string;
   // Secrets: server-only. Never serialize this object to a client or a log.
   metaApiKey: string;
+  geminiKey: string;
   serpApiKey: string;
   fbAppSecret: string;
   fbAppId: string;
@@ -55,6 +58,11 @@ export function readEnv(source: NodeJS.ProcessEnv = process.env): Env {
     allowContributor: get("META_ALLOW_CONTRIBUTOR") === "true",
     // TODO(USER): Create a Meta Model API key (dev.meta.ai), add billing/credits, and set META_MODEL_API_KEY in magicalsafety/.env.
     metaApiKey: get("META_MODEL_API_KEY"),
+    // TODO(USER): Create a Google AI Studio (Gemini API) key and set GEMINI_API_KEY in magicalsafety/.env to let the agents use Gemini.
+    geminiKey: get("GEMINI_API_KEY"),
+    // TODO(VERIFY): Gemini model ids change over time; check ai.google.dev for a current one before relying on this default.
+    geminiModel: get("GEMINI_MODEL", "gemini-2.5-flash"),
+    geminiBaseUrl: get("GEMINI_BASE_URL", "https://generativelanguage.googleapis.com/v1beta"),
     // TODO(USER): Create a SerpApi account/key and set SERPAPI_API_KEY in magicalsafety/.env.
     serpApiKey: get("SERPAPI_API_KEY"),
     // TODO(USER): Create a Facebook app (Facebook Login) and set FB_APP_SECRET (server) and VITE_FB_APP_ID (client) in magicalsafety/.env.
@@ -76,6 +84,7 @@ export function integrationStatuses(env: Env): IntegrationStatus[] {
   const fb = env.fbAppId.length > 0 && env.fbAppSecret.length > 0;
   const s = (cond: boolean): IntegrationState => (cond ? "configured" : "mock");
   return [
+    { id: "gemini", label: "Gemini (agents)", state: s(env.geminiKey.length > 0), detail: env.geminiKey ? "Key present; not yet verified by a live request" : "No key: agents use Muse Spark or the built-in rules" },
     { id: "meta_spark", label: "Muse Spark (reasoning)", state: s(meta), detail: meta ? "Key present; not yet verified by a live request" : "No key: rules + mock provider" },
     { id: "meta_image", label: "Muse Image (art)", state: s(meta), detail: meta ? "Key present; not yet verified" : "No key: repo SVG fallback art" },
     { id: "meta_voice", label: "Muse Voice Transcribe", state: s(meta), detail: meta ? "Key present; not yet verified" : "No key: browser STT / text only" },

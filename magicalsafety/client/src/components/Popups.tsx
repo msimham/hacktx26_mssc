@@ -47,6 +47,11 @@ export function JobPopup({ view, onAct, onClose }: { view: PlayerView; onAct: (l
           {tells.length > 0 && <div className="mt-2 flex flex-wrap gap-2">{tells.map((la) => <button key={la.key} type="button" onClick={() => { onAct(la); onClose(); }} className="rounded-full bg-night px-3 py-1 text-xs font-semibold text-gold">📣 Tell the team</button>)}</div>}
         </div>
       )}
+      {view.plan && (
+        <div className="mt-3"><h3 className="text-sm font-bold">Team plan</h3>
+          <ol className="mt-1 list-decimal space-y-1 pl-5 text-sm">{view.plan.map((p, i) => <li key={i}><strong>{p.title}</strong>: {p.why}</li>)}</ol>
+        </div>
+      )}
       {view.objectives && (
         <div className="mt-3"><h3 className="text-sm font-bold">Team goals</h3>
           <ul className="mt-1 space-y-1 text-sm">{view.objectives.map((o) => <li key={o.id}>{o.done ? "✅" : "⬜"} {o.label}</li>)}</ul>
