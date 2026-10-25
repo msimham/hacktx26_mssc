@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { createSessionFromSetup, getIntegrations, getPass, QUICK_START, setPass, type IntegrationStatus } from "../api";
+import { createSessionFromSetup, getConfig, getIntegrations, getPass, QUICK_START, setPass, type IntegrationStatus } from "../api";
 import { MockBadge } from "../components/MockBadge";
 
 const STATE_STYLE: Record<string, string> = { configured: "text-sky-300", live: "text-emerald-300", degraded: "text-amber-300" };
@@ -13,7 +13,9 @@ export function Home() {
   const [pass, setPassInput] = useState(getPass());
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [needPass, setNeedPass] = useState(true);
 
+  useEffect(() => { void getConfig().then((c) => setNeedPass(c.organizerAuthRequired)); }, []);
   useEffect(() => { getIntegrations().then(setItems).catch(() => setErr("Server unreachable. Is `npm run dev` running?")); }, []);
 
   const quick = async (e: React.FormEvent) => {
@@ -51,11 +53,11 @@ export function Home() {
           </div>
           <form onSubmit={quick} className="mt-4 space-y-2 border-t border-white/10 pt-3">
             <div className="text-sm text-slate-300">Quick start with the demo organization and default settings:</div>
-            <label className="block text-sm">Organizer passcode
+            {needPass ? <label className="block text-sm">Organizer passcode
               <input type="password" value={pass} onChange={(e) => setPassInput(e.target.value)} className={`${field} mt-1`} autoComplete="off" />
               {/* TODO(USER): Set ORGANIZER_PASSCODE in magicalsafety/.env. The local demo default is "change-me". */}
-            </label>
-            <button disabled={busy || !pass} className="rounded bg-night px-4 py-2 ring-1 ring-white/25 disabled:opacity-50">{busy ? "Creating…" : "Quick start"}</button>
+            </label> : <p className="text-xs text-amber-300">Organizer passcode is switched off on this server (local demo mode).</p>}
+            <button disabled={busy || (needPass && !pass)} className="rounded bg-night px-4 py-2 ring-1 ring-white/25 disabled:opacity-50">{busy ? "Creating…" : "Quick start"}</button>
           </form>
         </section>
       </div>

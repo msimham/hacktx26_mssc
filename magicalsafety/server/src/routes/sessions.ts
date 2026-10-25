@@ -66,8 +66,8 @@ export function sessionRoutes(env: Env, store: Store, agent: TrainingAgent, runL
 
   // Organizer-only: create a session.
   r.post("/", rateLimit(30), async (req, res) => {
-    if (guard.blocked(req)) return void res.status(429).json({ error: "Too many wrong passcodes. Try again in a minute." });
-    if (!guard.ok(req)) return void res.status(401).json({ error: "Organizer passcode required" });
+    if (!guard.disabled && guard.blocked(req)) return void res.status(429).json({ error: "Too many wrong passcodes. Try again in a minute." });
+    if (!guard.allows(req)) return void res.status(401).json({ error: "Organizer passcode required" });
     const body = CreateBody.safeParse(req.body ?? {});
     if (!body.success) return void res.status(400).json({ error: "Invalid session settings" });
     const b = body.data;
@@ -199,7 +199,7 @@ export function sessionRoutes(env: Env, store: Store, agent: TrainingAgent, runL
   // Agent run log: organizer only (the Inspector screen arrives in a later phase).
   r.get("/:id/runs", rateLimit(30), async (req, res) => {
     const m = store.getMeta(String(req.params.id));
-    if (!m || !guard.ok(req)) return void res.status(404).json({ error: "Not found" });
+    if (!m || !guard.allows(req)) return void res.status(404).json({ error: "Not found" });
     res.json({ runs: await runLog.list(m.id) });
   });
 
@@ -207,7 +207,7 @@ export function sessionRoutes(env: Env, store: Store, agent: TrainingAgent, runL
   // It shows inputs, outputs and decisions. It does NOT show a model's hidden reasoning, which we never receive.
   r.get("/:id/inspector", rateLimit(30), async (req, res) => {
     const m = store.getMeta(String(req.params.id));
-    if (!m || !guard.ok(req)) return void res.status(404).json({ error: "Not found" });
+    if (!m || !guard.allows(req)) return void res.status(404).json({ error: "Not found" });
     await audit.settle();
     const log = await store.loadLog(m.id);
     const events = log.ok

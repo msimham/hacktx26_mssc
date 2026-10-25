@@ -38,6 +38,8 @@ export interface Env {
   fbEnableFriends: boolean;
   /** Extra browser origin allowed to connect, e.g. https://demo.example.com. */
   publicOrigin: string;
+  /** Local demos only: lets the organizer screens work without a passcode. Ignored when NODE_ENV=production. */
+  disableOrganizerAuth: boolean;
 }
 
 export function readEnv(source: NodeJS.ProcessEnv = process.env): Env {
@@ -64,6 +66,7 @@ export function readEnv(source: NodeJS.ProcessEnv = process.env): Env {
     assetsDir: get("ASSETS_DIR") || path.resolve(here, "../../assets-cache"),
     fbEnableFriends: get("FB_ENABLE_FRIENDS") === "true",
     publicOrigin: get("PUBLIC_ORIGIN"),
+    disableOrganizerAuth: get("DISABLE_ORGANIZER_AUTH") === "true" && source.NODE_ENV !== "production",
   };
 }
 

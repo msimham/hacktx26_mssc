@@ -31,6 +31,11 @@ export function createApp(env: Env, deps?: { store: Store; hub: SessionHub; kit:
     res.json({ ok: true });
   });
 
+  // Lets the client know whether to ask for the organizer passcode.
+  app.get("/api/config", (_req, res) => {
+    res.json({ organizerAuthRequired: !env.disableOrganizerAuth });
+  });
+
   app.get("/api/integrations", (_req, res) => {
     const list = health.apply(integrationStatuses(env));
     // Pre-generated art counts as "cached": real art, but not a live call. No key + a cache = cached; no key + no cache = fallback.
@@ -44,7 +49,7 @@ export function createApp(env: Env, deps?: { store: Store; hub: SessionHub; kit:
     });
   });
 
-  const guard = new OrganizerGuard(env.organizerPasscode);
+  const guard = new OrganizerGuard(env.organizerPasscode, 10, Date.now, env.disableOrganizerAuth);
   if (deps) {
     app.use("/api/sessions", sessionRoutes(env, deps.store, deps.kit.agent, deps.kit.runLog, guard, deps.kit.auditLog));
     app.use("/api/sessions", playRoutes(deps.store, deps.hub, deps.kit));

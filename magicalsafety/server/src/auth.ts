@@ -26,7 +26,7 @@ export function rateLimit(perMinute: number) {
  */
 export class OrganizerGuard {
   private fails = new Map<string, { n: number; reset: number }>();
-  constructor(private expected: string, private maxFailures = 10, private now: () => number = Date.now) {}
+  constructor(private expected: string, private maxFailures = 10, private now: () => number = Date.now, public readonly disabled = false) {}
 
   private key(req: Request) { return req.ip ?? "unknown"; }
 
@@ -48,8 +48,18 @@ export class OrganizerGuard {
     return false;
   }
 
+  /**
+   * May this caller use organizer-only screens (organizations, creating sessions, the Inspector)? With auth disabled for a local
+   * demo, anyone. This is deliberately NOT used for player data (results, analysis, replay approvals): those always need a token
+   * or the real passcode, so turning the passcode off never exposes another session's results.
+   */
+  allows(req: Request): boolean {
+    return this.disabled || this.ok(req);
+  }
+
   /** Middleware: 401 without the passcode, 429 while locked out. */
   require = (req: Request, res: Response, next: () => void) => {
+    if (this.disabled) return next();
     if (this.blocked(req)) return void res.status(429).json({ error: "Too many wrong passcodes. Try again in a minute." });
     if (!this.ok(req)) return void res.status(401).json({ error: "Organizer passcode required" });
     next();

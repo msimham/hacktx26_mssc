@@ -250,3 +250,9 @@ export async function getInspector(sessionId: string): Promise<Inspector> {
   if (!res.ok) throw new Error("UNAUTHORIZED");
   return res.json();
 }
+
+/** Whether the server wants an organizer passcode (it doesn't when DISABLE_ORGANIZER_AUTH=true in a local demo). */
+export async function getConfig(): Promise<{ organizerAuthRequired: boolean }> {
+  try { const r = await fetch("/api/config"); return r.ok ? r.json() : { organizerAuthRequired: true }; }
+  catch { return { organizerAuthRequired: true }; }
+}

@@ -363,3 +363,29 @@ describe("retention", () => {
     expect((await fs.readdir(dir)).filter((f) => f.startsWith("ses_ret_aaaa1"))).toEqual([]);
   });
 });
+
+describe("turning the organizer passcode off (local demos only)", () => {
+  const open = (b: B, p: string, init: RequestInit = {}) => fetch(`${b.url}${p}`, init);
+
+  it("organizer screens work with no passcode, but player data is still protected", async () => {
+    const b = await boot({ envExtra: { DISABLE_ORGANIZER_AUTH: "true" } });
+    expect(((await (await open(b, "/api/config")).json()) as { organizerAuthRequired: boolean }).organizerAuthRequired).toBe(false);
+    expect((await open(b, "/api/orgs")).status).toBe(200);
+    const created = await open(b, "/api/sessions", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" });
+    expect(created.status).toBe(201);
+    await seedEnded("ses_open_aaaa1", "OPEN01", "token-open");
+    expect((await call(b, "ses_open_aaaa1", "/inspector", null)).status).toBe(200);
+    // ...but nobody becomes a "player" or "organizer" of someone's session just because the passcode is off
+    for (const p of ["/results", "/analysis", "/recap", "/recap.webp"]) expect((await call(b, "ses_open_aaaa1", p, null)).status, p).toBe(404);
+    expect((await call(b, "ses_open_aaaa1", "/replay", null, { method: "POST", body: { approve: [0] } })).status).toBe(404);
+  });
+
+  it("is on by default, and the switch is ignored in production", async () => {
+    const b = await boot();
+    expect(((await (await open(b, "/api/config")).json()) as { organizerAuthRequired: boolean }).organizerAuthRequired).toBe(true);
+    expect((await open(b, "/api/orgs")).status).toBe(401);
+    expect(readEnv({ DISABLE_ORGANIZER_AUTH: "true", NODE_ENV: "production" }).disableOrganizerAuth).toBe(false);
+    expect(readEnv({ DISABLE_ORGANIZER_AUTH: "true" }).disableOrganizerAuth).toBe(true);
+    expect(readEnv({}).disableOrganizerAuth).toBe(false);
+  });
+});
