@@ -4,6 +4,8 @@ export interface Chunk {
   id: string; // `${docId}#${n}`
   docId: string;
   docTitle: string;
+  /** Where an approved web source came from. */
+  url: string | null;
   heading: string;
   text: string;
 }
@@ -34,7 +36,7 @@ export function chunkDocument(doc: OrgConfig["documents"][number]): Chunk[] {
   const chunks: Chunk[] = [];
   for (const s of sections) {
     let piece = "";
-    const push = () => { const text = piece.trim(); if (text) chunks.push({ id: `${doc.id}#${chunks.length + 1}`, docId: doc.id, docTitle: doc.title, heading: s.heading, text }); piece = ""; };
+    const push = () => { const text = piece.trim(); if (text) chunks.push({ id: `${doc.id}#${chunks.length + 1}`, docId: doc.id, docTitle: doc.title, url: doc.url ?? null, heading: s.heading, text }); piece = ""; };
     for (const para of s.body.split(/\n{2,}/)) {
       for (const part of para.length > MAX_CHUNK ? para.match(new RegExp(`.{1,${MAX_CHUNK}}(\\s|$)`, "gs")) ?? [para.slice(0, MAX_CHUNK)] : [para]) {
         if ((piece + "\n\n" + part).length > MAX_CHUNK) push();

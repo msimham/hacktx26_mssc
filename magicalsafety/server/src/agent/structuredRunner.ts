@@ -20,7 +20,7 @@ export interface Budget {
 
 export interface StructuredCall<I, O> {
   scopeId: string;
-  step: "diagnose" | "adapt" | "builder";
+  step: "diagnose" | "adapt" | "builder" | "command" | "npc";
   provider: ModelProvider;
   system: string;
   user: string;
@@ -30,6 +30,9 @@ export interface StructuredCall<I, O> {
   validate: (v: I) => Validation<O>;
   fallback: () => O;
   budget?: Budget;
+  /** Interactive steps try once (no retry) and use a shorter timeout. */
+  attempts?: 1 | 2;
+  timeoutMs?: number;
 }
 
 export interface StructuredResult<O> {
@@ -54,7 +57,7 @@ export class StructuredRunner {
     const { provider } = a;
     let user = a.user;
 
-    for (let attempt = 1; attempt <= 2; attempt++) {
+    for (let attempt = 1; attempt <= (a.attempts ?? 2); attempt++) {
       const startedAt = this.clock();
       let errors: string[] = [];
       let notes: string[] = [];
@@ -74,7 +77,7 @@ export class StructuredRunner {
       } else {
         try {
           if (provider.id === "meta") a.budget?.spend();
-          const res = await provider.complete({ step: a.step, system: a.system, user, schemaName: a.schemaName, schema: a.schema, deterministic: a.deterministic });
+          const res = await provider.complete({ step: a.step, system: a.system, user, schemaName: a.schemaName, schema: a.schema, deterministic: a.deterministic, ...(a.timeoutMs ? { timeoutMs: a.timeoutMs } : {}) });
           model = res.model;
           usage = res.usage;
           const parsed = a.schema.safeParse(res.data);
@@ -95,7 +98,7 @@ export class StructuredRunner {
         }
       }
 
-      const last = !ok && (attempt === 2 || giveUp);
+      const last = !ok && (attempt === (a.attempts ?? 2) || giveUp);
       await this.deps.runLog.append({
         id: `run_${a.scopeId}_${a.step}_${attempt}`, sessionId: a.scopeId, step: a.step, attempt,
         provider: provider.id === "mock" ? "rules" : provider.id, model, startedAt, latencyMs: this.clock() - startedAt,

@@ -5,9 +5,10 @@ import { readEnv } from "./config/env";
 import { createServer, type RunningServer } from "./server";
 import { JsonFileStore } from "./store/store";
 import type { ModelProvider } from "./agent/providers/types";
+import type { timedFetch } from "./tools/http";
 
 export const PASS = "test-pass";
-export const env = (dataDir = "") => ({ ...readEnv({ ORGANIZER_PASSCODE: PASS }), dataDir });
+export const env = (dataDir = "", extra: Record<string, string> = {}) => ({ ...readEnv({ ORGANIZER_PASSCODE: PASS, ...extra }), dataDir, assetsDir: "" });
 export const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export class Client {
@@ -43,9 +44,9 @@ export async function cleanup() {
   kit.server = null;
 }
 
-export async function boot(opts: { dataDir?: string; clockRef?: { now: number }; provider?: ModelProvider } = {}) {
+export async function boot(opts: { dataDir?: string; clockRef?: { now: number }; provider?: ModelProvider; envExtra?: Record<string, string>; fetchImpl?: typeof timedFetch } = {}) {
   const clockRef = opts.clockRef ?? { now: 1_000_000 };
-  kit.server = await createServer(env(opts.dataDir), { store: opts.dataDir ? new JsonFileStore(opts.dataDir) : new JsonFileStore(), clock: () => clockRef.now, tickMs: 0, provider: opts.provider });
+  kit.server = await createServer(env(opts.dataDir, opts.envExtra), { fetchImpl: opts.fetchImpl, store: opts.dataDir ? new JsonFileStore(opts.dataDir) : new JsonFileStore(), clock: () => clockRef.now, tickMs: 0, provider: opts.provider });
   await new Promise<void>((r) => kit.server!.httpServer.listen(0, r));
   const url = `http://localhost:${(kit.server.httpServer.address() as AddressInfo).port}`;
   const advance = async (ms: number) => {

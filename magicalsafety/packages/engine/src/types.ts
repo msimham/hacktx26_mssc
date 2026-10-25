@@ -55,12 +55,18 @@ export interface World {
   name: string;
   theme: { bg: string; accent: string; fontClass: string };
   rooms: Room[];
-  roleSkins: Record<RoleId, { name: string; title: string; startRoomSlot: Slot }>;
+  roleSkins: Record<RoleId, { name: string; title: string; startRoomSlot: Slot; /** Portrait id in `portraits`. */ portrait: string }>;
   npcs: { guard: NpcSkin; companion: NpcSkin; extraHelpers: NpcSkin[] };
   targets: TargetDef[];
   /** Fantasy/world wording for ops and tasks; the real-world mapping lives in content/safety. */
   labels: Record<string, string>;
   vocabulary: string[];
+  /** Authored facts the companion NPC may talk about. Nothing outside this sheet. Non-medical. */
+  companionSheet: string[];
+  /** Art prompts for character portraits (generated once by `npm run gen:assets`). */
+  portraits: { id: string; name: string; prompt: string }[];
+  /** Prompts for the end-of-session "team moment" illustration. Generic on purpose: no names, no chat, no outcome details. */
+  recap: { success: string; setback: string };
 }
 
 export type FactId =

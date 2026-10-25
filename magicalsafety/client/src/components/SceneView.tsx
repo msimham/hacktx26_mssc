@@ -1,4 +1,6 @@
 import type { LegalAction, PlayerView } from "@magicalsafety/engine";
+import { useEffect, useState } from "react";
+import { artUrl, getArtManifest } from "../api";
 import { RoomArt } from "./RoomArt";
 
 interface Props {
@@ -10,12 +12,20 @@ interface Props {
 
 export function SceneView({ view, onAct, canClick = true }: Props) {
   const byKey = new Map(view.legal.map((l) => [l.key, l]));
+  const [art, setArt] = useState<Set<string>>(new Set());
+  const [broken, setBroken] = useState<Set<string>>(new Set());
+  useEffect(() => { void getArtManifest().then(setArt); }, []);
+  const artKey = `room:${view.worldId}:${view.room.id}`;
+  const generated = art.has(artKey) && !broken.has(artKey);
   const here = view.actors.filter((a) => a.roomId === view.room.id);
   const busy = !!view.you.busy;
 
   return (
     <div className="relative aspect-[16/9] w-full overflow-hidden rounded-xl border border-gold/40 shadow-lg" role="group" aria-label={`Scene: ${view.room.name}`}>
+      {/* Hand-made SVG scene always renders underneath; generated art (when cached) covers it, and falls back if it fails to load. */}
       <RoomArt roomId={view.room.id} gradient={view.room.art.fallbackGradient} />
+      {generated && <img src={artUrl("room", view.worldId, view.room.id)} alt="" onError={() => setBroken((b) => new Set(b).add(artKey))} className="absolute inset-0 h-full w-full object-cover" />}
+      {generated && <span className="absolute bottom-1 right-2 rounded bg-night/70 px-1.5 text-[10px] text-slate-300" title="Pre-generated with Muse Image and cached">Muse art (cached)</span>}
       <div className="absolute left-3 top-3 rounded bg-night/80 px-3 py-1 font-display text-lg text-gold">{view.room.name}</div>
 
       {view.room.hotspots.map((h) => {

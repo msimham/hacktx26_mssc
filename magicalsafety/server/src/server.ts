@@ -5,7 +5,9 @@ import { createApp } from "./app";
 import { SessionHub } from "./realtime/sessionHub";
 import { createAgent } from "./agent";
 import { seedOrgs } from "./orgs/seed";
+import { ArtCache } from "./assets/artCache";
 import type { ModelProvider } from "./agent/providers/types";
+import type { timedFetch } from "./tools/http";
 import { JsonFileStore, type Store } from "./store/store";
 
 export interface RunningServer {
@@ -16,7 +18,7 @@ export interface RunningServer {
   close(): Promise<void>;
 }
 
-export async function createServer(env: Env, opts: { store?: Store; clock?: () => number; tickMs?: number; provider?: ModelProvider } = {}): Promise<RunningServer> {
+export async function createServer(env: Env, opts: { store?: Store; clock?: () => number; tickMs?: number; provider?: ModelProvider; fetchImpl?: typeof timedFetch } = {}): Promise<RunningServer> {
   const store = opts.store ?? new JsonFileStore(env.dataDir);
   if (store instanceof JsonFileStore) {
     const { loaded, skipped } = await store.open();
@@ -29,12 +31,14 @@ export async function createServer(env: Env, opts: { store?: Store; clock?: () =
   if (swept.length) console.log(`[store] retention sweep removed ${swept.length} session(s)`);
   const httpServer = http.createServer();
   const io = new SocketServer(httpServer, { cors: { origin: true }, maxHttpBufferSize: 1e5 });
-  const hub = new SessionHub({ io, store, clock: opts.clock, tickMs: opts.tickMs });
+  const kit = createAgent(env, store, opts.provider, opts.fetchImpl);
+  const artCache = new ArtCache(env.assetsDir);
+  await artCache.open();
+  const hub = new SessionHub({ io, store, clock: opts.clock, tickMs: opts.tickMs, npcReply: kit.npcReply });
   const { resumed, failed } = await hub.resume();
   if (resumed.length) console.log(`[hub] resumed ${resumed.length} running session(s)`);
   if (failed.length) console.warn(`[hub] could not verify ${failed.length} session log(s); not resumed`);
-  const kit = createAgent(env, store, opts.provider);
-  httpServer.on("request", createApp(env, { store, hub, kit }));
+  httpServer.on("request", createApp(env, { store, hub, kit, artCache }));
   return {
     httpServer, io, hub, store,
     async close() {

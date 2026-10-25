@@ -9,7 +9,7 @@ import {
 import { compile, CompileError, WORLDS } from "./compile";
 import {
   actors, AUTO_ACCEPT_MS, cloneState, curAct, emit, flushEvents, grantFact, isAutonomous,
-  slotRoom, stepRoom,
+  playersOnly, slotRoom, stepRoom,
 } from "./core";
 import { checkAction, factsRideAlong, neededFacts, recipients, stepDurationMs, stepForAction } from "./legality";
 import { handlerFor, handlerOf } from "./handlers";
@@ -317,6 +317,34 @@ function pumpAll(s: RuntimeState): boolean {
   return any;
 }
 
+// ---------- non-player speech (recorded as its own input so replay stays exact) ----------
+
+export interface NpcSayInput {
+  npcId: string;
+  /** The player being answered. */
+  toId: string;
+  text: string;
+  /** Whether a model or the authored fallback wrote the line. Shown to players. */
+  via: "model" | "canned";
+}
+
+/** The companion answers a player. The text is written outside the engine, so it enters as a recorded input. */
+export function applyNpcSay(state: RuntimeState, input: NpcSayInput, nowMs: number): StepResult {
+  if (state.phase !== "running") return { state, events: [] };
+  const s = cloneState(state);
+  const before = s.events.length;
+  advance(s, nowMs - s.startedAtMs!);
+  const npc = s.actors[input.npcId];
+  const to = s.actors[input.toId];
+  const text = input.text.replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, 240);
+  if (s.phase === "running" && npc?.npcKey === "companion" && to && to.kind !== "npc" && text) {
+    emit(s, { type: "said", actor: npc, payload: { to: to.id, text, heardBy: playersOnly(s).filter((p) => p.roomId === npc.roomId).map((p) => p.id), addressed: [to.id], intent: "other", via: input.via, npc: true } });
+  }
+  settle(s);
+  flushEvents(s);
+  return { state: s, events: s.events.slice(before) };
+}
+
 // ---------- actions ----------
 
 function reject(s: RuntimeState, actor: Actor | null, reason: string, attempted: unknown): void {
@@ -362,7 +390,7 @@ function handle(s: RuntimeState, req: ActionRequest): void {
   switch (action.kind) {
     case "say": {
       const heard = recipients(s, actor, action.to)!;
-      const transferred = conveyFacts(s, actor, action.text, heard, "said");
+      const transferred = conveyFacts(s, actor, action.text, heard.filter((h) => h.kind !== "npc"), "said");
       const addressed = addressedIds(s, actor, action.text, action.to);
       emit(s, { type: "said", actor, payload: { to: action.to, text: action.text, heardBy: heard.map((h) => h.id), addressed, intent: tagIntent(action.text, transferred), ...(actor.kind === "bot" ? { simulated: true } : {}) } });
       break;

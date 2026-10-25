@@ -2,7 +2,8 @@
 export const ENGINE_VERSION = "0.1.0";
 export * from "./types";
 export * from "./schemas";
-export { createRuntime, startSession, tick, applyAction, type PlayerInit, type RuntimeInit, type StepResult } from "./engine/reducer";
+export { createRuntime, startSession, tick, applyAction, applyNpcSay, type PlayerInit, type RuntimeInit, type StepResult, type NpcSayInput } from "./engine/reducer";
+export { parseCommandRules, voiceKeywords, type ParseResult } from "./engine/commands";
 export { legalActions, checkAction, actionKey, type LegalAction } from "./engine/legality";
 export { viewFor, type PlayerView, type FeedItem, type ViewActor } from "./engine/view";
 export { replay, type Input } from "./engine/replay";

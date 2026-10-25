@@ -7,6 +7,7 @@ import type { AgentKit } from "../agent";
 import { draftObjectives } from "../agent/builderDraft";
 import type { Store } from "../store/store";
 import { SEEDED_ORG_ID } from "../orgs/seed";
+import { SAMPLE_RESULTS } from "../tools/serpapi";
 import { randomBytes } from "node:crypto";
 
 const NewOrg = z.strictObject({ name: z.string().trim().min(1).max(80) });
@@ -16,6 +17,13 @@ const NewDoc = z.strictObject({
   text: z.string().min(1).max(40_000).transform((s) => s.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, "")),
 });
 const Search = z.strictObject({ query: z.string().trim().min(1).max(300), k: z.number().int().min(1).max(5).optional() });
+const Research = z.strictObject({ query: z.string().trim().min(3).max(200) });
+const Approve = z.strictObject({
+  title: z.string().trim().min(1).max(200),
+  url: z.string().url().max(500).refine((u) => /^https?:\/\//i.test(u)),
+  snippet: z.string().trim().min(1).max(500),
+  mock: z.boolean().default(false),
+});
 const Draft = z.strictObject({ orgId: z.string().optional(), description: z.string().trim().min(10).max(2000) });
 
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 40) || "doc";
@@ -136,6 +144,39 @@ export function orgRoutes(env: Env, store: Store, kit: AgentKit): Router {
 
   // What the training agent and drafter did for this organization (redacted inputs, validated outputs, cost).
   r.get("/:id/runs", async (req, res) => { const o = get(req, res); if (o) res.json({ runs: await kit.runLog.list(o.id) }); });
+
+  // Research: search the web, then explicitly approve what becomes one of this organization's documents.
+  // Without a SerpApi key, clearly labeled sample results are returned so the flow can still be tried.
+  r.post("/:id/research", async (req, res) => {
+    const o = get(req, res);
+    if (!o) return;
+    const body = Research.safeParse(req.body);
+    if (!body.success) return void res.status(400).json({ error: "Enter what you want to research" });
+    if (!env.serpApiKey) return void res.json({ mock: true, results: SAMPLE_RESULTS });
+    const result = await kit.tools.executeTool({ tool: "serpapi.search", args: { query: body.data.query, num: 5 }, orgId: o.id, requestedBy: "organizer" });
+    if (!result.ok) return void res.status(403).json({ error: result.reason });
+    res.json({ mock: false, ...(result.output as object) });
+  });
+
+  r.post("/:id/research/approve", async (req, res) => {
+    const o = get(req, res);
+    if (!o) return;
+    const body = Approve.safeParse(req.body);
+    if (!body.success) return void res.status(400).json({ error: "That result can't be saved" });
+    if (o.documents.length >= 20) return void res.status(400).json({ error: "An organization can hold up to 20 documents" });
+    const strip = (s: string) => s.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+    const title = `${body.data.mock ? "[Sample] " : ""}${strip(body.data.title)}`.slice(0, 120);
+    let id = slug(title);
+    for (let n = 2; o.documents.some((d) => d.id === id); n++) id = `${slug(title).slice(0, 36)}_${n}`;
+    try {
+      const doc = OrgDocument.parse({ id, title, source: "approved_web", ...(body.data.mock ? {} : { url: body.data.url }), text: `# ${title}\n\n${strip(body.data.snippet)}${body.data.mock ? "" : `\n\nSource: ${body.data.url}`}` });
+      const next = OrgConfig.parse({ ...o, documents: [...o.documents, doc] });
+      await store.saveOrg(next);
+      res.status(201).json({ org: next });
+    } catch {
+      res.status(400).json({ error: "That would make the organization too large" });
+    }
+  });
 
   r.get("/:id/audit", (req, res) => { const o = get(req, res); if (o) res.json({ audit: kit.tools.audit(o.id) }); });
 

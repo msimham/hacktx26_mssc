@@ -20,8 +20,10 @@ export interface ToolDef<A = unknown, O = unknown> {
   outputSchema: z.ZodType<O>;
   allowedRequesters: ToolRequest["requestedBy"][];
   timeoutMs: number;
-  /** Which per-org limit counts this tool, if any. */
-  limit?: { counter: "searches"; scope: "day"; max: (org: OrgConfig) => number };
+  /** Which per-org limit counts this tool, if any. Session-scoped limits only apply when the request names a session. */
+  limit?: { counter: string; scope: "day" | "session"; max: (org: OrgConfig) => number };
+  /** A short, safe description of the arguments for the audit log (never the raw payload, which may be audio or secrets). */
+  summarizeArgs?: (args: A) => string;
   execute(ctx: ToolContext, args: A, signal: AbortSignal): Promise<O>;
   costEstimateUsd?: (args: A, out: O) => number;
 }

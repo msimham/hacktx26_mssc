@@ -18,7 +18,9 @@ npm test            # all workspaces
 npm run typecheck   # strict TypeScript, all workspaces
 ```
 
-Expected: engine 109 tests, server 103 tests, all green.
+Expected: engine 121 tests, server 151 tests, client 5 tests, all green.
+
+None of the tests contacts a real service. External calls are replaced by stub `fetch` functions that also record what would have been sent.
 
 What the engine tests prove:
 | Area | Test |
@@ -33,6 +35,22 @@ What the engine tests prove:
 | Determinism | Same seed + inputs → identical event log; replaying the stored inputs reproduces the state |
 | Safety | Dosing / CPR steps / diagnoses are blocked; approved coordination wording passes |
 | Privacy | `viewFor()` never includes another player's private knowledge; strangers' roles stay hidden until they introduce themselves |
+
+What the Phase 6 tests prove:
+| Area | Test |
+|---|---|
+| Muse Image | Sends exactly the documented fields; rejects anything that isn't really a WebP; leaks no key in errors; image limit and allowlist enforced; marks the integration live/degraded from real outcomes |
+| Muse Voice | Sends the two documented multipart parts and request fields; never forwards audio that would be rejected; audio never appears in the audit log; failures become a plain "unavailable" |
+| WAV | The browser's encoder output passes the server's validator at 16/44.1/48 kHz; stereo, wrong rate, 8-bit, float, too long/short, non-audio are refused |
+| SerpApi | `engine=google`, query and key sent; results cleaned (markup, bad links, lengths); key never in the audit or errors; daily limit; no key = refused |
+| Facebook | Token must be valid and belong to this app before a name is requested; hostile avatar hosts refused; friends only with the dev switch AND the request; no token or id stored |
+| Art | 32 images planned with exact cost; only missing art is generated; `--max` is honored; failures recorded; survives restart; unsafe keys refused; routes serve with ETag and refuse odd paths |
+| Voice route | Token/format/size/limit checks; off when the organization hasn't enabled it; unavailable without a key |
+| Commands | Rules handle clear commands with no model; a model may only choose from the player's legal actions; otherwise "none" |
+| Companion | Answers from the sheet, labeled; unsafe/malformed model replies replaced by the authored line; one call, 8 s, no retry; recorded in the log so replay is exact |
+| Recap | Tone follows the outcome; the prompt contains no names; private to the team; "unavailable" without a key, tool, or image budget |
+| Research | Sample results without a key; real results only saved when approved; allowlist and daily limit enforced |
+| Resilience | With every external service failing, play continues, each fallback is labeled, and results still arrive from rules |
 
 What the Phase 5 tests prove:
 | Area | Test |
@@ -139,7 +157,24 @@ On **Results**, the **Act 1 / Act 2 / Change between acts** tabs separate each a
 
 Development shortcut: choose **Evacuation only** in Setup (shown in `npm run dev` only) to test Act 2 without winning Act 1.
 
-## 5. Play it in the browser ✅
+### Integrations (all optional) ✅
+
+With **no keys** (the default), try each fallback:
+- **Status** button (top right): every row shows `MOCK`/`FALLBACK`; nothing says Live.
+- **Voice**: in Session Setup tick **Voice**. In the game press **🎙 Talk**. Without a Meta key it uses your browser's speech recognition, labeled "(not Muse)" with a `FALLBACK` badge (Chrome/Edge work best; allow the microphone). After speaking, you see what it heard, a suggested action ("Do: Go to the Courtyard"), "Did you mean…?" chips if unsure, or **Send to team as chat**. Nothing happens until you confirm.
+- **Companion**: in the first room, use the chat's recipient dropdown to pick **Duchess's Companion** and ask "What happened?". She answers from a fixed sheet, labeled "(scripted)".
+- **Builder → Research**: search anything; three sample results appear with a `MOCK: SAMPLE RESULTS` badge. **Approve as a source** saves "[Sample] …" as a document.
+- **Results → Your team moment**: a hand-made placeholder with a `PLACEHOLDER` badge and a button to try the real illustration.
+- **Lobby → Friends**: "NOT CONFIGURED", copy link, and "Demo friends (mock)" if the team is friends.
+- `npm run gen:assets -- --dry-run` prints the 32 images it would generate and the cost, with no request.
+
+When you add keys (see `docs/INTEGRATIONS.md` for each step):
+1. `META_MODEL_API_KEY`: the Status list shows "Configured, not yet verified". Press **🎙 Talk** and speak: the label becomes **Muse Voice** and, after a success, the Status shows **Live**. Run `npm run gen:assets`, reload: scenes show "Muse art (cached)". Finish a game and click **Make a team-moment illustration**.
+2. `SERPAPI_API_KEY`: Research results are real (no MOCK badge) and link to their sources.
+3. `VITE_FB_APP_ID` + `FB_APP_SECRET`: the lobby shows **Share on Facebook** and **Use my Facebook name** (sign in as an app tester).
+4. If anything fails you will see `Degraded` and the labeled fallback, and the game keeps going. Unplug your network mid-game to confirm.
+
+What the Phase 5 tests prove:
 
 ```bash
 npm run dev          # server http://localhost:3001, client http://localhost:5173

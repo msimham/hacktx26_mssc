@@ -23,7 +23,9 @@ function recipients(s: RuntimeState, actor: Actor, to: string): Actor[] | null {
   if (to === "room") return playersOnly(s).filter((a) => a.id !== actor.id && a.roomId === actor.roomId);
   if (to === "team") return playersOnly(s).filter((a) => a.id !== actor.id && reaches(s, actor, a));
   const target = s.actors[to];
-  if (!target || target.id === actor.id || target.kind === "npc") return null;
+  if (!target || target.id === actor.id) return null;
+  // The companion can be spoken to in person (never across rooms). Other helpers only act on delegated tasks.
+  if (target.kind === "npc") return target.npcKey === "companion" && target.roomId === actor.roomId ? [target] : null;
   return reaches(s, actor, target) ? [target] : null;
 }
 export { recipients };
@@ -255,7 +257,8 @@ export function legalActions(s: RuntimeState, actorId: string): LegalAction[] {
   for (const as of Object.values(s.assignments))
     if (as.toId === actor.id && as.status === "pending")
       add({ label: `Accept: ${L[as.taskId] ?? act.tasks[as.taskId]?.label ?? as.taskId}`, group: "accept", action: { kind: "accept_delegation", assignmentId: as.id } });
-  for (const to of ["room", "team", ...playersOnly(s).filter((p) => p.id !== actor.id).map((p) => p.id)]) {
+  const companion = actors(s).find((a) => a.npcKey === "companion" && a.roomId === actor.roomId);
+  for (const to of ["room", "team", ...playersOnly(s).filter((p) => p.id !== actor.id).map((p) => p.id), ...(companion ? [companion.id] : [])]) {
     const who = to === "room" ? "everyone here" : to === "team" ? "the team" : s.actors[to]!.name;
     add({ label: `Say to ${who}`, group: "talk", action: { kind: "say", text: "…", to }, needsText: true });
   }

@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { INDICATOR_INFO, type Competency, type MetricKey, type OrgConfig } from "@magicalsafety/engine";
-import { orgApi, type DocHit, type DraftResponse, type OrgSummary } from "../api";
+import { orgApi, type DocHit, type DraftResponse, type OrgSummary, type WebResult } from "../api";
+import { MockBadge } from "../components/MockBadge";
 import { COMPETENCY_LABEL } from "../labels";
 import { GeneratedBy } from "../components/GeneratedBy";
 import { OrganizerGate } from "../components/OrganizerGate";
@@ -13,10 +14,10 @@ type ToolName = OrgConfig["tools"]["allowed"][number];
 const COMPETENCIES = Object.keys(COMPETENCY_LABEL) as Competency[];
 const TOOLS: { id: ToolName; label: string; active: boolean }[] = [
   { id: "org_docs.search", label: "Search this organization's documents", active: true },
-  { id: "serpapi.search", label: "Web research (SerpApi)", active: false },
-  { id: "muse.image", label: "Generate images (Muse Image)", active: false },
-  { id: "muse.transcribe", label: "Voice commands (Muse Voice)", active: false },
-  { id: "fb.profile", label: "Facebook profile (name and picture)", active: false },
+  { id: "serpapi.search", label: "Web research (SerpApi)", active: true },
+  { id: "muse.image", label: "Generate images (Muse Image)", active: true },
+  { id: "muse.transcribe", label: "Voice commands (Muse Voice)", active: true },
+  { id: "fb.profile", label: "Facebook profile (name and picture)", active: true },
 ];
 
 // Targets are stored in the metric's own unit; the form shows friendlier units.
@@ -41,6 +42,8 @@ function Builder() {
   const [docText, setDocText] = useState("");
   const [query, setQuery] = useState("");
   const [hits, setHits] = useState<DocHit[] | null>(null);
+  const [rq, setRq] = useState("");
+  const [found, setFound] = useState<{ mock: boolean; results: WebResult[] } | null>(null);
 
   const refresh = useCallback(async () => setOrgs(await orgApi.list()), []);
   const open = useCallback(async (id: string) => {
@@ -97,6 +100,14 @@ function Builder() {
   });
   const removeDoc = (id: string) => guard(async () => { const r = await orgApi.removeDoc(org!.id, id); setOrg((o) => (o ? { ...o, documents: r.org.documents } : o)); await refresh(); });
   const search = () => guard(async () => setHits((await orgApi.search(org!.id, query)).results));
+
+  const doResearch = () => guard(async () => setFound(await orgApi.research(org!.id, rq)));
+  const approve = (r: WebResult) => guard(async () => {
+    const res = await orgApi.approveResult(org!.id, r, !!found?.mock);
+    setOrg((o) => (o ? { ...o, documents: res.org.documents } : o));
+    setMsg({ kind: "ok", text: "Saved as a source document. Search results are never added unless you approve them." });
+    await refresh();
+  });
 
   const create = () => guard(async () => { const r = await orgApi.create(newName); setNewName(""); await refresh(); await open(r.org.id); });
   const remove = () => guard(async () => { if (org && confirm(`Delete "${org.name}"? Past results keep their snapshot.`)) { await orgApi.remove(org.id); setOrg(null); await refresh(); const l = await orgApi.list(); if (l[0]) await open(l[0].id); } });
@@ -198,6 +209,25 @@ function Builder() {
             )) : <p className="text-sm text-slate-400">Nothing matched.</p>)}
           </section>
 
+          <section className={`${card} space-y-3`} aria-label="Research">
+            <h2 className="flex items-center gap-2 font-display text-lg text-gold">Research {found?.mock && <MockBadge label="MOCK: SAMPLE RESULTS" />}</h2>
+            <p className="text-xs text-slate-400">Search the web for background (for example "bystander effect emergency response university"). Nothing is added to your documents until <strong>you</strong> approve a result. Web text is untrusted reference material.</p>
+            {!org.tools.allowed.includes("serpapi.search") && <p className="text-xs text-amber-300">Web research is switched off for this organization (see Tools below).</p>}
+            <div className="flex gap-2">
+              <input className={field} placeholder="What do you want to learn about?" value={rq} onChange={(e) => setRq(e.target.value)} onKeyDown={(e) => e.key === "Enter" && rq.trim().length > 2 && void doResearch()} />
+              <button onClick={() => void doResearch()} disabled={rq.trim().length < 3} className="rounded bg-night px-3 text-sm ring-1 ring-white/20 disabled:opacity-40">Search</button>
+            </div>
+            {found?.results.map((r) => (
+              <article key={r.url} className="rounded bg-night p-3 text-sm">
+                <div className="flex items-start gap-3">
+                  <div className="min-w-0 flex-1"><div className="font-medium">{r.title}</div>{!found.mock && <a href={r.url} target="_blank" rel="noopener noreferrer" className="break-all text-xs text-sky-300 underline">{r.url}</a>}<p className="mt-1 text-slate-300">{r.snippet}</p></div>
+                  <button onClick={() => void approve(r)} className="shrink-0 rounded bg-gold px-3 py-1.5 text-xs font-semibold text-night">Approve as a source</button>
+                </div>
+              </article>
+            ))}
+            {found && found.results.length === 0 && <p className="text-sm text-slate-400">No results.</p>}
+          </section>
+
           <section className={`${card} space-y-3`}>
             <h2 className="font-display text-lg text-gold">AI, tools and limits</h2>
             <div className="grid gap-3 md:grid-cols-2">
@@ -234,7 +264,7 @@ function Builder() {
               ))}
               <label className="text-sm">Keep finished sessions (days)<input type="number" min={1} max={365} className={`${field} mt-1`} value={org.safety.retentionDays} onChange={(e) => edit({ safety: { ...org.safety, retentionDays: Number(e.target.value) } })} /></label>
             </div>
-            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={org.safety.storeTranscripts} onChange={(e) => edit({ safety: { ...org.safety, storeTranscripts: e.target.checked } })} /> Keep voice transcripts <span className="text-xs text-slate-400">(voice arrives in a later phase)</span></label>
+            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={org.safety.storeTranscripts} onChange={(e) => edit({ safety: { ...org.safety, storeTranscripts: e.target.checked } })} /> Keep voice transcripts <span className="text-xs text-slate-400">(only used if voice transcripts are ever kept; audio itself is never stored)</span></label>
             <p className="text-xs text-slate-400">Safety guidance in the game is always authored text. The AI never writes it, and this can't be turned off.</p>
           </section>
 

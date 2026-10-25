@@ -7,7 +7,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.resolve(here, "../../../.env"), quiet: true });
 
 /** "live" and "degraded" are only ever set from real request outcomes (see agent/health.ts). */
-export type IntegrationState = "mock" | "configured" | "live" | "degraded";
+export type IntegrationState = "mock" | "cached" | "configured" | "live" | "degraded";
 
 export interface IntegrationStatus {
   id: "meta_spark" | "meta_image" | "meta_voice" | "serpapi" | "facebook";
@@ -32,6 +32,10 @@ export interface Env {
   fbAppId: string;
   dataDir: string;
   retentionDays: number;
+  /** Generated art cache (gitignored). */
+  assetsDir: string;
+  /** user_friends only works for app admins/testers in Development mode; off unless explicitly enabled. */
+  fbEnableFriends: boolean;
 }
 
 export function readEnv(source: NodeJS.ProcessEnv = process.env): Env {
@@ -55,6 +59,8 @@ export function readEnv(source: NodeJS.ProcessEnv = process.env): Env {
     // Session store location (gitignored). Override with DATA_DIR.
     dataDir: get("DATA_DIR") || path.resolve(here, "../../data"),
     retentionDays: Number(get("RETENTION_DAYS", "30")) || 30,
+    assetsDir: get("ASSETS_DIR") || path.resolve(here, "../../assets-cache"),
+    fbEnableFriends: get("FB_ENABLE_FRIENDS") === "true",
   };
 }
 

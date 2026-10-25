@@ -109,10 +109,10 @@ export const campus: World = {
     },
   ],
   roleSkins: {
-    discoverer: { name: "Student", title: "Studying in the Atrium", startRoomSlot: "incident_site" },
-    authority: { name: "Resident Assistant", title: "Staffs the front desk", startRoomSlot: "authority_post" },
-    runner: { name: "Peer Mentor", title: "Knows the building", startRoomSlot: "outside_access" },
-    liaison: { name: "Friend", title: "Knows the student who collapsed", startRoomSlot: "side_hall" },
+    discoverer: { portrait: "student", name: "Student", title: "Studying in the Atrium", startRoomSlot: "incident_site" },
+    authority: { portrait: "ra", name: "Resident Assistant", title: "Staffs the front desk", startRoomSlot: "authority_post" },
+    runner: { portrait: "mentor", name: "Peer Mentor", title: "Knows the building", startRoomSlot: "outside_access" },
+    liaison: { portrait: "friend", name: "Friend", title: "Knows the student who collapsed", startRoomSlot: "side_hall" },
   },
   npcs: {
     guard: { id: "guard", name: "Campus Security Officer", roomId: "atrium" },
@@ -173,5 +173,26 @@ export const campus: World = {
     obj_help: "Call for help", obj_area: "Clear the area", obj_kit: "Bring the AED and first-aid kit", obj_stay: "Someone stays with the student", obj_crowd: "Calm the crowd", obj_arrive: "Responders arrive",
     obj_sweep: "Check every room", obj_out: "Everyone out on the Front Lawn", obj_guests: "Students who need help are looked after", obj_count: "Headcount taken",
   },
+  companionSheet: [
+    "You are a friend of the student who collapsed in the Atrium.",
+    "You were all studying together and they were fine a minute ago.",
+    "Suddenly they were on the floor and not responding the way they normally do.",
+    "You are shaken and you don't know what happened.",
+    "You can point out the Campus Security Officer, the RA Front Desk, the AED cabinet and the entrance phone.",
+    "You will do whatever you are asked, but you are not able to give any medical advice.",
+  ],
+  recap: {
+    success: "Flat illustration, bright morning: a small team of students gathered together on a campus lawn, relieved and supporting one another, modern style, no text",
+    setback: "Flat illustration, soft evening light: a small team of students gathered thoughtfully on a campus lawn, calm and determined to try again, modern style, no text",
+  },
+  portraits: [
+    { id: "student", name: "Student", prompt: "Flat illustration portrait of a friendly university student with a backpack, head and shoulders, bright modern style, no text" },
+    { id: "ra", name: "Resident Assistant", prompt: "Flat illustration portrait of a calm resident assistant wearing a lanyard, head and shoulders, bright modern style, no text" },
+    { id: "mentor", name: "Peer Mentor", prompt: "Flat illustration portrait of an upbeat peer mentor in a campus hoodie, head and shoulders, bright modern style, no text" },
+    { id: "friend", name: "Friend", prompt: "Flat illustration portrait of a concerned university friend with headphones around the neck, head and shoulders, bright modern style, no text" },
+    { id: "guard", name: "Campus Security Officer", prompt: "Flat illustration portrait of a steady campus security officer in a navy jacket, head and shoulders, bright modern style, no text" },
+    { id: "companion", name: "Their Friend", prompt: "Flat illustration portrait of a worried university student, head and shoulders, bright modern style, no text" },
+    { id: "victim", name: "The student", prompt: "Flat illustration portrait of a university student with a notebook, head and shoulders, bright modern style, no text" },
+  ],
   vocabulary: ["Student", "Resident Assistant", "Peer Mentor", "Friend", "campus security", "AED", "atrium", "stairwell", "entrance", "lounge", "Front Lawn", "Chemistry Lab"],
 };

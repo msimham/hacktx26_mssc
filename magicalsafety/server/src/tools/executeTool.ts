@@ -13,6 +13,10 @@ export interface ToolExecutorDeps {
   now?: () => number;
 }
 
+function safeSummary(def: ToolDef<never, unknown>, args: unknown): string {
+  try { return (def.summarizeArgs as (a: unknown) => string)(args); } catch { return "(unsummarised)"; }
+}
+
 /**
  * The ONLY path to a tool.
  * registry lookup -> argument validation -> policy (allowlist, requester, limits, org/session boundary)
@@ -31,7 +35,8 @@ export function createToolExecutor(deps: ToolExecutorDeps) {
   async function executeTool(req: ToolRequest): Promise<ToolResult> {
     const started = now();
     const base = { tool: req.tool, orgId: req.orgId, sessionId: req.sessionId ?? null, requestedBy: req.requestedBy };
-    const argsSummary = redact(JSON.stringify(req.args ?? null), deps.secrets?.() ?? []).slice(0, 120);
+    const rawDef = Object.hasOwn(registry, req.tool) ? registry[req.tool] : undefined;
+    const argsSummary = redact(rawDef?.summarizeArgs ? safeSummary(rawDef, req.args) : JSON.stringify(req.args ?? null), deps.secrets?.() ?? []).slice(0, 120);
     const deny = (reason: string): ToolResult => {
       record({ ...base, decision: "denied", reason, latencyMs: now() - started, costUsd: 0, argsSummary });
       return { ok: false, reason };
@@ -57,7 +62,7 @@ export function createToolExecutor(deps: ToolExecutorDeps) {
       ]);
       const valid = def.outputSchema.safeParse(out);
       if (!valid.success) return deny("The tool returned an unexpected result");
-      if (def.limit) deps.usage.add(org!.id, def.limit.counter, def.limit.scope);
+      if (def.limit && (def.limit.scope === "day" || req.sessionId)) deps.usage.add(org!.id, def.limit.counter, def.limit.scope, req.sessionId);
       record({ ...base, decision: "allowed", reason: null, latencyMs: now() - started, costUsd: def.costEstimateUsd?.(parsed.data as never, valid.data) ?? 0, argsSummary });
       return { ok: true, output: valid.data };
     } catch (err) {

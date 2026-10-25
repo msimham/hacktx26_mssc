@@ -2,7 +2,7 @@ import type { Action } from "../schemas/actions";
 import type { GameEvent } from "../schemas/events";
 import type { RuntimeState } from "../types";
 import { botTurn } from "../engine/bots";
-import { applyAction, createRuntime, startSession, tick, type RuntimeInit } from "../engine/reducer";
+import { applyAction, applyNpcSay, createRuntime, startSession, tick, type NpcSayInput, type RuntimeInit } from "../engine/reducer";
 import type { Input } from "../engine/replay";
 
 /** Test/sim harness: owns the clock, records the input log, optionally runs bots. */
@@ -35,6 +35,13 @@ export class Driver {
   apply(playerId: string, action: Action): GameEvent[] {
     this.inputs.push({ kind: "action", now: this.now, req: { playerId, action } });
     const r = applyAction(this.state, { playerId, action }, this.now);
+    this.state = r.state;
+    return r.events;
+  }
+
+  npcSay(input: NpcSayInput): GameEvent[] {
+    this.inputs.push({ kind: "npc_say", now: this.now, ...input });
+    const r = applyNpcSay(this.state, input, this.now);
     this.state = r.state;
     return r.events;
   }

@@ -67,7 +67,7 @@ export class MetaMuseProvider implements ModelProvider {
           messages: [{ role: "system", content: req.system }, { role: "user", content: req.user }],
           response_format: { type: "json_schema", json_schema: { name: req.schemaName, schema: toStrictJsonSchema(req.schema), strict: true } },
         },
-        { signal: AbortSignal.timeout(this.timeoutMs) },
+        { signal: AbortSignal.timeout(req.timeoutMs ?? this.timeoutMs), timeout: req.timeoutMs ?? this.timeoutMs },
       );
     } catch (err) {
       throw toProviderError(err);

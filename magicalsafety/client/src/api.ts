@@ -3,7 +3,7 @@ import type { AdaptationPlan, Assessment, DiffRow, OrgConfig, TimelineItem, Weak
 export interface IntegrationStatus {
   id: string;
   label: string;
-  state: "mock" | "configured" | "live" | "degraded";
+  state: "mock" | "cached" | "configured" | "live" | "degraded";
   detail: string;
 }
 
@@ -57,7 +57,7 @@ export interface Analysis {
   /** Metric keys the organization's rubric cares about, heaviest first. */
   emphasis: { key: string; weight: number }[];
   /** Organization guidance chunks the interpretation may cite. */
-  references: { id: string; docTitle: string; heading: string; text: string }[];
+  references: { id: string; docTitle: string; url: string | null; heading: string; text: string }[];
   assessment: Assessment;
   plan: AdaptationPlan;
   diff: DiffRow[];
@@ -127,7 +127,8 @@ export interface DraftResponse {
   generatedBy: string;
   fallbackUsed: boolean;
 }
-export interface DocHit { chunkId: string; docTitle: string; heading: string; text: string; score: number; matchedTerms: string[] }
+export interface WebResult { title: string; url: string; snippet: string }
+export interface DocHit { chunkId: string; url?: string | null; docTitle: string; heading: string; text: string; score: number; matchedTerms: string[] }
 
 export const orgApi = {
   list: () => orgFetch<{ orgs: OrgSummary[] }>("").then((r) => r.orgs),
@@ -139,6 +140,8 @@ export const orgApi = {
   removeDoc: (id: string, docId: string) => orgFetch<{ org: OrgConfig }>(`/${id}/documents/${docId}`, { method: "DELETE" }),
   search: (id: string, query: string) => orgFetch<{ results: DocHit[] }>(`/${id}/search`, { method: "POST", body: { query, k: 3 } }),
   draft: (description: string, orgId?: string) => orgFetch<DraftResponse>("/draft", { method: "POST", body: { description, ...(orgId && { orgId }) } }),
+  research: (id: string, query: string) => orgFetch<{ mock: boolean; results: WebResult[] }>(`/${id}/research`, { method: "POST", body: { query } }),
+  approveResult: (id: string, r: WebResult, mock: boolean) => orgFetch<{ org: OrgConfig }>(`/${id}/research/approve`, { method: "POST", body: { ...r, mock } }),
 };
 
 export interface SessionSetup {
@@ -160,3 +163,65 @@ export async function createSessionFromSetup(setup: SessionSetup): Promise<{ id:
   if (!res.ok) throw new Error((data as { error?: string }).error ?? "Could not create the session");
   return data as { id: string; code: string };
 }
+
+// ---------- player integrations ----------
+
+/** The service is not configured, not enabled for this organization, or failing. The caller falls back and says so. */
+export class Unavailable extends Error {}
+
+const authHeaders = (token: string) => ({ "x-player-token": token });
+
+export async function transcribeVoice(sessionId: string, token: string, wav: Blob): Promise<{ transcript: string; method: "muse" }> {
+  const form = new FormData();
+  form.append("audio", wav, "recording.wav");
+  const res = await fetch(`/api/sessions/${encodeURIComponent(sessionId)}/voice`, { method: "POST", headers: authHeaders(token), body: form });
+  if (res.status === 503) throw new Unavailable("Muse Voice isn't available right now.");
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error((data as { error?: string }).error ?? "That recording couldn't be used.");
+  return data as { transcript: string; method: "muse" };
+}
+
+export interface ParsedAction { key: string; label: string; group: string; action: unknown; realWorld?: string }
+export type CommandResult =
+  | { kind: "action"; via: "rules" | "model"; action: ParsedAction }
+  | { kind: "choices"; via: "rules"; choices: ParsedAction[] }
+  | { kind: "none" };
+
+export async function parseCommand(sessionId: string, token: string, text: string): Promise<CommandResult> {
+  const res = await fetch(`/api/sessions/${encodeURIComponent(sessionId)}/command`, { method: "POST", headers: { "content-type": "application/json", ...authHeaders(token) }, body: JSON.stringify({ text }) });
+  if (!res.ok) return { kind: "none" };
+  return res.json();
+}
+
+export interface RecapStatus { status: "none" | "pending" | "ready" | "unavailable"; reason?: string; model?: string }
+export async function getRecap(sessionId: string, token: string): Promise<RecapStatus> {
+  const res = await fetch(`/api/sessions/${encodeURIComponent(sessionId)}/recap`, { headers: authHeaders(token) });
+  return res.ok ? res.json() : { status: "none" };
+}
+export async function startRecap(sessionId: string, token: string): Promise<void> {
+  await fetch(`/api/sessions/${encodeURIComponent(sessionId)}/recap`, { method: "POST", headers: authHeaders(token) });
+}
+export async function getRecapImage(sessionId: string, token: string): Promise<string | null> {
+  const res = await fetch(`/api/sessions/${encodeURIComponent(sessionId)}/recap.webp`, { headers: authHeaders(token) });
+  return res.ok ? URL.createObjectURL(await res.blob()) : null;
+}
+
+export interface FacebookResult { name: string; pictureUrl: string | null; friends: string[] | null }
+export async function verifyFacebook(sessionId: string, token: string, accessToken: string, opts: { useName?: boolean; includeFriends?: boolean } = {}): Promise<FacebookResult> {
+  const res = await fetch(`/api/sessions/${encodeURIComponent(sessionId)}/facebook`, {
+    method: "POST", headers: { "content-type": "application/json", ...authHeaders(token) },
+    body: JSON.stringify({ accessToken, useName: !!opts.useName, includeFriends: !!opts.includeFriends }),
+  });
+  if (res.status === 503) throw new Unavailable("Facebook isn't available right now.");
+  if (!res.ok) throw new Error("Facebook login couldn't be verified.");
+  return res.json();
+}
+
+// Pre-generated art (optional). Missing art just means the hand-made scenes are used.
+let manifest: Promise<Set<string>> | null = null;
+export function getArtManifest(): Promise<Set<string>> {
+  manifest ??= fetch("/api/art/manifest").then((r) => (r.ok ? r.json() : { keys: [] })).then((m: { keys: string[] }) => new Set(m.keys)).catch(() => new Set<string>());
+  return manifest;
+}
+export const artUrl = (kind: "room" | "portrait", world: string, id: string) => `/api/art/${kind}/${world}/${id}.webp`;
+

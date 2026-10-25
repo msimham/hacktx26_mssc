@@ -17,9 +17,10 @@ export function checkPolicy(args: { req: ToolRequest; def: ToolDef<never, unknow
     // Boundary: a session may only use tools on behalf of the organization it belongs to.
     if (session.orgId !== org.id) return { allowed: false, reason: "Session belongs to a different organization" };
   }
-  if (def.limit) {
+  if (def.limit && (def.limit.scope === "day" || req.sessionId)) {
     const max = def.limit.max(org);
-    if (usage.get(org.id, def.limit.counter, def.limit.scope) >= max) return { allowed: false, reason: `Daily limit of ${max} reached for "${def.name}"` };
+    const used = usage.get(org.id, def.limit.counter, def.limit.scope, req.sessionId);
+    if (used >= max) return { allowed: false, reason: `The ${def.limit.scope === "day" ? "daily" : "per-session"} limit of ${max} is reached for "${def.name}"` };
   }
   return { allowed: true };
 }

@@ -29,6 +29,16 @@ describe("viewFor privacy", () => {
     expect(viewFor(d.state, "p1")!.actors.find((a) => a.id === "p2")!.roleName).toBe("Royal Steward");
   });
 
+  it("tells the client which world and portrait to use (for optional generated art)", () => {
+    const d = new Driver(makeInit(), false);
+    const v = viewFor(d.state, "p1")!;
+    expect(v.worldId).toBe("castle");
+    expect(v.you.portraitId).toBe("cinderella");
+    const campus = viewFor(new Driver(makeInit({ config: { worldId: "campus" } }), false).state, "p3")!;
+    expect(campus.worldId).toBe("campus");
+    expect(campus.you.portraitId).toBe("mentor");
+  });
+
   it("exposes no internals of other actors", () => {
     const d = new Driver(makeInit(), false);
     openingExchange(d);

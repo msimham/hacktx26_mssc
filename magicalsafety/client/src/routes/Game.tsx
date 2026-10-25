@@ -6,6 +6,8 @@ import { ActionBar } from "../components/ActionBar";
 import { ChatPanel } from "../components/ChatPanel";
 import { GameHeader } from "../components/GameHeader";
 import { Minimap } from "../components/Minimap";
+import { VoiceControl } from "../components/VoiceControl";
+import { loadPlayerBySession } from "../session/storage";
 import { RoleCard } from "../components/RoleCard";
 import { SceneView } from "../components/SceneView";
 
@@ -71,7 +73,7 @@ export function Game() {
         <aside className="flex min-h-0 flex-col gap-4">
           <Minimap view={view} />
           <div className="min-h-[260px] flex-1">
-            <ChatPanel view={view} onAct={act} canType={methods.has("text")} onSay={(to, text) => void send({ kind: "say", to, text }).then((r) => r && setToast(r))} />
+            <ChatPanel view={view} onAct={act} canType={methods.has("text")} extra={methods.has("voice") && sessionId ? <VoiceControl sessionId={sessionId} token={loadPlayerBySession(sessionId)?.token ?? ""} legal={view.legal} onSay={(to, text) => void send({ kind: "say", to, text }).then((r) => r && setToast(r))} onAct={act} /> : null} onSay={(to, text) => void send({ kind: "say", to, text }).then((r) => r && setToast(r))} />
           </div>
         </aside>
       </div>

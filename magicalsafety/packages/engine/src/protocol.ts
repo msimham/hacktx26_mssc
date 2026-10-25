@@ -5,7 +5,7 @@ export interface LobbyView {
   phase: "lobby";
   code: string;
   you: { id: string; isHost: boolean };
-  players: { id: string; name: string; ready: boolean; isHost: boolean; connected: boolean; roleId: RoleId | null }[];
+  players: { id: string; name: string; ready: boolean; isHost: boolean; connected: boolean; roleId: RoleId | null; pictureUrl: string | null }[];
   roleAssignment: "random" | "chosen" | "organizer";
   roles: { id: RoleId; name: string; title: string }[];
   /** Host may assign everyone's role (roleAssignment "organizer"). */

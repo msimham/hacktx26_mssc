@@ -7,6 +7,7 @@ import { INDICATOR_INFO, type MetricKey } from "@magicalsafety/engine";
 import { COMPETENCY_LABEL, OUTCOMES, SHOUTOUT_REASONS, WEAKNESS_LABEL, describeTarget, fmtIndicator, fmtSeconds, formatMetric } from "../labels";
 import { EvidenceChip } from "../components/EvidenceChip";
 import { GeneratedBy } from "../components/GeneratedBy";
+import { Recap } from "../components/Recap";
 
 type Tab = "act1" | "act2" | "change";
 const SHARED_KEYS = ["delegations_issued", "max_action_share", "info_shared_ratio", "centralized", "rejected_actions", "redundant_efforts"];
@@ -65,7 +66,10 @@ export function Results() {
         {c.evidenceEventIds.map((id) => <EvidenceChip key={id} id={id} timeline={a.timeline} sessionId={sessionId} />)}
         {c.sourceIds.map((s) => {
           const ref = refById.get(s);
-          return <span key={s} className="rounded bg-sky-900 px-1.5 py-0.5" title={ref?.text ?? "Organization source"}>📄 Learn more: {ref ? `${ref.docTitle} › ${ref.heading}` : s}</span>;
+          const label = `📄 Learn more: ${ref ? `${ref.docTitle} › ${ref.heading}` : s}`;
+          return ref?.url
+            ? <a key={s} href={ref.url} target="_blank" rel="noopener noreferrer" className="rounded bg-sky-900 px-1.5 py-0.5 underline" title={`${ref.text} (opens an external site)`}>{label}</a>
+            : <span key={s} className="rounded bg-sky-900 px-1.5 py-0.5" title={ref?.text ?? "Organization source"}>{label}</span>;
         })}
       </div>
     </li>
@@ -201,6 +205,8 @@ export function Results() {
           <ul className="space-y-1 text-sm">{a.realWorld.map((r) => <li key={r.label}><strong>{r.label}:</strong> {r.realWorld}</li>)}</ul>
         </section>
       )}
+
+      {a.you && <Recap sessionId={sessionId} token={token} />}
 
       {a.you && teammates.length > 0 && (
         <section aria-label="Team shout-out" className="rounded-xl bg-night-2 p-4">

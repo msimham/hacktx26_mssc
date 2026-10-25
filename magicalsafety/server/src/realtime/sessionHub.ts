@@ -2,7 +2,7 @@ import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import type { Server, Socket } from "socket.io";
 import { z } from "zod";
 import {
-  Action, applyAction, botTurn, createRuntime, replay, ROLE_ORDER, startSession, tick, viewFor, WORLDS,
+  Action, applyAction, applyNpcSay, botTurn, createRuntime, replay, ROLE_ORDER, startSession, tick, viewFor, WORLDS,
   type LobbyView, type PlayerInit, type RuntimeState,
 } from "@magicalsafety/engine";
 import type { Store } from "../store/store";
@@ -44,6 +44,8 @@ export interface HubDeps {
   clock?: () => number;
   /** Tick loop period. Set to 0 in tests and call pump() manually. */
   tickMs?: number;
+  /** Writes the companion's reply to a player (model or authored). Null = say nothing. */
+  npcReply?: (state: RuntimeState, toId: string, said: string) => Promise<{ text: string; via: "model" | "canned" } | null>;
 }
 
 export class SessionHub {
@@ -267,8 +269,33 @@ export class SessionHub {
     live.state = r.state;
     this.persist(sessionId, { kind: "action", now, req: { playerId, action } });
     const rejection = r.events.find((e) => e.type === "action_rejected" && e.actorId === playerId);
+    // Speaking to the companion in person: she answers (asynchronously, so the action itself is never held up).
+    const spoke = r.events.find((e) => e.type === "said" && e.actorId === playerId && e.payload.to === "npc_companion");
+    if (spoke && this.deps.npcReply) void this.replyAsCompanion(sessionId, playerId, String(spoke.payload.text));
     this.afterChange(live);
     return rejection ? String(rejection.payload.reason) : null;
+  }
+
+  private npcBusy = new Set<string>();
+
+  private async replyAsCompanion(sessionId: string, playerId: string, said: string): Promise<void> {
+    const key = `${sessionId}:${playerId}`;
+    if (this.npcBusy.has(key)) return; // one answer at a time per player
+    this.npcBusy.add(key);
+    try {
+      const reply = await this.deps.npcReply!(this.live.get(sessionId)!.state!, playerId, said);
+      const live = this.live.get(sessionId);
+      if (!reply || !live?.state || live.state.phase !== "running") return;
+      const now = this.clock();
+      const input = { npcId: "npc_companion", toId: playerId, text: reply.text, via: reply.via } as const;
+      live.state = applyNpcSay(live.state, input, now).state;
+      this.persist(sessionId, { kind: "npc_say", now, ...input });
+      this.afterChange(live);
+    } catch (err) {
+      console.error("[npc]", err instanceof Error ? err.message : "failed");
+    } finally {
+      this.npcBusy.delete(key);
+    }
   }
 
   /** One scheduler step for every running session: advance time, let bots act, push views. */
@@ -337,7 +364,7 @@ export class SessionHub {
       code: meta.code,
       you: { id: playerId, isHost: meta.hostId === playerId },
       // Among strangers nobody sees anyone else's role until they introduce themselves in the game.
-      players: meta.players.map((p) => ({ id: p.id, name: p.name, ready: p.ready, isHost: p.id === meta.hostId, connected: (live?.sockets.get(p.id)?.size ?? 0) > 0, roleId: strangers && p.id !== playerId ? null : (p.roleId ?? null) })),
+      players: meta.players.map((p) => ({ id: p.id, name: p.name, ready: p.ready, isHost: p.id === meta.hostId, connected: (live?.sockets.get(p.id)?.size ?? 0) > 0, roleId: strangers && p.id !== playerId ? null : (p.roleId ?? null), pictureUrl: p.fb?.pictureUrl ?? null })),
       roleAssignment: mode,
       canAssignRoles: mode === "organizer" && meta.hostId === playerId,
       icebreaker: strangers ? ICEBREAKERS[meta.seed % ICEBREAKERS.length]! : null,

@@ -109,10 +109,10 @@ export const castle: World = {
     },
   ],
   roleSkins: {
-    discoverer: { name: "Cinderella", title: "Guest at the ball", startRoomSlot: "incident_site" },
-    authority: { name: "Royal Steward", title: "Commands the guards", startRoomSlot: "authority_post" },
-    runner: { name: "Coachman", title: "Knows the palace grounds", startRoomSlot: "outside_access" },
-    liaison: { name: "Lady-in-Waiting", title: "Knows the Duchess's companion", startRoomSlot: "side_hall" },
+    discoverer: { portrait: "cinderella", name: "Cinderella", title: "Guest at the ball", startRoomSlot: "incident_site" },
+    authority: { portrait: "steward", name: "Royal Steward", title: "Commands the guards", startRoomSlot: "authority_post" },
+    runner: { portrait: "coachman", name: "Coachman", title: "Knows the palace grounds", startRoomSlot: "outside_access" },
+    liaison: { portrait: "lady", name: "Lady-in-Waiting", title: "Knows the Duchess's companion", startRoomSlot: "side_hall" },
   },
   npcs: {
     guard: { id: "guard", name: "Palace Guard", roomId: "ballroom" },
@@ -175,5 +175,26 @@ export const castle: World = {
     obj_help: "Call for help", obj_area: "Clear the area", obj_kit: "Bring the first-aid supplies", obj_stay: "Someone stays with the Duchess", obj_crowd: "Calm the crowd", obj_arrive: "Help arrives",
     obj_sweep: "Check every room", obj_out: "Everyone out at the Gardens", obj_guests: "Guests who need help are looked after", obj_count: "Headcount taken",
   },
+  companionSheet: [
+    "You are the Duchess's companion at the palace ball.",
+    "You and the Duchess had been dancing for hours and she was cheerful a moment ago.",
+    "Suddenly she was on the ballroom floor and not responding the way she normally does.",
+    "You are frightened and you don't know what happened.",
+    "You can point out the Palace Guard in the ballroom, the Throne Dais, the Steward's Cabinet and the courtyard gate.",
+    "You will do whatever you are asked, but you are not able to give any medical advice.",
+  ],
+  recap: {
+    success: "Storybook fairytale illustration, warm candlelight: a small team of helpers gathered together at the palace gate at dawn, relieved and supporting one another, painterly, no text",
+    setback: "Storybook fairytale illustration, soft dusk light: a small team of helpers gathered thoughtfully at the palace gate, calm and determined to try again, painterly, no text",
+  },
+  portraits: [
+    { id: "cinderella", name: "Cinderella", prompt: "Storybook portrait of a kind young woman in a pale blue ball gown, head and shoulders, soft candlelight, painterly fairytale illustration, no text" },
+    { id: "steward", name: "Royal Steward", prompt: "Storybook portrait of a dignified royal steward in navy and gold livery with a staff, head and shoulders, painterly fairytale illustration, no text" },
+    { id: "coachman", name: "Coachman", prompt: "Storybook portrait of a cheerful coachman in a green coat and cap, head and shoulders, painterly fairytale illustration, no text" },
+    { id: "lady", name: "Lady-in-Waiting", prompt: "Storybook portrait of a poised lady-in-waiting in a rose gown with a feathered fan, head and shoulders, painterly fairytale illustration, no text" },
+    { id: "guard", name: "Palace Guard", prompt: "Storybook portrait of a steady palace guard in a plumed helmet and red tunic, head and shoulders, painterly fairytale illustration, no text" },
+    { id: "companion", name: "Duchess's Companion", prompt: "Storybook portrait of a worried young noblewoman in a lilac gown, head and shoulders, painterly fairytale illustration, no text" },
+    { id: "victim", name: "The Duchess", prompt: "Storybook portrait of an elegant older duchess in a jeweled gown, head and shoulders, painterly fairytale illustration, no text" },
+  ],
   vocabulary: ["Cinderella", "Royal Steward", "Coachman", "Lady-in-Waiting", "Duchess", "physician", "guard", "ballroom", "courtyard", "gatehouse", "staircase", "dais", "cabinet", "gardens", "passage", "gallery", "kitchens"],
 };

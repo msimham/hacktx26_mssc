@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { LegalAction, PlayerView } from "@magicalsafety/engine";
 
 const TONE: Record<string, string> = {
@@ -9,7 +9,7 @@ const TONE: Record<string, string> = {
   bad: "text-rose-300",
 };
 
-export function ChatPanel({ view, onSay, onAct, canType = true }: { view: PlayerView; onSay: (to: string, text: string) => void; onAct: (la: LegalAction) => void; canType?: boolean }) {
+export function ChatPanel({ view, onSay, onAct, canType = true, extra }: { view: PlayerView; onSay: (to: string, text: string) => void; onAct: (la: LegalAction) => void; canType?: boolean; extra?: ReactNode }) {
   const [text, setText] = useState("");
   const [to, setTo] = useState("team");
   const endRef = useRef<HTMLDivElement>(null);
@@ -49,6 +49,7 @@ export function ChatPanel({ view, onSay, onAct, canType = true }: { view: Player
           ))}
         </div>
       )}
+      {extra}
       <form className="mt-2 flex gap-2" onSubmit={(e) => { e.preventDefault(); send(); }}>
         <label className="sr-only" htmlFor="say-to">Send to</label>
         <select id="say-to" value={to} onChange={(e) => setTo(e.target.value)} className="rounded bg-night px-2 py-1 text-xs ring-1 ring-white/10">

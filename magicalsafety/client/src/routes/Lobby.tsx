@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useSession } from "../session/SessionContext";
+import { FacebookPanel } from "../components/FacebookPanel";
 
 export function Lobby() {
-  const { lobby, ready, start, chooseRole, assignRole } = useSession();
+  const { lobby, ready, start, chooseRole, assignRole, sessionId } = useSession();
   const [msg, setMsg] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   if (!lobby) return <p className="p-6">Loading lobby…</p>;
@@ -29,6 +30,7 @@ export function Lobby() {
           {lobby.players.map((p) => (
             <li key={p.id} className="flex items-center gap-3 rounded bg-night px-3 py-2">
               <span className={`h-2.5 w-2.5 rounded-full ${p.connected ? "bg-emerald-400" : "bg-slate-500"}`} title={p.connected ? "Online" : "Offline"} />
+              {p.pictureUrl && <img src={p.pictureUrl} alt="" referrerPolicy="no-referrer" className="h-6 w-6 rounded-full" />}
               <span className="font-medium">{p.name}{p.id === lobby.you.id && " (you)"}</span>
               {p.isHost && <span className="rounded bg-gold px-2 text-xs font-bold text-night">Host</span>}
               {lobby.canAssignRoles ? (
@@ -53,6 +55,8 @@ export function Lobby() {
         {lobby.socialEnvironment === "simulated" && <p className="mt-3 text-sm text-slate-300">You are the only human on this team. Everyone else is a simulated teammate.</p>}
         {lobby.roleAssignment === "organizer" && <p className="mt-3 text-sm text-slate-300">{lobby.canAssignRoles ? "You're the host: choose each player's role above (or leave it random)." : "The host will assign everyone's role."}</p>}
       </section>
+
+      {sessionId && <FacebookPanel sessionId={sessionId} joinLink={link} showFriends={lobby.socialEnvironment === "friends"} />}
 
       {lobby.roleAssignment === "chosen" && (
         <section className="rounded-xl bg-night-2 p-4">

@@ -40,6 +40,7 @@ export interface PlayerView {
     roleId: RoleId | null;
     roleName: string | null;
     roleTitle: string | null;
+    portraitId: string | null;
     roomId: string;
     facts: { id: string; text: string }[];
     inventory: string[];
@@ -61,6 +62,7 @@ export interface PlayerView {
   feed: FeedItem[];
   outcome: { outcome: string; success: boolean } | null;
   safetyFooter: string;
+  worldId: string;
   worldName: string;
   socialEnvironment: string;
   allowCrossRoomChat: boolean;
@@ -109,8 +111,9 @@ function render(s: RuntimeState, e: GameEvent, viewer: Actor): Omit<FeedItem, "i
     case "said": {
       const heard = p.to === "all" || mine || (Array.isArray(p.heardBy) && p.heardBy.includes(viewer.id));
       if (!heard) return null;
-      const target = p.to === "room" ? "everyone here" : p.to === "team" ? "the team" : p.to === "all" ? "everyone" : name(String(p.to));
-      return { text: `${who} → ${target}: ${String(p.text)}`, tone: "speech", ...(sim ? { simulated: true } : {}) };
+      const target = p.to === "room" ? "everyone here" : p.to === "team" ? "the team" : p.to === "all" ? "everyone" : p.to === viewer.id ? "you" : name(String(p.to));
+      const tag = p.npc === true ? (p.via === "model" ? " (AI-written)" : " (scripted)") : "";
+      return { text: `${who}${tag} → ${target}: ${String(p.text)}`, tone: "speech", ...(sim ? { simulated: true } : {}) };
     }
     case "introduced": return { text: `${who}: "I'm ${String(p.name)}${p.roleId ? `, the ${act.world.roleSkins[p.roleId as RoleId].name}` : ""}."`, tone: "speech" };
     case "fact_shared":
@@ -171,7 +174,7 @@ export function viewFor(s: RuntimeState, playerId: string): PlayerView | null {
     act: act.act,
     actTitle: act.scenario.title,
     you: {
-      id: viewer.id, name: viewer.name, roleId: viewer.roleId, roleName: skin?.name ?? null, roleTitle: skin?.title ?? null,
+      id: viewer.id, name: viewer.name, roleId: viewer.roleId, roleName: skin?.name ?? null, roleTitle: skin?.title ?? null, portraitId: skin?.portrait ?? null,
       roomId: viewer.roomId,
       facts: viewer.facts.map((id) => ({ id, text: act.facts.find((f) => f.id === id)?.text ?? id })),
       inventory: viewer.inventory.slice(),
@@ -197,6 +200,7 @@ export function viewFor(s: RuntimeState, playerId: string): PlayerView | null {
     feed,
     outcome: s.actOutcomes.length ? { outcome: s.actOutcomes.at(-1)!.outcome, success: s.actOutcomes.at(-1)!.success } : null,
     safetyFooter: SAFETY_FOOTER,
+    worldId: act.world.id,
     worldName: act.world.name,
     socialEnvironment: s.config.socialEnvironment,
     allowCrossRoomChat: s.config.rules.allowCrossRoomChat,

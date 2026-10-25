@@ -1,6 +1,6 @@
 import type { z } from "zod";
 
-export type AgentStep = "diagnose" | "adapt" | "builder";
+export type AgentStep = "diagnose" | "adapt" | "builder" | "command" | "npc";
 
 export interface CompletionRequest<T> {
   step: AgentStep;
@@ -10,6 +10,8 @@ export interface CompletionRequest<T> {
   schema: z.ZodType<T>;
   /** The rules-based answer. The mock provider returns it; real providers never see it. */
   deterministic: () => unknown;
+  /** Shorter than the provider default for interactive steps (e.g. NPC speech uses 8 s). */
+  timeoutMs?: number;
 }
 
 export interface Completion {

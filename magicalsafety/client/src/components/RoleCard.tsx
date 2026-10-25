@@ -1,9 +1,16 @@
+import { useEffect, useState } from "react";
 import type { PlayerView } from "@magicalsafety/engine";
+import { artUrl, getArtManifest } from "../api";
 
 export function RoleCard({ view }: { view: PlayerView }) {
   const { you } = view;
+  const [art, setArt] = useState<Set<string>>(new Set());
+  const [broken, setBroken] = useState(false);
+  useEffect(() => { void getArtManifest().then(setArt); }, []);
+  const portrait = you.portraitId && art.has(`portrait:${view.worldId}:${you.portraitId}`) && !broken ? artUrl("portrait", view.worldId, you.portraitId) : null;
   return (
     <section aria-label="Your role" className="rounded-xl bg-parchment p-4 text-ink shadow">
+      {portrait && <img src={portrait} alt={`Portrait of ${you.roleName ?? "your character"}`} onError={() => setBroken(true)} className="mb-2 h-24 w-24 rounded-full object-cover ring-2 ring-night/40" />}
       <div className="font-display text-lg font-bold">{you.roleName ?? "Guest"}</div>
       {you.roleTitle && <div className="text-sm italic opacity-75">{you.roleTitle}</div>}
       <h3 className="mt-3 text-xs font-bold uppercase tracking-wide opacity-70">What only you know</h3>

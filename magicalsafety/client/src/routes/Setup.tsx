@@ -11,7 +11,7 @@ const ENVIRONMENTS: [string, string, string][] = [
   ["strangers", "Strangers", "Roles stay hidden until people introduce themselves. Introductions are scored."],
   ["simulated", "Mostly simulated", "One human plus labeled 🤖 teammates."],
 ];
-const INPUTS: [string, string, boolean][] = [["mouse", "Mouse (click the scene and buttons)", true], ["keyboard", "Keyboard (number keys)", true], ["text", "Typed chat", true], ["voice", "Voice (coming in a later phase)", false]];
+const INPUTS: [string, string, boolean][] = [["mouse", "Mouse (click the scene and buttons)", true], ["keyboard", "Keyboard (number keys)", true], ["text", "Typed chat", true], ["voice", "Voice (push-to-talk; falls back to browser speech, then typing)", true]];
 const field = "w-full rounded bg-night px-3 py-2 text-sm ring-1 ring-white/15";
 const card = "rounded-xl bg-night-2 p-4";
 

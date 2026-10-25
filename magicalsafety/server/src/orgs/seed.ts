@@ -49,7 +49,8 @@ export function riversideOrg(): OrgConfig {
     ],
     documents: [{ id: "quick_guide", title: "Emergency Response Quick Guide (sample)", text: GUIDE, source: "uploaded" }],
     model: { provider: "meta", modelId: "muse-spark-1.3", allowContributorMode: false },
-    tools: { allowed: ["org_docs.search"] },
+    // Enabled for the demo; each one only does anything once its key is configured, and shows MOCK/fallback until then.
+    tools: { allowed: ["org_docs.search", "serpapi.search", "muse.image", "muse.transcribe", "fb.profile"] },
     limits: { maxModelCallsPerSession: 8, maxImagesPerSession: 3, maxSearchesPerDay: 20, maxVoiceSecondsPerSession: 300, maxBuilderDraftsPerDay: 10 },
     safety: { requireAuthoredSafetyContent: true, retentionDays: 30, storeTranscripts: false },
   });

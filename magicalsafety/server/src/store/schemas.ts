@@ -15,6 +15,8 @@ export const PlayerRecord = z.strictObject({
   tokenHash: z.string().length(64),
   ready: z.boolean(),
   roleId: z.enum(["discoverer", "authority", "runner", "liaison"]).optional(),
+  /** Set only when the player chose to use their verified Facebook name. No Facebook id or token is ever stored. */
+  fb: z.strictObject({ name: z.string().max(60), pictureUrl: z.string().url().max(500).nullable() }).optional(),
 });
 
 export const SessionMeta = z.strictObject({
@@ -45,6 +47,8 @@ export const LogInput = z.discriminatedUnion("kind", [
   z.strictObject({ kind: z.literal("start"), now: z.number() }),
   z.strictObject({ kind: z.literal("tick"), now: z.number() }),
   z.strictObject({ kind: z.literal("action"), now: z.number(), req: ActionRequest }),
+  // The companion NPC's reply. It is written outside the engine, so it is recorded to keep replay exact.
+  z.strictObject({ kind: z.literal("npc_say"), now: z.number(), npcId: z.string().max(40), toId: z.string().max(60), text: z.string().max(240), via: z.enum(["model", "canned"]) }),
 ]);
 export type LogInput = z.infer<typeof LogInput>;
 

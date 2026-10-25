@@ -32,7 +32,7 @@ export const AnalysisDoc = z.strictObject({
   })),
   emphasis: z.array(z.strictObject({ key: z.string(), weight: z.number() })),
   /** Organization chunks shown to the model / cited by rules ("Learn more"). */
-  references: z.array(z.strictObject({ id: z.string(), docTitle: z.string(), heading: z.string(), text: z.string() })),
+  references: z.array(z.strictObject({ id: z.string(), docTitle: z.string(), url: z.string().nullable(), heading: z.string(), text: z.string() })),
 });
 export type AnalysisDoc = z.infer<typeof AnalysisDoc>;
 
@@ -55,7 +55,7 @@ export interface AgentDeps {
   usage: Usage;
   clock?: () => number;
   /** Test hook: supply reference chunks directly instead of searching the organization's documents. */
-  references?: (sessionId: string) => Promise<{ id: string; text: string; docTitle?: string; heading?: string }[]>;
+  references?: (sessionId: string) => Promise<{ id: string; text: string; docTitle?: string; heading?: string; url?: string | null }[]>;
 }
 
 /** Keywords used to find the organization's own guidance for each weakness. */
@@ -124,15 +124,15 @@ export class TrainingAgent {
   /** Finds the organization's own guidance for each weakness, only through the tool pipeline. */
   private async findSources(org: OrgConfig | undefined, sessionId: string, codes: WeaknessCode[]) {
     const byCode = new Map<WeaknessCode, string[]>();
-    const chunks = new Map<string, { id: string; docTitle: string; heading: string; text: string }>();
+    const chunks = new Map<string, { id: string; docTitle: string; url: string | null; heading: string; text: string }>();
     if (!org) return { byCode, chunks };
     for (const code of codes) {
       const r = await this.deps.tools.executeTool({ tool: "org_docs.search", args: { query: WEAKNESS_QUERY[code], k: 1 }, orgId: org.id, sessionId, requestedBy: "agent" });
       if (!r.ok) continue; // not enabled / denied: the agent simply has no organization sources
-      const hit = (r.output as { results: { chunkId: string; docTitle: string; heading: string; text: string }[] }).results[0];
+      const hit = (r.output as { results: { chunkId: string; docTitle: string; url: string | null; heading: string; text: string }[] }).results[0];
       if (!hit) continue;
       byCode.set(code, [hit.chunkId]);
-      chunks.set(hit.chunkId, { id: hit.chunkId, docTitle: hit.docTitle, heading: hit.heading, text: hit.text });
+      chunks.set(hit.chunkId, { id: hit.chunkId, docTitle: hit.docTitle, url: hit.url, heading: hit.heading, text: hit.text });
     }
     return { byCode, chunks };
   }
@@ -159,7 +159,7 @@ export class TrainingAgent {
     // Which organization guidance applies to the weaknesses the facts show?
     const overrideRefs = await this.deps.references?.(sessionId);
     const found = overrideRefs
-      ? { byCode: new Map<WeaknessCode, string[]>(), chunks: new Map(overrideRefs.map((r) => [r.id, { id: r.id, docTitle: r.docTitle ?? r.id, heading: r.heading ?? "", text: r.text }])) }
+      ? { byCode: new Map<WeaknessCode, string[]>(), chunks: new Map(overrideRefs.map((r) => [r.id, { id: r.id, docTitle: r.docTitle ?? r.id, url: r.url ?? null, heading: r.heading ?? "", text: r.text }])) }
       : await this.findSources(org, sessionId, first.weaknesses.slice(0, 3).map((w) => w.code));
     const refs = [...found.chunks.values()];
 
