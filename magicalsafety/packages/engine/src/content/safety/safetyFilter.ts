@@ -8,7 +8,7 @@ export interface SafetyResult {
 }
 
 const RULES: { name: string; re: RegExp }[] = [
-  { name: "dosing", re: /\b\d+(\.\d+)?\s?(mg|mcg|µg|ml|cc|units?|tablets?|pills?|doses?)\b/i },
+  { name: "dosing", re: /\b(\d+(\.\d+)?|one|two|three|four|five|six|seven|eight|nine|ten|half|a couple of|a few)\s?(mg|mcg|µg|ml|cc|units?|tablets?|pills?|capsules?|doses?|teaspoons?|tablespoons?|drops?)\b/i },
   { name: "medication", re: /\b(aspirin|ibuprofen|acetaminophen|paracetamol|epinephrine|epipen|adrenaline|insulin|nitroglycerin|naloxone|narcan|antibiotic|opioid|sedative|painkiller)\b/i },
   { name: "cpr_procedure", re: /\b(cpr|chest compressions?|compressions?|rescue breaths?|mouth[- ]to[- ]mouth|heimlich|abdominal thrusts?|recovery position|tilt (the |her |his )?head|head[- ]tilt|chin lift)\b/i },
   { name: "defibrillation_procedure", re: /\b(shock (her|him|them|the patient)|apply (the )?pads?|defibrillat\w*)\b/i },

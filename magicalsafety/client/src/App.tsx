@@ -6,6 +6,7 @@ import { Results } from "./routes/Results";
 import { Replay } from "./routes/Replay";
 import { BuilderPage } from "./routes/Builder";
 import { SetupPage } from "./routes/Setup";
+import { InspectorPage } from "./routes/Inspector";
 
 export function App() {
   return (
@@ -18,6 +19,7 @@ export function App() {
       <Route path="/replay/:sessionId" element={<Replay />} />
       <Route path="/builder" element={<BuilderPage />} />
       <Route path="/setup" element={<SetupPage />} />
+      <Route path="/inspector/:sessionId" element={<InspectorPage />} />
       <Route path="*" element={<p className="p-6">Page not found. <a className="underline" href="/">Home</a></p>} />
     </Routes>
     </>

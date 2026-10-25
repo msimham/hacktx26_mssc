@@ -36,6 +36,8 @@ export interface Env {
   assetsDir: string;
   /** user_friends only works for app admins/testers in Development mode; off unless explicitly enabled. */
   fbEnableFriends: boolean;
+  /** Extra browser origin allowed to connect, e.g. https://demo.example.com. */
+  publicOrigin: string;
 }
 
 export function readEnv(source: NodeJS.ProcessEnv = process.env): Env {
@@ -61,6 +63,7 @@ export function readEnv(source: NodeJS.ProcessEnv = process.env): Env {
     retentionDays: Number(get("RETENTION_DAYS", "30")) || 30,
     assetsDir: get("ASSETS_DIR") || path.resolve(here, "../../assets-cache"),
     fbEnableFriends: get("FB_ENABLE_FRIENDS") === "true",
+    publicOrigin: get("PUBLIC_ORIGIN"),
   };
 }
 

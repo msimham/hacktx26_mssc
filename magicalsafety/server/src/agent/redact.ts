@@ -20,3 +20,11 @@ export function wrapUntrusted(chunks: { id: string; text: string }[]): string {
     })
     .join("\n");
 }
+
+/** Redacts every string anywhere inside a value (objects, arrays, nested), for records that are about to be stored. */
+export function redactDeep<T>(value: T, secrets: readonly string[] = []): T {
+  if (typeof value === "string") return redact(value, secrets) as T;
+  if (Array.isArray(value)) return value.map((v) => redactDeep(v, secrets)) as T;
+  if (value && typeof value === "object") return Object.fromEntries(Object.entries(value as Record<string, unknown>).map(([k, v]) => [k, redactDeep(v, secrets)])) as T;
+  return value;
+}

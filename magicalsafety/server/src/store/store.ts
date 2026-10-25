@@ -29,8 +29,8 @@ export interface Store {
   flush(): Promise<void>;
 }
 
-export type DocKind = "analysis" | "shoutouts" | "runs" | "recap";
-const DOC_KINDS: readonly DocKind[] = ["analysis", "shoutouts", "runs", "recap"];
+export type DocKind = "analysis" | "shoutouts" | "runs" | "recap" | "audit";
+const DOC_KINDS: readonly DocKind[] = ["analysis", "shoutouts", "runs", "recap", "audit"];
 const ORG_ID = /^org_[a-z0-9_]{2,30}$/;
 
 const SAFE_ID = /^[A-Za-z0-9_-]{4,40}$/;

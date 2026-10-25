@@ -18,7 +18,7 @@ npm test            # all workspaces
 npm run typecheck   # strict TypeScript, all workspaces
 ```
 
-Expected: engine 121 tests, server 151 tests, client 5 tests, all green.
+Expected: engine 142 tests, server 166 tests, client 5 tests, all green.
 
 None of the tests contacts a real service. External calls are replaced by stub `fetch` functions that also record what would have been sent.
 
@@ -35,6 +35,20 @@ What the engine tests prove:
 | Determinism | Same seed + inputs → identical event log; replaying the stored inputs reproduces the state |
 | Safety | Dosing / CPR steps / diagnoses are blocked; approved coordination wording passes |
 | Privacy | `viewFor()` never includes another player's private knowledge; strangers' roles stay hidden until they introduce themselves |
+
+What the Phase 7 tests prove:
+| Area | Test |
+|---|---|
+| Isolation | Every player-facing route returns 404 for another session's token or no token, and works for the right one; players never reach organizer data |
+| Passcode | 10 wrong tries lock an address out for a minute (even with the right passcode); a missing header is not a guess |
+| Origins | Same-site, local, LAN and configured origins connect; a cross-site page is refused; the long-polling transport works end to end with no uncaught exceptions |
+| Headers | CSP, `nosniff`, referrer and permissions policies on the built client; Facebook allowed in the CSP only when configured; unknown API paths answer JSON; oversized bodies get 413 |
+| Disk | After a run with every integration configured and failing, no key, token, passcode or `Bearer` string is in any stored file; audio and its transcript are never written |
+| Scanner | Finds tokens, keys and known secret values; ignores clean files and images |
+| Safety | 15 forbidden phrases blocked, 7 ordinary coordination phrases pass, blocked text is replaced by authored copy; unsafe model rationales and recommendations are replaced or dropped and recorded |
+| Inspector | Organizer-only; shows runs, tool decisions, events and spend; hides token hashes; survives a restart |
+| Retention | Sweeping a session removes its record, log, analysis, run log, tool audit, recap image and shout-outs |
+| Demo | `docs/DEMO_SCRIPT.md` played by the engine: Cinderella-centric Act 1 succeeds and is flagged, Act 2 runs out of time |
 
 What the Phase 6 tests prove:
 | Area | Test |
@@ -231,4 +245,14 @@ After a session ends, click **View results** (about 2.5 minutes if you do nothin
 4. If it works, tell the implementer so INTEGRATIONS.md can record the date and model id. It has never been run against the real API.
 
 **Where data goes:** `server/data/` (gitignored): per session a `.meta.json`, a `.log.jsonl` (hash-chained inputs), and once analysed an `.analysis.json`, `.runs.json` and `.shoutouts.json`. Delete the folder to reset.
-## 6. Full demo (coming in Phase 8, see `DEMO_SCRIPT.md`)
+## 6. Security and the Inspector ✅
+
+```bash
+npm run check:secrets      # no credentials on disk or committed; .env not tracked
+```
+
+In the app: finish a game, open **Results**, click **Organizer: open the Inspector** (enter the passcode). You see each agent run (click a row for the redacted input, the validated output, any validation errors, corrections and policy decisions), every tool decision with who asked and why it was allowed or denied, the event log (filter by type or act, search), and whether the stored record still verifies. Try the passcode lockout: enter a wrong passcode on `/builder` ten times; the eleventh attempt is refused even with the right one for about a minute.
+
+## 7. Full demo
+
+See [DEMO_SCRIPT.md](DEMO_SCRIPT.md) (six minutes, with a no-keys and a with-keys version). `npm run demo:seed` is added in Phase 8.

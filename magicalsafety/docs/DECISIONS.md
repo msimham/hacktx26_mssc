@@ -119,3 +119,29 @@ Sessions are persisted as **(config, seed, ordered input log)**, not as derived 
 - **The demo organization now allows all five tools**, so adding a key "just works". An allowed tool without a key does nothing and shows its fallback.
 - **Bug found by a test:** a Facebook display name like `Ana <b>Lee</b>` became `Ana bLee/b` (brackets removed but not the tag). Tags are now stripped first.
 - **`demo:seed` is a placeholder** until Phase 8.
+
+## Phase 7 (security, inspector, tests, docs)
+
+### Bugs the new tests found (all fixed)
+- **Socket.IO and Express both answered every `/socket.io/` request** (since Phase 2). Express was attached to the HTTP server *after* Socket.IO, so for polling requests Express sent a 404 while Socket.IO tried to answer, which could throw `ERR_HTTP_HEADERS_SENT` and crash the process. WebSocket connections hid it. Now the HTTP server gets its handler before Socket.IO attaches, and a regression test plays a full exchange over the polling transport and asserts no uncaught exception.
+- **Run-log redaction only covered the prompt.** An upstream error echoing a key would have been written into `validationErrors`. The whole record is now redacted (`redactDeep`), and a disk scan test proves no configured key, token or `Bearer` string reaches any stored file.
+- **The safety filter's dosing rule only understood digits** ("Two tablets should do it" got through). It now understands number words. The filter has 15 blocked and 7 allowed phrases under test, plus the case of an approved phrase sitting next to a forbidden one.
+- **Oversized or malformed request bodies returned 500.** They now return 413 and 400.
+- **A flaky test helper** waited a fixed 40 ms for client views to catch up; it now waits until they reflect the server.
+
+### Hardening
+- **Passcode lockout:** after 10 wrong organizer passcodes from one address within a minute, that address is refused (429) even with the right one. A missing header is "not an organizer", not a failed guess. Limits are in memory, per IP, and reset on restart. Behind a reverse proxy every user would share the proxy's address unless Express `trust proxy` is configured; documented in SETUP.md's hosting note.
+- **Socket origins:** no CORS headers are sent; a browser page may connect only from the same site, this machine, the local network (for phone/laptop demos), or `PUBLIC_ORIGIN`. Requests with no Origin (non-browser clients) are allowed; every action is token-authorised anyway.
+- **Headers:** `nosniff`, `Referrer-Policy: no-referrer`, `Permissions-Policy` (microphone for this page only), and on the built client a Content-Security-Policy (`default-src 'self'`, no objects, no framing; Facebook sources only when Facebook is configured). `style-src` needs `'unsafe-inline'` because React sets inline styles. The headers are tested; the policy has **not been verified in a real browser**, so a blocked resource there is the first thing to check if the production build looks wrong.
+- **Unknown `/api/*` paths answer in JSON**, never an HTML page.
+- **Cross-session isolation matrix:** every player-facing route is tested with another session's token and with no token (always 404), and with the right token (works).
+- **`npm run check:secrets`** scans stored sessions, logs and the art cache for key-shaped strings and for the real secret values from your `.env`, scans tracked source files for those real values, and fails if a `.env` file is tracked. It backs the plan's "`grep -r "sk-\|Bearer " server/data` finds nothing" check.
+
+### Inspector
+- **`/inspector/:sessionId`** (organizer passcode): agent runs (redacted input, validated output, errors, corrections, policy decisions, tokens, cost, fallback), every tool decision for the session, the event log with filters, the verified-record status, and the estimated spend. It states plainly that it shows decisions, not a model's hidden reasoning. Event payloads include chat text, so it is organizer-only.
+- **Tool audit is persisted per session** (so the Inspector survives a restart). Organization-level tool calls with no session (Builder search, research) stay in a 500-entry in-memory ring, readable at `/api/orgs/:id/audit`.
+- **Model calls are not "tools".** The plan routes external *tools* through `executeTool`; model providers are governed by per-organization call budgets, schema/evidence validation, the safety filter, and the run log, and are shown in the Inspector.
+
+### Docs
+- `docs/SETUP.md` (your checklist, where each `TODO(USER)` is, how to confirm each step), `docs/DEMO_SCRIPT.md`, a rewritten README, and an updated TESTING_AND_DEMO.md.
+- **The demo script is checked by a test** (`demo.test.ts` plays it with the engine). Writing that test showed my first draft of the script was wrong: the Coachman holds the cabinet key, and simulated teammates take over duties once told about the collapse. The script now matches what happens.

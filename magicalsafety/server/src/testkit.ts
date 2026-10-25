@@ -52,6 +52,15 @@ export async function boot(opts: { dataDir?: string; clockRef?: { now: number };
   const advance = async (ms: number) => {
     for (let t = 0; t < ms; t += 500) { clockRef.now += 500; await kit.server!.hub.pump(); }
     await sleep(40);
+    // Wait until every connected player's view reflects the server's phase (a fixed sleep is not enough under load).
+    for (let i = 0; i < 80; i++) {
+      const lagging = kit.clients.some((c) => {
+        const st = c.view ? kit.server!.hub.stateOf(c.view.sessionId) : null;
+        return !!st && c.view!.phase !== (st.phase === "ended" ? "ended" : "running");
+      });
+      if (!lagging) break;
+      await sleep(25);
+    }
   };
   /** Accepts the short legacy options used throughout the tests and builds the structured request body. */
   const create = async (body: Record<string, unknown> = {}) => {

@@ -7,12 +7,13 @@ import {
 } from "@magicalsafety/engine";
 import { SEEDED_ORG_ID } from "../orgs/seed";
 import type { Env } from "../config/env";
-import { passcodeOk, rateLimit } from "../auth";
+import { rateLimit, type OrganizerGuard } from "../auth";
 import type { Store } from "../store/store";
 import { hashToken } from "../realtime/sessionHub";
 import type { SessionMeta } from "../store/schemas";
 import type { TrainingAgent } from "../agent/trainingAgent";
 import type { RunLog } from "../agent/runLog";
+import type { AuditLog } from "../tools/audit";
 
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O/1/I
 
@@ -50,7 +51,7 @@ const ShoutoutBody = z.strictObject({
   reason: z.enum(["stayed_calm", "shared_what_they_knew", "took_on_a_task"]),
 });
 
-export function sessionRoutes(env: Env, store: Store, agent: TrainingAgent, runLog: RunLog): Router {
+export function sessionRoutes(env: Env, store: Store, agent: TrainingAgent, runLog: RunLog, guard: OrganizerGuard, audit: AuditLog): Router {
   const r = Router();
   const replayLock = new Set<string>();
 
@@ -59,13 +60,14 @@ export function sessionRoutes(env: Env, store: Store, agent: TrainingAgent, runL
     if (!m) return null;
     const token = req.header("x-player-token");
     const player = token ? m.players.find((p) => p.tokenHash === hashToken(token)) : undefined;
-    const organizer = passcodeOk(req.header("x-organizer-passcode"), env.organizerPasscode);
+    const organizer = guard.ok(req);
     return player || organizer ? { player, organizer } : null;
   };
 
   // Organizer-only: create a session.
   r.post("/", rateLimit(30), async (req, res) => {
-    if (!passcodeOk(req.header("x-organizer-passcode"), env.organizerPasscode)) return void res.status(401).json({ error: "Organizer passcode required" });
+    if (guard.blocked(req)) return void res.status(429).json({ error: "Too many wrong passcodes. Try again in a minute." });
+    if (!guard.ok(req)) return void res.status(401).json({ error: "Organizer passcode required" });
     const body = CreateBody.safeParse(req.body ?? {});
     if (!body.success) return void res.status(400).json({ error: "Invalid session settings" });
     const b = body.data;
@@ -104,7 +106,7 @@ export function sessionRoutes(env: Env, store: Store, agent: TrainingAgent, runL
   r.get("/:id/results", rateLimit(60), async (req, res) => {
     const m = store.getMeta(String(req.params.id));
     const token = req.header("x-player-token");
-    const authorised = !!m && ((token && m.players.some((p) => p.tokenHash === hashToken(token))) || passcodeOk(req.header("x-organizer-passcode"), env.organizerPasscode));
+    const authorised = !!m && ((token && m.players.some((p) => p.tokenHash === hashToken(token))) || guard.ok(req));
     if (!m || !authorised) return void res.status(404).json({ error: "Not found" }); // same answer for missing and forbidden
     if (m.status === "lobby") return void res.status(409).json({ error: "The session has not started" });
     // Rebuilt from the verified log, so what is shown is what was recorded.
@@ -197,8 +199,33 @@ export function sessionRoutes(env: Env, store: Store, agent: TrainingAgent, runL
   // Agent run log: organizer only (the Inspector screen arrives in a later phase).
   r.get("/:id/runs", rateLimit(30), async (req, res) => {
     const m = store.getMeta(String(req.params.id));
-    if (!m || !passcodeOk(req.header("x-organizer-passcode"), env.organizerPasscode)) return void res.status(404).json({ error: "Not found" });
+    if (!m || !guard.ok(req)) return void res.status(404).json({ error: "Not found" });
     res.json({ runs: await runLog.list(m.id) });
+  });
+
+  // Agent Run Inspector: what the agent was given, what it returned, what was validated, what was blocked, and every tool decision.
+  // It shows inputs, outputs and decisions. It does NOT show a model's hidden reasoning, which we never receive.
+  r.get("/:id/inspector", rateLimit(30), async (req, res) => {
+    const m = store.getMeta(String(req.params.id));
+    if (!m || !guard.ok(req)) return void res.status(404).json({ error: "Not found" });
+    await audit.settle();
+    const log = await store.loadLog(m.id);
+    const events = log.ok
+      ? replay({ config: log.header.config, seed: log.header.seed, players: log.header.players }, log.inputs).events
+          .slice(0, 2000)
+          .map((e) => ({ id: e.id, t: e.t, act: e.act, actorId: e.actorId, actorKind: e.actorKind, type: e.type, roomId: e.roomId, payload: e.payload }))
+      : [];
+    res.json({
+      session: {
+        id: m.id, code: m.code, orgId: m.orgId, status: m.status, createdAt: m.createdAt,
+        worldId: m.config.worldId, acts: m.config.acts, socialEnvironment: m.config.socialEnvironment,
+        players: m.players.map((p) => ({ id: p.id, name: p.name })), // never token hashes
+      },
+      runs: await runLog.list(m.id),
+      tools: await audit.list(m.id),
+      events,
+      log: log.ok ? { verified: true, entries: log.head.seq + 1, head: log.head.hash.slice(0, 16) } : { verified: false, error: log.error },
+    });
   });
 
   return r;

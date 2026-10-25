@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { Store } from "../store/store";
-import { redact } from "./redact";
+import { redactDeep } from "./redact";
 
 export const AgentRun = z.strictObject({
   id: z.string(),
@@ -30,7 +30,9 @@ export class RunLog {
   constructor(private store: Store, private secrets: () => string[]) {}
 
   async append(run: Omit<AgentRun, "inputSummary"> & { inputSummary: string }): Promise<void> {
-    const clean = { ...run, inputSummary: redact(run.inputSummary, this.secrets()).slice(0, 400) };
+    // Everything in the record is scrubbed, not just the prompt: validation errors, notes and outputs can echo upstream text.
+    const secrets = this.secrets();
+    const clean = redactDeep({ ...run, inputSummary: run.inputSummary.slice(0, 400) }, secrets);
     const existing = await this.list(run.sessionId);
     await this.store.putDoc(run.sessionId, "runs", [...existing, clean].slice(-60));
   }

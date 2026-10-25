@@ -2,7 +2,7 @@ import { Router, type Request, type Response } from "express";
 import { z } from "zod";
 import { blankOrg, OrgConfig, OrgDocument, type OrgConfig as Org } from "@magicalsafety/engine";
 import type { Env } from "../config/env";
-import { passcodeOk, rateLimit } from "../auth";
+import { rateLimit, type OrganizerGuard } from "../auth";
 import type { AgentKit } from "../agent";
 import { draftObjectives } from "../agent/builderDraft";
 import type { Store } from "../store/store";
@@ -28,15 +28,12 @@ const Draft = z.strictObject({ orgId: z.string().optional(), description: z.stri
 
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 40) || "doc";
 
-export function orgRoutes(env: Env, store: Store, kit: AgentKit): Router {
+export function orgRoutes(env: Env, store: Store, kit: AgentKit, guard: OrganizerGuard): Router {
   const r = Router();
 
   // Everything here is organizer-only. Same 404 for "no such org" and "not allowed to see it" is unnecessary
   // because the passcode check comes first and applies to the whole router.
-  r.use(rateLimit(120), (req: Request, res: Response, next: () => void) => {
-    if (!passcodeOk(req.header("x-organizer-passcode"), env.organizerPasscode)) return void res.status(401).json({ error: "Organizer passcode required" });
-    next();
-  });
+  r.use(rateLimit(120), guard.require);
 
   const warnings = (org: Org) => [
     ...(org.model.allowContributorMode && org.model.modelId === "muse-spark-1.3-contributor" && !env.allowContributor ? ["Contributor mode is requested here but the server does not allow it (META_ALLOW_CONTRIBUTOR=false), so the standard model is used."] : []),

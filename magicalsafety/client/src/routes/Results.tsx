@@ -233,6 +233,7 @@ export function Results() {
       <div className="flex flex-wrap items-center gap-3">
         <Link to={`/replay/${sessionId}`} className="rounded bg-gold px-5 py-2 font-semibold text-night">Plan the next run →</Link>
         <Link to="/" className="rounded px-4 py-2 ring-1 ring-white/20">Back to start</Link>
+        <Link to={`/inspector/${sessionId}`} className="ml-auto rounded px-3 py-2 text-xs text-slate-400 ring-1 ring-white/10 hover:text-slate-200" title="Organizers only: shows how the AI part worked">Organizer: open the Inspector</Link>
       </div>
       <p className="text-xs text-slate-400">Verified record: {facts.verifiedLog.entries} entries, chain head {facts.verifiedLog.head}… · This is a coordination exercise, not certified first-aid training. Follow your organization's certified training.</p>
     </main>

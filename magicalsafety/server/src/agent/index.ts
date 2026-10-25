@@ -2,6 +2,7 @@ import type { OrgConfig } from "@magicalsafety/engine";
 import type { Env } from "../config/env";
 import type { Store } from "../store/store";
 import { createToolExecutor } from "../tools/executeTool";
+import { AuditLog } from "../tools/audit";
 import { buildRegistry } from "../tools/registry";
 import type { timedFetch } from "../tools/http";
 import { Usage } from "../tools/usage";
@@ -33,7 +34,8 @@ export function createAgent(env: Env, store: Store, fixedProvider?: ModelProvide
   const secrets = () => [env.metaApiKey, env.serpApiKey, env.fbAppSecret, env.organizerPasscode].filter(Boolean);
   const runLog = new RunLog(store, secrets);
   const usage = new Usage();
-  const tools = createToolExecutor({ store, usage, secrets, registry: buildRegistry(env, fetchImpl) });
+  const auditLog = new AuditLog(store);
+  const tools = createToolExecutor({ store, usage, secrets, registry: buildRegistry(env, fetchImpl), onAudit: (e) => auditLog.append(e) });
   const runner = new StructuredRunner({ runLog });
   const cache = new Map<string, ModelProvider>();
   const providerFor = (org?: OrgConfig) => fixedProvider ?? selectProvider(env, org, cache);
@@ -54,6 +56,6 @@ export function createAgent(env: Env, store: Store, fixedProvider?: ModelProvide
     const org = store.getOrg(state.config.orgId);
     return pickCommand({ runner, provider: providerFor(org), scopeId: state.sessionId, legal, said, budget: budgetFor(org?.id, org?.limits.maxModelCallsPerSession ?? 8, state.sessionId) });
   };
-  return { agent, runLog, runner, usage, tools, providerFor, npcReply, pickAction };
+  return { agent, runLog, auditLog, runner, usage, tools, providerFor, npcReply, pickAction };
 }
 export type AgentKit = ReturnType<typeof createAgent>;

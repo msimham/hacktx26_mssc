@@ -219,21 +219,51 @@ describe("compile and difficulty levers", () => {
 });
 
 describe("safety filter", () => {
-  it.each([
-    "Give her 300 mg of aspirin",
-    "Start chest compressions now",
-    "She is having a heart attack",
-    "You should tilt her head back",
-  ])("blocks %s", (text) => {
+  const BLOCKED: [string, string][] = [
+    ["dosing", "Give her 300 mg of aspirin"],
+    ["dosing", "Two tablets should do it"],
+    ["dosing", "Use 5 ml every hour"],
+    ["medication", "Get the epinephrine from the bag"],
+    ["medication", "Take some ibuprofen"],
+    ["cpr_procedure", "Start chest compressions now"],
+    ["cpr_procedure", "Begin CPR immediately"],
+    ["cpr_procedure", "Give rescue breaths"],
+    ["cpr_procedure", "Tilt her head back and lift the chin"],
+    ["cpr_procedure", "Do the Heimlich maneuver"],
+    ["defibrillation_procedure", "Apply the pads and shock the patient"],
+    ["diagnosis", "She is having a heart attack"],
+    ["diagnosis", "That looks like a seizure"],
+    ["diagnosis", "It must be a stroke or diabetic shock"],
+    ["treatment_instruction", "You should give her water and press on her chest"],
+  ];
+  it.each(BLOCKED)("blocks (%s): %s", (rule, text) => {
     const r = safetyFilter(text);
     expect(r.ok).toBe(false);
     expect(r.text).not.toBe(text);
     expect(r.reasons.length).toBeGreaterThan(0);
+    expect(r.reasons.join(" ")).toMatch(new RegExp(rule.split("_")[0]!));
   });
 
-  it("allows approved coordination language", () => {
-    expect(safetyFilter("Please bring the first-aid kit and call emergency services. Stay with the person.").ok).toBe(true);
-    expect(safetyFilter("Keep bystanders back and meet responders at the gate.").ok).toBe(true);
+  it("replaces blocked text with authored copy, never anything the model wrote", () => {
+    const r = safetyFilter("Give her 300 mg of aspirin and start chest compressions.");
+    expect(r.text).toMatch(/can't give medical instructions/);
+    expect(r.text).not.toMatch(/aspirin|compressions/i);
+  });
+
+  it.each([
+    "Please bring the first-aid kit and call emergency services. Stay with the person.",
+    "Keep bystanders back and meet responders at the gate.",
+    "Send someone specific to get the AED and meet the responders.",
+    "Ask the guard to move the guests back, and call campus security.",
+    "I called for help at 30 seconds; Ana cleared the area and Ben shared where help was.",
+    "Say what only you know, out loud and early.",
+    "Check every room, then get counted at the assembly point.",
+  ])("does not block ordinary coordination language: %s", (text) => {
+    expect(safetyFilter(text)).toMatchObject({ ok: true, text });
+  });
+
+  it("is not fooled by approved phrases sitting next to forbidden ones", () => {
+    expect(safetyFilter("Bring the AED, then start chest compressions.").ok).toBe(false);
   });
 });
 

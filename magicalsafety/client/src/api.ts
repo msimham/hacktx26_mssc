@@ -225,3 +225,28 @@ export function getArtManifest(): Promise<Set<string>> {
 }
 export const artUrl = (kind: "room" | "portrait", world: string, id: string) => `/api/art/${kind}/${world}/${id}.webp`;
 
+
+// ---------- Agent Run Inspector (organizer only) ----------
+
+export interface InspectorRun {
+  id: string; step: string; attempt: number; provider: string; model: string; startedAt: number; latencyMs: number;
+  inputSummary: string; output: unknown; validationErrors: string[]; notes: string[]; fallbackUsed: boolean;
+  usage: { prompt_tokens: number; completion_tokens: number } | null; costUsd: number;
+  policyDecisions: { rule: string; action: string; detail: string }[];
+}
+export interface InspectorTool { at: number; tool: string; requestedBy: string; decision: "allowed" | "denied"; reason: string | null; latencyMs: number; costUsd: number; argsSummary: string }
+export interface InspectorEvent { id: string; t: number; act: number; actorId: string; actorKind: string; type: string; roomId: string | null; payload: Record<string, unknown> }
+export interface Inspector {
+  session: { id: string; code: string; orgId: string; status: string; createdAt: number; worldId: string; acts: string[]; socialEnvironment: string; players: { id: string; name: string }[] };
+  runs: InspectorRun[];
+  tools: InspectorTool[];
+  events: InspectorEvent[];
+  log: { verified: boolean; entries?: number; head?: string; error?: string };
+}
+
+export async function getInspector(sessionId: string): Promise<Inspector> {
+  const res = await fetch(`/api/sessions/${encodeURIComponent(sessionId)}/inspector`, { headers: { "x-organizer-passcode": getPass() } });
+  if (res.status === 429) throw new Error("Too many wrong passcodes. Try again in a minute.");
+  if (!res.ok) throw new Error("UNAUTHORIZED");
+  return res.json();
+}

@@ -11,6 +11,8 @@ export interface ToolExecutorDeps {
   registry?: Record<string, ToolDef<never, unknown>>;
   secrets?: () => string[];
   now?: () => number;
+  /** Called for every audited decision (the app uses it to persist session-scoped entries). */
+  onAudit?: (entry: AuditEntry) => void;
 }
 
 function safeSummary(def: ToolDef<never, unknown>, args: unknown): string {
@@ -28,8 +30,10 @@ export function createToolExecutor(deps: ToolExecutorDeps) {
   const audit: AuditEntry[] = [];
 
   const record = (e: Omit<AuditEntry, "at">) => {
-    audit.push({ at: now(), ...e });
+    const entry = { at: now(), ...e };
+    audit.push(entry);
     if (audit.length > 500) audit.shift();
+    deps.onAudit?.(entry);
   };
 
   async function executeTool(req: ToolRequest): Promise<ToolResult> {
