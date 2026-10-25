@@ -18,7 +18,7 @@ npm test            # all workspaces
 npm run typecheck   # strict TypeScript, all workspaces
 ```
 
-Expected: engine 142 tests, server 166 tests, client 5 tests, all green.
+Expected: engine 142 tests, server 167 tests, client 7 tests, all green.
 
 None of the tests contacts a real service. External calls are replaced by stub `fetch` functions that also record what would have been sent.
 
@@ -35,6 +35,8 @@ What the engine tests prove:
 | Determinism | Same seed + inputs → identical event log; replaying the stored inputs reproduces the state |
 | Safety | Dosing / CPR steps / diagnoses are blocked; approved coordination wording passes |
 | Privacy | `viewFor()` never includes another player's private knowledge; strangers' roles stay hidden until they introduce themselves |
+
+The **rehearsal** test (`server/src/rehearsal.test.ts`) plays the whole demo script through the real server: builder, setup, both acts, results, adaptive replay, joining the adapted session, and the Inspector. If you only run one test before presenting, run `npx vitest run src/rehearsal.test.ts` in `server/`.
 
 What the Phase 7 tests prove:
 | Area | Test |

@@ -3,6 +3,7 @@ import { useParams, useSearchParams } from "react-router-dom";
 import { loadLastName } from "../session/storage";
 import { SessionProvider, useSession } from "../session/SessionContext";
 import { Lobby } from "./Lobby";
+import { PageSkeleton } from "../components/Skeleton";
 import { Game } from "./Game";
 
 function Inner() {
@@ -30,7 +31,7 @@ function Inner() {
   }
   if (view) return <Game />;
   if (lobby) return <Lobby />;
-  return <p className="p-6">Connecting…</p>;
+  return <PageSkeleton label="Connecting to the session" cards={2} />;
 }
 
 export function Play() {

@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { INDICATOR_INFO, type Competency, type MetricKey, type OrgConfig } from "@magicalsafety/engine";
 import { orgApi, type DocHit, type DraftResponse, type OrgSummary, type WebResult } from "../api";
 import { MockBadge } from "../components/MockBadge";
+import { PageSkeleton } from "../components/Skeleton";
 import { COMPETENCY_LABEL } from "../labels";
 import { GeneratedBy } from "../components/GeneratedBy";
 import { OrganizerGate } from "../components/OrganizerGate";
@@ -137,6 +138,7 @@ function Builder() {
       {msg && <p role={msg.kind === "err" ? "alert" : "status"} className={`rounded p-3 text-sm ${msg.kind === "err" ? "bg-rose-900/60 text-rose-100" : "bg-emerald-900/50 text-emerald-100"}`}>{msg.text}</p>}
       {warnings.map((w) => <p key={w} className="rounded bg-amber-100 p-3 text-sm text-amber-900">{w}</p>)}
 
+      {!org && !msg && <PageSkeleton label="Loading organizations" cards={2} />}
       {org && (
         <>
           <section className={`${card} space-y-3`}>

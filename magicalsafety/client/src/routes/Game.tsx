@@ -7,10 +7,11 @@ import { ChatPanel } from "../components/ChatPanel";
 import { GameHeader } from "../components/GameHeader";
 import { Minimap } from "../components/Minimap";
 import { VoiceControl } from "../components/VoiceControl";
-import { playCue } from "../audio/cues";
+import { playCue, startAmbient, stopAmbient } from "../audio/cues";
 import { loadPlayerBySession } from "../session/storage";
 import { RoleCard } from "../components/RoleCard";
 import { SceneView } from "../components/SceneView";
+import { GameSkeleton } from "../components/Skeleton";
 
 export function Game() {
   const { view, send, localT, sessionId, connected } = useSession();
@@ -53,6 +54,13 @@ export function Game() {
     prev.current = { act: view.act, cond: view.condition ?? "", helped, ended: view.phase === "ended" };
   }, [view]);
 
+  // Background pad: calm normally, tense during the alarm or a critical condition; silent when the game is over.
+  const mood = view?.phase === "ended" ? null : view?.alarm || view?.condition === "critical" ? "tense" : view ? "calm" : null;
+  useEffect(() => {
+    if (mood) startAmbient(mood); else stopAmbient();
+  }, [mood]);
+  useEffect(() => () => stopAmbient(0.3), []);
+
   // A title card whenever a new act begins (including the first).
   const actNow = view?.act ?? 0;
   useEffect(() => {
@@ -64,7 +72,7 @@ export function Game() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [actNow]);
 
-  if (!view) return <p className="p-6">Loading…</p>;
+  if (!view) return <GameSkeleton />;
 
   return (
     <div className={`flex min-h-full flex-col ${view.alarm ? "ring-2 ring-inset ring-rose-600/70" : ""}`}>

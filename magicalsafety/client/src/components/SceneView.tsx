@@ -21,7 +21,7 @@ export function SceneView({ view, onAct, canClick = true }: Props) {
   const busy = !!view.you.busy;
 
   return (
-    <div className="relative aspect-[16/9] w-full overflow-hidden rounded-xl border border-gold/40 shadow-lg" role="group" aria-label={`Scene: ${view.room.name}`}>
+    <div key={view.room.id} className="room-enter relative aspect-[16/9] w-full overflow-hidden rounded-xl border border-gold/40 shadow-lg" role="group" aria-label={`Scene: ${view.room.name}`}>
       {/* Hand-made SVG scene always renders underneath; generated art (when cached) covers it, and falls back if it fails to load. */}
       <RoomArt roomId={view.room.id} gradient={view.room.art.fallbackGradient} />
       {generated && <img src={artUrl("room", view.worldId, view.room.id)} alt="" onError={() => setBroken((b) => new Set(b).add(artKey))} className="absolute inset-0 h-full w-full object-cover" />}
@@ -39,7 +39,7 @@ export function SceneView({ view, onAct, canClick = true }: Props) {
             onClick={() => la && onAct(la)}
             style={{ left: `${h.x}%`, top: `${h.y}%` }}
             title={h.label}
-            className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-full px-3 py-1.5 text-xs font-semibold shadow transition ${
+            className={`absolute max-w-[9rem] -translate-x-1/2 -translate-y-1/2 truncate rounded-full px-2 py-1 text-[11px] font-semibold shadow transition sm:max-w-none sm:px-3 sm:py-1.5 sm:text-xs ${
               h.kind === "exit" ? "bg-gold/90 text-night hover:bg-gold" : "bg-parchment/90 text-ink hover:bg-white"
             } disabled:cursor-not-allowed disabled:opacity-40`}
           >

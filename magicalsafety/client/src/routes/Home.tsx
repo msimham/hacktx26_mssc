@@ -63,6 +63,7 @@ export function Home() {
       <section className="rounded-xl bg-night-2 p-5">
         <h2 className="mb-3 font-display text-xl text-gold">Integration status</h2>
         <ul className="divide-y divide-white/10">
+          {items === null && !err && <li className="py-3 text-sm text-slate-400">Checking the server…</li>}
           {items?.map((i) => (
             <li key={i.id} className="flex items-center justify-between gap-4 py-2">
               <div><div className="font-medium">{i.label}</div><div className="text-sm text-slate-400">{i.detail}</div></div>

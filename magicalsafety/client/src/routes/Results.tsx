@@ -8,6 +8,7 @@ import { COMPETENCY_LABEL, OUTCOMES, SHOUTOUT_REASONS, WEAKNESS_LABEL, describeT
 import { EvidenceChip } from "../components/EvidenceChip";
 import { GeneratedBy } from "../components/GeneratedBy";
 import { Recap } from "../components/Recap";
+import { PageSkeleton } from "../components/Skeleton";
 
 type Tab = "act1" | "act2" | "change";
 const SHARED_KEYS = ["delegations_issued", "max_action_share", "info_shared_ratio", "centralized", "rejected_actions", "redundant_efforts"];
@@ -39,7 +40,7 @@ export function Results() {
   useEffect(() => { if (hash && a) document.getElementById(hash.slice(1))?.scrollIntoView({ block: "center" }); }, [hash, a]);
 
   if (err) return <p role="alert" className="p-6 text-rose-300">{err} <Link className="underline" to="/">Home</Link></p>;
-  if (!facts || !a) return <p className="p-6">Preparing your results…</p>;
+  if (!facts || !a) return <PageSkeleton label="Preparing your results" cards={4} />;
 
   const as = a.assessment;
   const twoActs = as.actsReached === 2;

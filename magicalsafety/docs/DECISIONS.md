@@ -148,7 +148,10 @@ Sessions are persisted as **(config, seed, ordered input log)**, not as derived 
 
 ## Phase 8 (polish and rehearsal)
 
-Scoped down on purpose (limited time and budget), keeping what protects the demo:
-- **Done:** `npm run demo:seed` (demo organization + a ready lobby with code `DEMO01`, no network); an error boundary with a way out; a "Connection lost, reconnecting" banner (the client already rejoins by token); synthesized sound cues for the alarm, critical condition, help arriving and the result, with a 🔊/🔇 button that is remembered and never breaks the game if audio is unavailable; the earlier work already honors reduced-motion and keyboard focus, and game screens stack below 1024 px.
-- **Not done:** scene transition animations and a looping music track (no audio files are shipped), loading skeletons, a pass over every empty state, and a real-browser responsive check. The UI has still not been click-tested by its author.
-- **Rehearsal:** the demo script was rehearsed by the engine (`demo.test.ts`), not by a person with two browser windows. The two human rehearsals in `docs/DEMO_SCRIPT.md` (no keys, then with keys) are still yours to run.
+- **Done:**
+  - `npm run demo:seed`: the demo organization and a ready lobby with code `DEMO01`; no network.
+  - Error boundary with a way out; a "Connection lost, reconnecting" banner (the client already rejoins by token).
+  - Sound: short synthesized cues (alarm, critical, help arrives, win/lose) and a slow synthesized **ambient pad** that is calm normally and tense during the alarm or a critical condition. No audio files are shipped. One 🔊/🔇 button controls both, is remembered, and audio can never break the game (the helpers are no-ops without Web Audio or storage).
+  - A short fade-and-settle animation when you walk into a room; loading skeletons on every data-loading screen; empty states for the feed and server check; hotspot labels shrink and truncate on narrow screens. All animation respects reduced-motion, and game screens stack below 1024 px.
+  - **Rehearsal by machine:** `server/src/rehearsal.test.ts` plays `docs/DEMO_SCRIPT.md` through the real server with two socket clients and a simulated teammate: draft objectives and research (labeled rules/mock), create the session, win Act 1 as a centralizing Cinderella, the beat and the alarm, run out of time in Act 2, results with evidence, the adapted session created by the host, both players joining it, and the Inspector verifying the record. `demo.test.ts` checks the same story at engine level.
+- **Still yours to do** (cannot be done without a person and a browser): the two human rehearsals in `docs/DEMO_SCRIPT.md` (no keys, then with keys), and a visual check at phone and 1024 px widths. The UI has not been click-tested by its author, and the sounds have never been heard: tune the volumes (`cues.ts`) if they are too loud or quiet.

@@ -2,6 +2,7 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { getInspector, type Inspector } from "../api";
 import { OrganizerGate } from "../components/OrganizerGate";
+import { PageSkeleton } from "../components/Skeleton";
 
 const time = (ms: number) => `${(ms / 1000).toFixed(1)}s`;
 const usd = (n: number) => (n === 0 ? "$0" : `$${n.toFixed(4)}`);
@@ -21,7 +22,7 @@ function View({ sessionId }: { sessionId: string }) {
   const types = useMemo(() => [...new Set((data?.events ?? []).map((e) => e.type))].sort(), [data]);
 
   if (err) return <p role="alert" className="p-6 text-rose-300">{err} <Link className="underline" to="/">Home</Link></p>;
-  if (!data) return <p className="p-6">Loading…</p>;
+  if (!data) return <PageSkeleton label="Loading the inspector" cards={3} />;
   const s = data.session;
   const totalCost = data.runs.reduce((n, r) => n + r.costUsd, 0) + data.tools.reduce((n, t) => n + t.costUsd, 0);
 

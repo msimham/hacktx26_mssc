@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { useSession } from "../session/SessionContext";
 import { FacebookPanel } from "../components/FacebookPanel";
+import { PageSkeleton } from "../components/Skeleton";
 
 export function Lobby() {
   const { lobby, ready, start, chooseRole, assignRole, sessionId } = useSession();
   const [msg, setMsg] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  if (!lobby) return <p className="p-6">Loading lobby…</p>;
+  if (!lobby) return <PageSkeleton label="Loading the waiting room" cards={2} />;
   const me = lobby.players.find((p) => p.id === lobby.you.id);
   const link = `${location.origin}/play/${lobby.code}`;
   const empty = lobby.roles.length - lobby.players.length; // roles nobody human will play

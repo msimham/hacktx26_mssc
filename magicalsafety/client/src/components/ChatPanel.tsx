@@ -32,6 +32,7 @@ export function ChatPanel({ view, onSay, onAct, canType = true, extra }: { view:
     <section aria-label="Team chat and events" className="flex h-full min-h-0 flex-col rounded-xl bg-night-2 p-3">
       <h3 className="mb-2 font-display text-sm text-gold">What's happening</h3>
       <div className="min-h-0 flex-1 space-y-1 overflow-y-auto pr-1 text-sm" role="log" aria-live="polite">
+        {view.feed.length === 0 && <p className="text-slate-400">Nothing has happened yet. Look around, or say hello to your team.</p>}
         {view.feed.map((f) => (
           <p key={f.id} className={TONE[f.tone]}>
             {f.simulated && <span title="Simulated teammate">🤖 </span>}

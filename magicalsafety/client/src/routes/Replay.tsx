@@ -5,6 +5,7 @@ import { loadPlayerBySession } from "../session/storage";
 import { WEAKNESS_LABEL } from "../labels";
 import { EvidenceChip } from "../components/EvidenceChip";
 import { GeneratedBy } from "../components/GeneratedBy";
+import { PageSkeleton } from "../components/Skeleton";
 
 export function Replay() {
   const { sessionId = "" } = useParams();
@@ -28,7 +29,7 @@ export function Replay() {
   }, [a, sessionId, token]);
 
   if (err) return <p role="alert" className="p-6 text-rose-300">{err} <Link className="underline" to="/">Home</Link></p>;
-  if (!a) return <p className="p-6">Loading the plan…</p>;
+  if (!a) return <PageSkeleton label="Loading the plan" cards={3} />;
 
   const plan = a.plan;
   const canStart = a.isHost || pass.length > 0;
