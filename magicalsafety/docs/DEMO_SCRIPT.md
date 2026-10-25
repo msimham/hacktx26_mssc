@@ -5,7 +5,7 @@ Two ways to run it. They are the same script; only some labels differ.
 - **A. No keys** (works anywhere, offline): every AI-ish part says *rules*, *scripted* or *mock*. This is the safe version.
 - **B. With keys**: the same steps, with real Muse Spark/Voice/Image and SerpApi where noted.
 
-Before you start: `cd magicalsafety && npm install && npm run dev`, open <http://localhost:5173> in **two windows** (use a private window for the second so it has its own identity), and open the **Status** button once to show what is real. Passcode is `change-me` unless you changed it. For a fresh start delete `server/data`.
+Before you start: `cd magicalsafety && npm install && npm run demo:seed` (creates the demo organization and a ready session with join code **DEMO01**; run it with the server stopped), then `npm run dev`, open <http://localhost:5173> in **two windows** (use a private window for the second so it has its own identity), and open the **Status** button once to show what is real. Passcode is `change-me` unless you changed it. For a fresh start delete `server/data`.
 
 ## The story
 
@@ -18,6 +18,8 @@ Before you start: `cd magicalsafety && npm install && npm run dev`, open <http:/
 3. **Research**: search "bystander effect emergency response". **A:** three sample results with a `MOCK: SAMPLE RESULTS` badge. **B:** real results with links. Click **Approve as a source** on one. *Nothing is added until you approve.*
 
 ## 2. Session Setup (≈20 s) → `/setup`
+
+*Shortcut: skip this step and join the pre-made session with code **DEMO01** (castle, emergency → evacuation, 1:30 evacuation). Do the manual setup once in rehearsal so you can explain it.*
 
 World **Cinderella's Palace**, Acts **Emergency → Evacuation**, team **Classmates**, size **3**, roles **Players choose**, 🤖 on. Set **Evacuation lasts up to 1:30** (so the second act shows time pressure). **Create session**. *Note the badge: same organization, same training agent, whatever the world.*
 

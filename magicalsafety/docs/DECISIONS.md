@@ -145,3 +145,10 @@ Sessions are persisted as **(config, seed, ordered input log)**, not as derived 
 ### Docs
 - `docs/SETUP.md` (your checklist, where each `TODO(USER)` is, how to confirm each step), `docs/DEMO_SCRIPT.md`, a rewritten README, and an updated TESTING_AND_DEMO.md.
 - **The demo script is checked by a test** (`demo.test.ts` plays it with the engine). Writing that test showed my first draft of the script was wrong: the Coachman holds the cabinet key, and simulated teammates take over duties once told about the collapse. The script now matches what happens.
+
+## Phase 8 (polish and rehearsal)
+
+Scoped down on purpose (limited time and budget), keeping what protects the demo:
+- **Done:** `npm run demo:seed` (demo organization + a ready lobby with code `DEMO01`, no network); an error boundary with a way out; a "Connection lost, reconnecting" banner (the client already rejoins by token); synthesized sound cues for the alarm, critical condition, help arriving and the result, with a 🔊/🔇 button that is remembered and never breaks the game if audio is unavailable; the earlier work already honors reduced-motion and keyboard focus, and game screens stack below 1024 px.
+- **Not done:** scene transition animations and a looping music track (no audio files are shipped), loading skeletons, a pass over every empty state, and a real-browser responsive check. The UI has still not been click-tested by its author.
+- **Rehearsal:** the demo script was rehearsed by the engine (`demo.test.ts`), not by a person with two browser windows. The two human rehearsals in `docs/DEMO_SCRIPT.md` (no keys, then with keys) are still yours to run.

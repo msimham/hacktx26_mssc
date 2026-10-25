@@ -255,4 +255,4 @@ In the app: finish a game, open **Results**, click **Organizer: open the Inspect
 
 ## 7. Full demo
 
-See [DEMO_SCRIPT.md](DEMO_SCRIPT.md) (six minutes, with a no-keys and a with-keys version). `npm run demo:seed` is added in Phase 8.
+See [DEMO_SCRIPT.md](DEMO_SCRIPT.md) (six minutes, with a no-keys and a with-keys version). `npm run demo:seed` (stop the server first) creates the demo organization and a ready session with join code **DEMO01**.

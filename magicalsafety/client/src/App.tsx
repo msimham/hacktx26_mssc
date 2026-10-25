@@ -1,5 +1,6 @@
 import { Route, Routes } from "react-router-dom";
 import { StatusPopover } from "./components/StatusPopover";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { Home } from "./routes/Home";
 import { Play } from "./routes/Play";
 import { Results } from "./routes/Results";
@@ -12,6 +13,7 @@ export function App() {
   return (
     <>
     <StatusPopover />
+    <ErrorBoundary>
     <Routes>
       <Route path="/" element={<Home />} />
       <Route path="/play/:code" element={<Play />} />
@@ -22,6 +24,7 @@ export function App() {
       <Route path="/inspector/:sessionId" element={<InspectorPage />} />
       <Route path="*" element={<p className="p-6">Page not found. <a className="underline" href="/">Home</a></p>} />
     </Routes>
+    </ErrorBoundary>
     </>
   );
 }

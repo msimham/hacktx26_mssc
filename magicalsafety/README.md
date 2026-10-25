@@ -31,6 +31,7 @@ Open <http://localhost:5173>. With no `.env` every integration is a clearly labe
 | `npm run dev` | Server and client together |
 | `npm test` / `npm run typecheck` | All workspaces |
 | `npm run sim -w @magicalsafety/engine` | Headless playthroughs with the full event log and metrics |
+| `npm run demo:seed` | Creates the demo organization and a ready session (code `DEMO01`); run with the server stopped |
 | `npm run gen:assets -- --dry-run` | Preview the art that would be generated, and the cost (no request) |
 | `npm run check:secrets` | Fails if a key or token is stored on disk or committed |
 | `npm run build && npm start` | One process serving the built app |

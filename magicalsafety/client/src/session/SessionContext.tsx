@@ -8,6 +8,8 @@ type Status = "connecting" | "need_name" | "joined" | "error";
 interface Ctx {
   code: string;
   status: Status;
+  /** False while the socket is down; the game shows a reconnecting banner and rejoins automatically. */
+  connected: boolean;
   error: string | null;
   lobby: LobbyView | null;
   view: PlayerView | null;
@@ -35,6 +37,7 @@ interface JoinReply { ok: boolean; error?: string; token?: string; playerId?: st
 export function SessionProvider({ code, children }: { code: string; children: ReactNode }) {
   const [status, setStatus] = useState<Status>("connecting");
   const [error, setError] = useState<string | null>(null);
+  const [connected, setConnected] = useState(true);
   const [lobby, setLobby] = useState<LobbyView | null>(null);
   const [view, setView] = useState<PlayerView | null>(null);
   const [ids, setIds] = useState<{ sessionId: string; playerId: string } | null>(null);
@@ -66,17 +69,23 @@ export function SessionProvider({ code, children }: { code: string; children: Re
     };
     socket.on("lobby", onLobby);
     socket.on("view", onView);
+    const down = () => setConnected(false);
+    const up = () => setConnected(true);
+    socket.on("disconnect", down);
+    socket.on("connect", up);
     socket.on("connect", connectAndJoin); // also re-runs on reconnect: rejoin by token
     if (socket.connected) connectAndJoin();
     return () => {
       socket.off("lobby", onLobby);
       socket.off("view", onView);
       socket.off("connect", connectAndJoin);
+      socket.off("disconnect", down);
+      socket.off("connect", up);
     };
   }, [code, doJoin]);
 
   const value = useMemo<Ctx>(() => ({
-    code, status, error, lobby, view, sessionId: ids?.sessionId ?? null, playerId: ids?.playerId ?? null,
+    code, status, connected, error, lobby, view, sessionId: ids?.sessionId ?? null, playerId: ids?.playerId ?? null,
     localT: () => received.current.t + (Date.now() - received.current.at),
     join: (name) => doJoin(name, undefined),
     send: (action) => new Promise((res) => getSocket().emit("action", { action }, (r: { ok: boolean; error?: string; rejected?: string }) => res(r.ok ? (r.rejected ?? null) : (r.error ?? "Failed")))),
@@ -84,7 +93,7 @@ export function SessionProvider({ code, children }: { code: string; children: Re
     chooseRole: (roleId) => new Promise((res) => getSocket().emit("choose_role", { roleId }, (r: { ok: boolean; error?: string }) => res(r.ok ? null : (r.error ?? "Failed")))),
     assignRole: (playerId, roleId) => new Promise((res) => getSocket().emit("assign_role", { playerId, roleId }, (r: { ok: boolean; error?: string }) => res(r.ok ? null : (r.error ?? "Failed")))),
     start: () => new Promise((res) => getSocket().emit("start", {}, (r: { ok: boolean; error?: string }) => res(r.ok ? null : (r.error ?? "Failed")))),
-  }), [code, status, error, lobby, view, ids, doJoin]);
+  }), [code, status, connected, error, lobby, view, ids, doJoin]);
 
   return <SessionCtx.Provider value={value}>{children}</SessionCtx.Provider>;
 }

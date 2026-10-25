@@ -7,12 +7,13 @@ import { ChatPanel } from "../components/ChatPanel";
 import { GameHeader } from "../components/GameHeader";
 import { Minimap } from "../components/Minimap";
 import { VoiceControl } from "../components/VoiceControl";
+import { playCue } from "../audio/cues";
 import { loadPlayerBySession } from "../session/storage";
 import { RoleCard } from "../components/RoleCard";
 import { SceneView } from "../components/SceneView";
 
 export function Game() {
-  const { view, send, localT, sessionId } = useSession();
+  const { view, send, localT, sessionId, connected } = useSession();
   const [toast, setToast] = useState<string | null>(null);
   const [card, setCard] = useState<{ act: number; title: string; alarm: boolean } | null>(null);
   const lastAct = useRef(0);
@@ -39,6 +40,19 @@ export function Game() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view, act]);
 
+  // Sound cues for the moments that matter (muted by the player with the 🔊 button).
+  const prev = useRef({ act: 0, cond: "", helped: false, ended: false });
+  useEffect(() => {
+    if (!view) return;
+    const p = prev.current;
+    const helped = !!view.objectives?.find((o) => o.id === "arrive")?.done;
+    if (view.alarm && p.act !== view.act && p.act !== 0) playCue("alarm");
+    else if (view.condition === "critical" && p.cond !== "critical") playCue("critical");
+    else if (helped && !p.helped) playCue("help");
+    if (view.phase === "ended" && !p.ended) playCue(view.outcome?.success ? "win" : "lose");
+    prev.current = { act: view.act, cond: view.condition ?? "", helped, ended: view.phase === "ended" };
+  }, [view]);
+
   // A title card whenever a new act begins (including the first).
   const actNow = view?.act ?? 0;
   useEffect(() => {
@@ -55,6 +69,7 @@ export function Game() {
   return (
     <div className={`flex min-h-full flex-col ${view.alarm ? "ring-2 ring-inset ring-rose-600/70" : ""}`}>
       <GameHeader view={view} localT={localT} />
+      {!connected && <p role="alert" className="bg-rose-700 px-4 py-2 text-center text-sm font-semibold">Connection lost. Reconnecting… your game is saved and you will rejoin automatically.</p>}
       {view.transition && <p role="status" className="bg-gold px-4 py-2 text-center font-display text-night">{view.transition.text}</p>}
       <div className="grid flex-1 gap-4 p-4 lg:grid-cols-[260px_minmax(0,1fr)_320px]">
         <aside className="space-y-4"><RoleCard view={view} />
