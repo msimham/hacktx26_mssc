@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { countFingers, GestureController, poseOf, type GestureEvent, type Landmarks, type Pt } from "./gestures";
+import { countFingers, gestureOptions, GestureController, poseOf, type GestureEvent, type Landmarks, type Pt } from "./gestures";
 
 /**
  * A synthetic hand: wrist near the bottom, each finger either out (tip far from the wrist) or folded (tip tucked in).
@@ -125,5 +125,12 @@ describe("turning a hand into intentions", () => {
     const evs = run(c, [...hold(fingers(2), 0, 400), ...hold(open(), 450, 900), ...hold(null, 950, 1000)]);
     expect(types(evs, "lost")).toHaveLength(1);
     expect(types(run(c, hold(open(), 1100, 3000)), "confirm")).toHaveLength(0); // the highlight was cleared when the hand left, so a palm has nothing to confirm
+  });
+});
+
+describe("which action N fingers picks", () => {
+  it("orders by hotkey and skips typed-text actions", () => {
+    const got = gestureOptions([{ hotkey: 3 }, { hotkey: 1, needsText: true }, { hotkey: 2 }, {}]);
+    expect(got).toEqual([{ hotkey: 2 }, { hotkey: 3 }]);
   });
 });

@@ -181,3 +181,9 @@ Sessions are persisted as **(config, seed, ordered input log)**, not as derived 
 
 - **Hints cost points.** A new `hint` action is always allowed while the game runs. It records a `hint_used` event (so it is in the replay and the verified log) and highlights the next step the simulated teammates' own rules would take for this player's role, only if that step is still legal. The "Hint" button is in the guide bar. A new metric `hints_used` is available to organizer rubrics too. The results page takes **5 points off the overall score per hint** and says so.
 - **Results are summarized by skill.** The top of the results page shows the six skills that were measured, each as strong / getting there / needs practice with one "Try:" line (the interpretation's own advice when it has some, otherwise a short authored tip). The play-by-play, measurements, goals and per-person cards are still there, folded into "Full details". Skills nothing was measured for are left out.
+
+## Immersive feel, click feedback and gesture warm-up
+
+- **Not WebXR.** There is no headset mode. "Follows you" is done with depth parallax: the room leans toward your hand (camera on) or your pointer, with nearer layers moving more. Motion is off for people who ask for reduced motion. A full-screen button gives a bigger view.
+- **Clicks are acknowledged.** Every click plays a tap right away and shows a "working" chip; then the result plays a sound that matches the action (move, look, talk, ask for help, delegate, fetch, use, hint), or a buzz plus the reason if the rules refused it. A second click is ignored until the first finishes. A real bug was fixed too: the characters layer sat on top of the clickable scene spots and swallowed clicks in the lower part of the scene.
+- **Gestures are taught.** The first time the camera turns on, the guide runs a 3-step warm-up (two fingers, a swipe, a held palm) that performs nothing. Buttons show "✋n" for how many fingers pick them.

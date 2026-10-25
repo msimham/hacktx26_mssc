@@ -1,5 +1,6 @@
 import type { LegalAction, PlayerView } from "@magicalsafety/engine";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { ease, look, setLook } from "../vision/look";
 import { artUrl, getArtManifest } from "../api";
 import { RoomArt } from "./RoomArt";
 import { Atmosphere, Characters } from "./SceneLife";
@@ -20,9 +21,30 @@ export function SceneView({ view, onAct, canClick = true }: Props) {
   const generated = art.has(artKey) && !broken.has(artKey);
   const here = view.actors.filter((a) => a.roomId === view.room.id);
   const busy = !!view.you.busy;
+  const box = useRef<HTMLDivElement>(null);
+  const target = useRef({ x: 0, y: 0 });
+  // The picture leans toward your hand (camera on) or your pointer, with nearer layers moving more, so the room feels like it has depth.
+  useEffect(() => {
+    if (typeof window === "undefined" || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+    let raf = 0, x = 0, y = 0;
+    const tick = () => {
+      const handFresh = performance.now() - look.at < 600;
+      const t = handFresh ? look : target.current;
+      x = ease(x, t.x); y = ease(y, t.y);
+      box.current?.style.setProperty("--lx", x.toFixed(3));
+      box.current?.style.setProperty("--ly", y.toFixed(3));
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+  const onMove = (e: React.PointerEvent) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    target.current = { x: ((e.clientX - r.left) / r.width - 0.5) * 2, y: ((e.clientY - r.top) / r.height - 0.5) * 2 };
+  };
 
   return (
-    <div key={view.room.id} className="room-enter relative aspect-[16/9] w-full overflow-hidden rounded-xl border border-gold/40 shadow-lg" role="group" aria-label={`Scene: ${view.room.name}`}>
+    <div ref={box} onPointerMove={onMove} key={view.room.id} className="room-enter relative aspect-[16/9] w-full overflow-hidden rounded-xl border border-gold/40 shadow-lg" role="group" aria-label={`Scene: ${view.room.name}`}>
       {/* Hand-made SVG scene always renders underneath; generated art (when cached) covers it, and falls back if it fails to load. */}
       <div className="scene-drift absolute inset-0">
         <RoomArt roomId={view.room.id} gradient={view.room.art.fallbackGradient} />
@@ -43,7 +65,7 @@ export function SceneView({ view, onAct, canClick = true }: Props) {
             data-key={la?.key}
             onClick={() => la && onAct(la)}
             style={{ left: `${h.x}%`, top: `${h.y}%` }}
-            title={h.label}
+            title={busy ? "You are busy right now" : h.label}
             className={`absolute max-w-[9rem] -translate-x-1/2 -translate-y-1/2 truncate rounded-full px-2 py-1 text-[11px] font-semibold shadow transition sm:max-w-none sm:px-3 sm:py-1.5 sm:text-xs ${
               h.kind === "exit" ? "bg-gold/90 text-night hover:bg-gold" : "bg-parchment/90 text-ink hover:bg-white"
             } disabled:cursor-not-allowed disabled:opacity-40`}

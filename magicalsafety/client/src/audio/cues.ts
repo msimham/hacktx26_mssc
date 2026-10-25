@@ -20,7 +20,36 @@ const tones: Record<string, [number, number, number][]> = { // [frequency Hz, st
   help: [[523, 0, 0.14], [659, 0.16, 0.14], [784, 0.32, 0.25]],
   win: [[523, 0, 0.14], [659, 0.15, 0.14], [784, 0.3, 0.14], [1047, 0.45, 0.3]],
   lose: [[330, 0, 0.25], [247, 0.28, 0.4]],
+  // Action feedback: a tap the moment you click, then a sound that matches what happened.
+  click: [[640, 0, 0.05]],
+  move: [[196, 0, 0.07], [247, 0.1, 0.07], [196, 0.2, 0.07]],
+  inspect: [[880, 0, 0.08], [1175, 0.09, 0.14]],
+  say: [[520, 0, 0.05], [700, 0.05, 0.08]],
+  delegate: [[392, 0, 0.08], [523, 0.08, 0.08], [659, 0.16, 0.12]],
+  bell: [[1046, 0, 0.5], [1568, 0, 0.35]],
+  perform: [[150, 0, 0.12], [220, 0.1, 0.12]],
+  fetch: [[700, 0, 0.07], [933, 0.08, 0.1]],
+  use: [[784, 0, 0.07], [988, 0.07, 0.07], [1319, 0.14, 0.14]],
+  hint: [[1047, 0, 0.06], [1319, 0.07, 0.06], [1568, 0.14, 0.12]],
+  warmup: [[659, 0, 0.08], [880, 0.09, 0.14]],
+  reject: [[160, 0, 0.18], [140, 0.05, 0.18]],
 };
+const harsh = new Set(["reject"]);
+
+/** Which sound goes with which kind of action. */
+export function cueForAction(kind: string): keyof typeof tones {
+  switch (kind) {
+    case "move": return "move";
+    case "inspect": return "inspect";
+    case "say": case "share_fact": case "introduce": return "say";
+    case "delegate": case "accept_delegation": return "delegate";
+    case "request_help": return "bell";
+    case "fetch": return "fetch";
+    case "use": return "use";
+    case "hint": return "hint";
+    default: return "perform";
+  }
+}
 
 export function playCue(kind: keyof typeof tones): void {
   if (isMuted() || typeof window === "undefined") return;
@@ -32,9 +61,9 @@ export function playCue(kind: keyof typeof tones): void {
     for (const [f, start, len] of tones[kind]!) {
       const o = ctx.createOscillator();
       const g = ctx.createGain();
-      o.frequency.value = f; o.type = "sine";
+      o.frequency.value = f; o.type = harsh.has(kind) ? "sawtooth" : "sine";
       g.gain.setValueAtTime(0.0001, ctx.currentTime + start);
-      g.gain.exponentialRampToValueAtTime(0.12, ctx.currentTime + start + 0.02);
+      g.gain.exponentialRampToValueAtTime(harsh.has(kind) ? 0.07 : 0.12, ctx.currentTime + start + 0.02);
       g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + start + len);
       o.connect(g).connect(ctx.destination);
       o.start(ctx.currentTime + start); o.stop(ctx.currentTime + start + len + 0.05);

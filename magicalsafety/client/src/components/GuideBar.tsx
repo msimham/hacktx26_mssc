@@ -37,7 +37,7 @@ function Avatar({ kind, talking }: { kind: "mouse" | "owl"; talking: boolean }) 
  * The story guide: tells the background once, then gives one short, goal-level nudge at a time.
  * `children` is where the microphone goes, so asking by voice sits right next to the guide.
  */
-export function GuideBar({ view, onHint, children }: { view: PlayerView; onHint?: () => void; children?: ReactNode }) {
+export function GuideBar({ view, onHint, note, onSkipNote, children }: { view: PlayerView; onHint?: () => void; note?: string | null; onSkipNote?: () => void; children?: ReactNode }) {
   const guide = guideFor(view.worldId);
   const [introIdx, setIntroIdx] = useState(0); // index into the story; past the end means "playing"
   const [autoRead, setAutoRead] = useState(false);
@@ -45,9 +45,10 @@ export function GuideBar({ view, onHint, children }: { view: PlayerView; onHint?
   const hint = view.you.hint;
   const line = useMemo(() => {
     if (inStory) return { text: guide.intro[introIdx]!, tone: "story" as const };
+    if (note) return { text: note, tone: "nudge" as const };
     if (hint && view.phase !== "ended") return { text: `Hint: try "${hint.label}".`, tone: "nudge" as const };
     return guideSays(view, guide);
-  }, [inStory, introIdx, view, guide, hint]);
+  }, [inStory, introIdx, view, guide, hint, note]);
   const spoken = useRef("");
   useEffect(() => {
     if (!autoRead || spoken.current === line.text) return;
@@ -73,6 +74,7 @@ export function GuideBar({ view, onHint, children }: { view: PlayerView; onHint?
           </>
         ) : (
           <>
+            {note && onSkipNote && <button type="button" onClick={onSkipNote} className="text-xs text-slate-300 underline">Skip warm-up</button>}
             {children}
             {onHint && view.phase !== "ended" && (
               <button type="button" onClick={onHint} className="rounded-lg bg-amber-300 px-3 py-2 text-sm font-bold text-night" title="A hint lowers your independence score">

@@ -1,4 +1,6 @@
 import { GuideBar } from "../components/GuideBar";
+import { cueForAction, playCue, startAmbient, stopAmbient } from "../audio/cues";
+import type { GestureEvent } from "../vision/gestures";
 import { GestureControl } from "../components/GestureControl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
@@ -9,7 +11,6 @@ import { ChatPanel } from "../components/ChatPanel";
 import { GameHeader } from "../components/GameHeader";
 import { Minimap } from "../components/Minimap";
 import { VoiceControl } from "../components/VoiceControl";
-import { playCue, startAmbient, stopAmbient } from "../audio/cues";
 import { loadPlayerBySession } from "../session/storage";
 import { RoleCard } from "../components/RoleCard";
 import { SceneView } from "../components/SceneView";
@@ -25,10 +26,40 @@ export function Game() {
   const cardTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const methods = new Set(view?.inputMethods ?? ['mouse', 'keyboard', 'text']);
 
+  // Every click is acknowledged at once (tap sound + a "working" chip), then the result (matching sound + a tick, or the reason it was refused).
+  const [working, setWorking] = useState<string | null>(null);
+  const [done, setDone] = useState<string | null>(null);
+  const pending = useRef(false);
   const act = useCallback(async (la: LegalAction) => {
+    if (pending.current) return;
+    pending.current = true;
+    playCue("click");
+    setWorking(la.label); setDone(null); setToast(null);
     const rejected = await send(la.action);
-    if (rejected) { setToast(rejected); setTimeout(() => setToast(null), 3500); }
+    pending.current = false;
+    setWorking(null);
+    if (rejected) { playCue("reject"); setToast(rejected); setTimeout(() => setToast(null), 3500); }
+    else { playCue(cueForAction(la.action.kind)); setDone(la.label); setTimeout(() => setDone(null), 1600); }
   }, [send]);
+
+  // Gesture warm-up: the first time the camera turns on, the guide asks for each gesture in turn. Nothing is performed during it.
+  const WARM = ["Warm-up 1 of 3: show me two fingers ✌️", "Warm-up 2 of 3: swipe your hand sideways 👋", "Warm-up 3 of 3: hold your open palm to confirm 🖐️"];
+  const [warm, setWarm] = useState<number | null>(null);
+  const warmDone = useRef(false);
+  const onGesture = useCallback((e: GestureEvent) => {
+    setWarm((w) => {
+      if (w === null) return w;
+      const ok = (w === 0 && e.type === "highlight" && e.index === 1) || (w === 1 && e.type === "move") || (w === 2 && e.type === "confirm");
+      if (!ok) return w;
+      playCue("warmup");
+      if (w === 2) { warmDone.current = true; playCue("win"); return null; }
+      return w + 1;
+    });
+  }, []);
+  const onCamera = useCallback((on: boolean) => setWarm(on && !warmDone.current ? 0 : null), []);
+
+  const stage = useRef<HTMLDivElement>(null);
+  const toggleFull = () => { try { if (document.fullscreenElement) void document.exitFullscreen(); else void stage.current?.requestFullscreen(); } catch { /* not supported */ } };
 
   // Keyboard: 1-9 trigger the numbered actions. Ignored while typing.
   useEffect(() => {
@@ -86,17 +117,20 @@ export function Game() {
       <GameHeader view={view} localT={localT} />
       {!connected && <p role="alert" className="bg-rose-700 px-4 py-2 text-center text-sm font-semibold">Connection lost. Reconnecting… your game is saved and you will rejoin automatically.</p>}
       {view.transition && <p role="status" className="bg-gold px-4 py-2 text-center font-display text-night">{view.transition.text}</p>}
-      <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-3 p-3 sm:p-4">
+      <div ref={stage} className="stage mx-auto flex w-full max-w-5xl flex-1 flex-col bg-night gap-3 p-3 sm:p-4">
         <div className="relative">
+          {working && <div role="status" className="ack absolute left-1/2 top-3 z-30 -translate-x-1/2 rounded-full bg-gold px-4 py-1.5 text-sm font-bold text-night shadow">⏳ {working}…</div>}
+          {done && !working && <div role="status" className="ack absolute left-1/2 top-3 z-30 -translate-x-1/2 rounded-full bg-emerald-500 px-4 py-1.5 text-sm font-bold text-night shadow">✓ {done}</div>}
           <SceneView view={view} onAct={act} canClick={methods.has("mouse")} />
-          {methods.has("gesture") && view.phase !== "ended" && <div className="absolute right-3 top-3 z-20"><GestureControl legal={view.legal} onAct={act} /></div>}
+          {methods.has("gesture") && view.phase !== "ended" && <div className="absolute right-3 top-3 z-20"><GestureControl legal={view.legal} onAct={act} onGesture={onGesture} onCamera={onCamera} practice={warm !== null} /></div>}
+          <button type="button" onClick={toggleFull} className="absolute bottom-3 left-3 z-20 rounded-full bg-night/85 px-3 py-2 text-sm text-slate-200 shadow ring-1 ring-white/20" aria-label="Toggle full screen">⛶</button>
           <button type="button" onClick={() => { setPanel(true); setSeen(view.feed.length); }} className="absolute bottom-3 right-3 z-20 rounded-full bg-night/85 px-4 py-2 text-sm font-semibold text-gold shadow ring-1 ring-gold/40">
             👥 Team &amp; chat{unread > 0 && <span className="ml-2 rounded-full bg-rose-600 px-2 py-0.5 text-xs text-white">{unread}</span>}
           </button>
         </div>
         {toast && <p role="alert" className="rounded bg-rose-900/70 p-2 text-sm">{toast}</p>}
-        <GuideBar view={view} onHint={() => void send({ kind: "hint" }).then((r) => r && setToast(r))}>{methods.has("voice") && sessionId ? <VoiceControl sessionId={sessionId} token={loadPlayerBySession(sessionId)?.token ?? ""} legal={view.legal} onSay={(to, text) => void send({ kind: "say", to, text }).then((r) => r && setToast(r))} onAct={act} /> : null}</GuideBar>
-        <ActionBar view={view} localT={localT} onAct={act} canClick={methods.has("mouse")} showKeys={methods.has("keyboard")} />
+        <GuideBar view={view} note={warm !== null ? WARM[warm] : null} onSkipNote={() => { warmDone.current = true; setWarm(null); }} onHint={() => { playCue("click"); void send({ kind: "hint" }).then((r) => { if (r) { playCue("reject"); setToast(r); } else playCue("hint"); }); }}>{methods.has("voice") && sessionId ? <VoiceControl sessionId={sessionId} token={loadPlayerBySession(sessionId)?.token ?? ""} legal={view.legal} onSay={(to, text) => void send({ kind: "say", to, text }).then((r) => r && setToast(r))} onAct={act} /> : null}</GuideBar>
+        <ActionBar view={view} localT={localT} onAct={act} canClick={methods.has("mouse")} showKeys={methods.has("keyboard")} gesture={methods.has("gesture")} />
       </div>
       {panel && (
         <div className="fixed inset-0 z-30 flex justify-end bg-black/50" onClick={() => setPanel(false)}>

@@ -143,3 +143,8 @@ export class GestureController {
     if (this.holdIntent) { out.push({ type: "progress", intent: this.holdIntent, value: 0 }); this.holdIntent = null; }
   }
 }
+
+/** The actions gestures can pick, in the order N fingers selects them. Typed-text actions are left out. */
+export function gestureOptions<T extends { hotkey?: number; needsText?: boolean }>(legal: T[]): T[] {
+  return legal.filter((l) => l.hotkey != null && !l.needsText).sort((a, b) => (a.hotkey ?? 0) - (b.hotkey ?? 0));
+}

@@ -1,3 +1,4 @@
+import { gestureOptions } from "../vision/gestures";
 import { useEffect, useMemo, useState } from "react";
 import type { LegalAction, PlayerView } from "@magicalsafety/engine";
 
@@ -7,9 +8,11 @@ interface Props {
   onAct: (la: LegalAction) => void;
   canClick?: boolean;
   showKeys?: boolean;
+  /** Show "✋n" on buttons so players know how many fingers pick them. */
+  gesture?: boolean;
 }
 
-function Btn({ la, onAct, canClick = true, showKeys = true }: { la: LegalAction; onAct: (la: LegalAction) => void; canClick?: boolean; showKeys?: boolean }) {
+function Btn({ la, onAct, canClick = true, showKeys = true, fingers }: { la: LegalAction; onAct: (la: LegalAction) => void; canClick?: boolean; showKeys?: boolean; fingers?: number }) {
   return (
     <button
       type="button"
@@ -20,12 +23,14 @@ function Btn({ la, onAct, canClick = true, showKeys = true }: { la: LegalAction;
       className="flex items-center gap-2 rounded-lg bg-night-2 px-3 py-2 text-left text-sm ring-1 ring-white/10 transition hover:bg-night-2/60 hover:ring-gold disabled:cursor-default disabled:hover:ring-white/10"
     >
       {showKeys && la.hotkey && <kbd className="rounded bg-gold px-1.5 text-xs font-bold text-night">{la.hotkey}</kbd>}
+      {fingers != null && fingers <= 4 && <span className="rounded bg-sky-300 px-1 text-xs font-bold text-night" title={`Show ${fingers} finger${fingers === 1 ? "" : "s"} to pick this`}>✋{fingers}</span>}
       <span>{la.label}</span>
     </button>
   );
 }
 
-export function ActionBar({ view, localT, onAct, canClick = true, showKeys = true }: Props) {
+export function ActionBar({ view, localT, onAct, canClick = true, showKeys = true, gesture = false }: Props) {
+  const fingerMap = useMemo(() => (gesture ? new Map(gestureOptions(view.legal).map((l, i) => [l.key, i + 1] as const)) : undefined), [gesture, view.legal]);
   const [, force] = useState(0);
   const busy = view.you.busy;
   useEffect(() => {
@@ -71,12 +76,12 @@ export function ActionBar({ view, localT, onAct, canClick = true, showKeys = tru
           <div className="flex flex-wrap gap-2">{groups.accept.map((la) => <Btn key={la.key} la={la} onAct={onAct} canClick={canClick} showKeys={showKeys} />)}</div>
         </div>
       )}
-      <Section canClick={canClick} showKeys={showKeys} title="What you can do" items={groups.act} onAct={onAct} empty="Nothing to do here right now. Move, look around, or talk to your team." />
+      <Section fingers={fingerMap} canClick={canClick} showKeys={showKeys} title="What you can do" items={groups.act} onAct={onAct} empty="Nothing to do here right now. Move, look around, or talk to your team." />
       <details className="rounded-xl bg-night-2/60 p-2">
         <summary className="cursor-pointer text-sm text-slate-300">More: move, look around, ask a teammate</summary>
         <div className="mt-2 space-y-3">
-      <Section canClick={canClick} showKeys={showKeys} title="Move" items={groups.move} onAct={onAct} />
-      <Section canClick={canClick} showKeys={showKeys} title="Look" items={groups.inspect} onAct={onAct} />
+      <Section fingers={fingerMap} canClick={canClick} showKeys={showKeys} title="Move" items={groups.move} onAct={onAct} />
+      <Section fingers={fingerMap} canClick={canClick} showKeys={showKeys} title="Look" items={groups.inspect} onAct={onAct} />
       {delegateByTarget.size > 0 && (
         <div>
           <h3 className="mb-1 font-display text-sm text-gold">Ask someone to do something</h3>
@@ -105,12 +110,12 @@ export function ActionBar({ view, localT, onAct, canClick = true, showKeys = tru
   );
 }
 
-function Section({ title, items, onAct, empty, canClick, showKeys }: { title: string; items?: LegalAction[]; onAct: (la: LegalAction) => void; empty?: string; canClick: boolean; showKeys: boolean }) {
+function Section({ title, items, onAct, empty, canClick, showKeys, fingers }: { fingers?: Map<string, number>; title: string; items?: LegalAction[]; onAct: (la: LegalAction) => void; empty?: string; canClick: boolean; showKeys: boolean }) {
   if (!items || items.length === 0) return empty ? <p className="text-sm text-slate-400">{empty}</p> : null;
   return (
     <div>
       <h3 className="mb-1 font-display text-sm text-gold">{title}</h3>
-      <div className="flex flex-wrap gap-2">{items.map((la) => <Btn key={la.key} la={la} onAct={onAct} canClick={canClick} showKeys={showKeys} />)}</div>
+      <div className="flex flex-wrap gap-2">{items.map((la) => <Btn key={la.key} la={la} onAct={onAct} canClick={canClick} showKeys={showKeys} fingers={fingers?.get(la.key)} />)}</div>
     </div>
   );
 }

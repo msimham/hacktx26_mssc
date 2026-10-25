@@ -55,7 +55,7 @@ export function Characters({ view, here, art }: { view: PlayerView; here: Actor[
   ];
   const n = people.length;
   return (
-    <ul className="absolute inset-x-0 bottom-0 top-[38%]">
+    <ul className="chars-layer pointer-events-none absolute inset-x-0 bottom-0 top-[38%]">
       {people.map((p, i) => {
         const x = n === 1 ? 50 : 14 + (72 * i) / (n - 1);
         const near = hash(p.id) % 3; // 0, 1, 2: a little depth

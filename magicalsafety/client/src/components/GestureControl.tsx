@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { LegalAction } from "@magicalsafety/engine";
-import { GestureController, type GestureEvent } from "../vision/gestures";
+import { GestureController, gestureOptions, type GestureEvent } from "../vision/gestures";
+import { setLook } from "../vision/look";
 import { cameraAvailable, startTracker, TrackerFailure, type Tracker } from "../vision/handTracker";
 
 const WHY: Record<string, string> = {
@@ -14,8 +15,19 @@ const WHY: Record<string, string> = {
  * Optional hand-gesture input. 1 to 4 fingers pick an option, swipe moves between them, and a held open palm confirms
  * (a held fist cancels). A confirmed gesture is just the same action the player could click, so the server still checks it.
  */
-export function GestureControl({ legal, onAct }: { legal: LegalAction[]; onAct: (a: LegalAction) => void }) {
-  const options = useMemo(() => legal.filter((l) => l.hotkey != null && !l.needsText).sort((a, b) => (a.hotkey ?? 0) - (b.hotkey ?? 0)), [legal]);
+export function GestureControl({ legal, onAct, onGesture, onCamera, practice = false }: {
+  legal: LegalAction[]; onAct: (a: LegalAction) => void;
+  /** Every recognized gesture, for the warm-up. */
+  onGesture?: (e: GestureEvent) => void;
+  onCamera?: (on: boolean) => void;
+  /** While practicing, a confirm gesture is reported but does not perform the action. */
+  practice?: boolean;
+}) {
+  const options = useMemo(() => gestureOptions(legal), [legal]);
+  const practiceRef = useRef(practice);
+  practiceRef.current = practice;
+  const onGestureRef = useRef(onGesture);
+  onGestureRef.current = onGesture;
   const optionsRef = useRef(options);
   optionsRef.current = options;
   const onActRef = useRef(onAct);
@@ -30,22 +42,23 @@ export function GestureControl({ legal, onAct }: { legal: LegalAction[]; onAct: 
 
   const handle = (evs: GestureEvent[]) => {
     for (const e of evs) {
+      onGestureRef.current?.(e);
       if (e.type === "highlight") setPick(e.index);
       else if (e.type === "progress") setProgress(e.value > 0 ? { intent: e.intent, value: e.value } : null);
       else if (e.type === "cancel" || e.type === "lost") { setPick(-1); setProgress(null); }
       else if (e.type === "confirm") {
         const chosen = optionsRef.current[e.index];
         setPick(-1); setProgress(null);
-        if (chosen) onActRef.current(chosen);
+        if (chosen && !practiceRef.current) onActRef.current(chosen);
       }
     }
   };
 
-  const stop = () => { tracker.current?.stop(); tracker.current = null; controller.current.reset(); setState("off"); setPick(-1); setProgress(null); };
+  const stop = () => { onCamera?.(false); tracker.current?.stop(); tracker.current = null; controller.current.reset(); setState("off"); setPick(-1); setProgress(null); };
   const start = async () => {
     if (!video.current) return;
     setError(null); setState("starting");
-    try { tracker.current = await startTracker(video.current, (lm, now) => handle(controller.current.feed(lm, now))); setState("on"); }
+    try { tracker.current = await startTracker(video.current, (lm, now) => { if (lm?.[0]) setLook((0.5 - lm[0].x) * 2, (lm[0].y - 0.5) * 2, now); handle(controller.current.feed(lm, now)); }); setState("on"); onCamera?.(true); }
     catch (e) { setError(WHY[e instanceof TrackerFailure ? e.kind : "failed"]!); setState("off"); }
   };
   useEffect(() => () => { tracker.current?.stop(); }, []);
