@@ -16,13 +16,15 @@ interface Props {
   onAct: (la: LegalAction) => void;
   /** The words recognized, so the scene can react to a name being said. */
   onHeard?: (text: string) => void;
+  /** Who a spoken line goes to when sent as chat (default: the team). */
+  defaultTo?: string;
 }
 
 /**
  * Push-to-talk. The fallback chain is Muse Voice -> the browser's own speech recognition -> typing, and the
  * interface says which one produced the words. Nothing is acted on until the player confirms.
  */
-export function VoiceControl({ sessionId, token, legal, onSay, onAct, onHeard }: Props) {
+export function VoiceControl({ sessionId, token, legal, onSay, onAct, onHeard, defaultTo }: Props) {
   const [phase, setPhase] = useState<"idle" | "recording" | "working" | "review">("idle");
   const [text, setText] = useState("");
   const [method, setMethod] = useState<Method>("muse");
@@ -111,7 +113,7 @@ export function VoiceControl({ sessionId, token, legal, onSay, onAct, onHeard }:
             <div><p className="mb-1 text-xs text-slate-300">Did you mean…?</p><div className="flex flex-wrap gap-2">{suggest.choices.map((c) => <button key={c.key} type="button" onClick={() => run(c)} className="rounded bg-night-2 px-2 py-1 text-xs ring-1 ring-white/20 hover:ring-gold">{c.label}</button>)}</div></div>
           )}
           <div className="flex gap-2">
-            <button type="button" onClick={() => { onSay("team", text.trim()); reset(); }} disabled={!text.trim()} className="rounded bg-night-2 px-3 py-1.5 text-sm ring-1 ring-white/20 hover:ring-gold disabled:opacity-40">Send to team as chat</button>
+            <button type="button" onClick={() => { onSay(defaultTo ?? "team", text.trim()); reset(); }} disabled={!text.trim()} className="rounded bg-night-2 px-3 py-1.5 text-sm ring-1 ring-white/20 hover:ring-gold disabled:opacity-40">Send to team as chat</button>
             <button type="button" onClick={reset} className="rounded px-3 py-1.5 text-sm ring-1 ring-white/10">Discard</button>
           </div>
         </div>

@@ -133,6 +133,19 @@ export function Results() {
         </section>
       )}
 
+      {a.transcript.length > 0 && (
+        <section aria-label="Your conversation" className="rounded-xl bg-night-2 p-4">
+          <h2 className="font-display text-lg text-gold">What was said</h2>
+          <p className="text-xs text-slate-400">Everything you said (typed or spoken) and heard, saved with this session.</p>
+          <ol className="mt-2 max-h-64 space-y-1 overflow-y-auto text-sm">
+            {a.transcript.map((l) => (
+              <li key={l.id} className="flex gap-3"><span className="w-12 shrink-0 text-right font-mono text-slate-400">{fmtSeconds(l.t)}</span>
+                <span><strong className={l.fromId === a.you ? "text-gold" : "text-sky-200"}>{l.fromId === a.you ? "You" : l.from}:</strong> {l.text}</span></li>
+            ))}
+          </ol>
+        </section>
+      )}
+
       <details className="rounded-xl bg-night-2/50 p-3">
         <summary className="cursor-pointer text-sm font-semibold text-slate-200">Full details: what happened, measurements, goals, per-person notes</summary>
         <div className="mt-4 space-y-6">

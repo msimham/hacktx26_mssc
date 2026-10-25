@@ -93,3 +93,62 @@ export function FocusCard({ view, actorId, onAct, onTalk, onClose }: { view: Pla
     </div>
   );
 }
+
+const darkCard = "ack w-full max-w-md rounded-2xl bg-night-2 p-4 text-slate-100 shadow-2xl ring-1 ring-gold/40";
+
+/** A short list of big choices. Used for "what do I do with this person or thing". */
+export function ChoiceCard({ title, subtitle, choices, onPick, onClose }: { title: string; subtitle?: string; choices: { id: string; icon: string; label: string }[]; onPick: (id: string) => void; onClose: () => void }) {
+  useEffect(() => { const k = (e: KeyboardEvent) => e.key === "Escape" && onClose(); window.addEventListener("keydown", k); return () => window.removeEventListener("keydown", k); }, [onClose]);
+  return (
+    <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/50 p-4 sm:items-center" onClick={onClose}>
+      <div role="dialog" aria-label={title} aria-modal="true" className={darkCard} onClick={(e) => e.stopPropagation()}>
+        <div className="mb-2 flex items-start justify-between gap-3"><div><h2 className="font-display text-xl text-gold">{title}</h2>{subtitle && <p className="text-sm text-slate-300">{subtitle}</p>}</div><button type="button" onClick={onClose} className="rounded bg-white/10 px-2 text-lg leading-none" aria-label="Close">✕</button></div>
+        {choices.length === 0 && <p className="text-sm text-slate-300">Nothing to do with them from here right now.</p>}
+        <ul className="max-h-[60vh] space-y-2 overflow-y-auto">
+          {choices.map((c, i) => <li key={c.id}><button type="button" onClick={() => onPick(c.id)} className="flex w-full items-center gap-3 rounded-xl bg-night px-3 py-3 text-left text-sm ring-1 ring-white/15 hover:ring-gold"><span className="text-xl" aria-hidden="true">{c.icon}</span><span className="flex-1">{c.label}</span>{i < 9 && <kbd className="rounded bg-gold px-1.5 text-xs font-bold text-night">{i + 1}</kbd>}</button></li>)}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+/** Asks the player to say something out loud. The microphone inside records on one click and stops on the next, then shows the transcript to confirm. */
+export function VoicePrompt({ prompt, onClose, children }: { prompt: string; onClose: () => void; children: React.ReactNode }) {
+  useEffect(() => { const k = (e: KeyboardEvent) => e.key === "Escape" && onClose(); window.addEventListener("keydown", k); return () => window.removeEventListener("keydown", k); }, [onClose]);
+  return (
+    <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/50 p-4 sm:items-center" onClick={onClose}>
+      <div role="dialog" aria-label="Say it out loud" aria-modal="true" className={darkCard} onClick={(e) => e.stopPropagation()}>
+        <div className="mb-1 flex items-start justify-between gap-3"><h2 className="font-display text-xl text-gold">🎙 Say it out loud</h2><button type="button" onClick={onClose} className="rounded bg-white/10 px-2 text-lg leading-none" aria-label="Close">✕</button></div>
+        <p className="text-base">{prompt}</p>
+        <p className="mt-1 text-xs text-slate-400">Click Talk to start recording and click Stop when you're done. You'll see what was heard and can fix it before it is sent. What you say is saved in your results.</p>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/** The few things you can do right here, as chips, so the main actions are always one click (or key, or hand sign) away. */
+export function QuickActions({ legal, onAct, showKeys }: { legal: LegalAction[]; onAct: (la: LegalAction) => void; showKeys: boolean }) {
+  const list = legal.filter((l) => l.group === "act" || l.group === "accept").slice(0, 6);
+  if (list.length === 0) return null;
+  return (
+    <div className="flex flex-wrap gap-2" aria-label="What you can do here">
+      {list.map((la) => (
+        <button key={la.key} type="button" data-key={la.key} onClick={() => onAct(la)} title={la.realWorld ? `Real world: ${la.realWorld}` : la.label}
+          className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold ring-1 ${la.group === "accept" ? "bg-gold text-night ring-gold" : "bg-night-2 ring-white/20 hover:ring-gold"}`}>
+          {showKeys && la.hotkey && <kbd className="rounded bg-gold px-1.5 text-xs font-bold text-night">{la.hotkey}</kbd>}{la.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** A dot at the centre of the view and a one-line instruction for whatever you are facing. */
+export function Crosshair({ prompt }: { prompt: string | null }) {
+  return (
+    <div className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center" aria-hidden={!prompt}>
+      <div className={`h-2.5 w-2.5 rounded-full ring-2 transition ${prompt ? "scale-150 bg-gold ring-white" : "bg-white/70 ring-black/40"}`} />
+      {prompt && <p role="status" className="ack mt-4 rounded-full bg-night/85 px-4 py-1.5 text-sm font-semibold text-gold shadow ring-1 ring-gold/40">{prompt}</p>}
+    </div>
+  );
+}

@@ -10,7 +10,7 @@ export const GUIDES: Record<string, GuideDef> = {
       "Psst! Down here! I'm Gus, the palace mouse. I see everything from the baseboards.",
       "Tonight is the grand ball. But something is wrong: the Duchess isn't feeling well, and nobody is sure what to do.",
       "Everyone in this room knows a little, and nobody knows everything. Talk to each other, share what you know, and get help moving.",
-      "I'll whisper what to do next. Click the glowing spots in the picture, or use the buttons below. Ready?",
+      "Walk with W A S D or the arrow keys, drag the mouse to look around, and press E on whatever the dot points at. Walk through a glowing doorway to go to the next room. I'll whisper what to do next. Ready?",
     ],
     wrapUp: "You did it, and you did it together. Well done!",
   },
@@ -20,7 +20,7 @@ export const GUIDES: Record<string, GuideDef> = {
       "Hoo-hoo! I'm Professor Hoot, the campus owl. I see everything from the clock tower.",
       "A student has collapsed in the Atrium, and nobody is sure what to do.",
       "Everyone here knows a little, and nobody knows everything. Talk to each other, share what you know, and get help moving.",
-      "I'll hoot what to do next. Click the glowing spots in the picture, or use the buttons below. Ready?",
+      "Walk with W A S D or the arrow keys, drag the mouse to look around, and press E on whatever the dot points at. Walk through a glowing doorway to go to the next room. I'll hoot what to do next. Ready?",
     ],
     wrapUp: "Well done, and well done together!",
   },
@@ -42,6 +42,8 @@ export function guideSays(view: PlayerView, guide: GuideDef): GuideLine {
   const next = view.objectives?.find((o) => !o.done);
   const job = view.you.roleTitle ? ` You are ${view.you.roleTitle}.` : "";
   const urgent = view.alarm ? "Alarm! Get everyone safely out. " : view.condition === "critical" ? "It's getting worse, so hurry! " : "";
-  if (next) return { tone: view.alarm || view.condition === "critical" ? "alert" : "nudge", text: `${urgent}Next goal for the team: ${next.label}.${job}` };
+  const canCall = view.legal.some((l) => l.action.kind === "request_help");
+  const callHint = canCall ? " You can call for help from here: hold a phone hand 🤙 or use the button." : "";
+  if (next) return { tone: view.alarm || view.condition === "critical" ? "alert" : "nudge", text: `${urgent}Next goal for the team: ${next.label}.${job}${callHint}` };
   return { tone: "nudge", text: `${urgent}Keep talking to your team and share anything only you know.${job}` };
 }

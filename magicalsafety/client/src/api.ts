@@ -63,6 +63,7 @@ export interface Analysis {
   diff: DiffRow[];
   because: Record<string, WeaknessCode[]>;
   timeline: TimelineItem[];
+  transcript: { id: string; t: number; act: number; fromId: string; from: string; text: string }[];
   players: { id: string; name: string; kind: string; roleId: string | null; roleName: string | null }[];
   realWorld: { label: string; realWorld: string }[];
   you: string | null;
@@ -262,3 +263,7 @@ export async function getConfig(): Promise<{ organizerAuthRequired: boolean }> {
   try { const r = await fetch("/api/config"); return r.ok ? r.json() : { organizerAuthRequired: true }; }
   catch { return { organizerAuthRequired: true }; }
 }
+
+export interface ApiCallRow { at: number; service: string; op: string; mode: "real" | "rules" | "local" | "denied"; ok: boolean; ms: number; note: string }
+export interface ApiLog { summary: { service: string; mode: ApiCallRow["mode"]; calls: number; failed: number }[]; calls: ApiCallRow[] }
+export const getApiLog = (): Promise<ApiLog> => fetch("/api/api-log").then((r) => r.json() as Promise<ApiLog>);

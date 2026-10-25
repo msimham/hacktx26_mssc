@@ -1,3 +1,4 @@
+import { apiCallSummary, recentApiCalls } from "./apiLog";
 import express from "express";
 import path from "node:path";
 import fs from "node:fs";
@@ -35,6 +36,9 @@ export function createApp(env: Env, deps?: { store: Store; hub: SessionHub; kit:
   app.get("/api/config", (_req, res) => {
     res.json({ organizerAuthRequired: !env.disableOrganizerAuth });
   });
+
+  // Which outside services were actually called, newest first. No keys, prompts, search words or personal data.
+  app.get("/api/api-log", (_req, res) => { res.json({ summary: apiCallSummary(), calls: recentApiCalls(30) }); });
 
   app.get("/api/integrations", (_req, res) => {
     const list = health.apply(integrationStatuses(env));

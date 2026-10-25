@@ -145,6 +145,8 @@ export function sessionRoutes(env: Env, store: Store, agent: TrainingAgent, runL
       const shout = (await store.getDoc(m.id, "shoutouts")) as { from: string; to: string }[] | undefined;
       res.json({
         ...a,
+        // You see the conversation you were part of; an organizer sees all of it.
+        transcript: caller.player ? a.transcript.filter((l) => l.fromId === caller.player!.id || l.heardBy.includes(caller.player!.id)) : a.transcript,
         you: caller.player?.id ?? null,
         isHost: !!caller.player && m.hostId === caller.player.id,
         isOrganizer: caller.organizer,

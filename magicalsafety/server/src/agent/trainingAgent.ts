@@ -44,7 +44,11 @@ export interface Analysis extends AnalysisDoc {
   /** Which weaknesses justify each changed lever. */
   because: Record<string, WeaknessCode[]>;
   timeline: TimelineItem[];
+  /** Every spoken or typed line in the session. The route narrows it to what the caller was part of. */
+  transcript: TranscriptLine[];
 }
+
+export interface TranscriptLine { id: string; t: number; act: number; fromId: string; from: string; text: string; heardBy: string[] }
 
 export interface AgentDeps {
   store: Store;
@@ -118,7 +122,10 @@ export class TrainingAgent {
     }
     const realWorld = [...used].filter((k) => REAL_WORLD[k]).map((k) => ({ label: world.labels[k] ?? k, realWorld: REAL_WORLD[k]! }));
     const players = Object.values(state.actors).filter((a) => a.kind !== "npc").map((a) => ({ id: a.id, name: a.name, kind: a.kind, roleId: a.roleId, roleName: a.roleId ? world.roleSkins[a.roleId].name : null }));
-    return { ...doc, players, realWorld, diff, because, timeline: timelineFor(state) };
+    const transcript: TranscriptLine[] = state.events
+      .filter((e) => e.type === "said" && typeof e.payload.text === "string")
+      .map((e) => ({ id: e.id, t: e.t, act: e.act, fromId: e.actorId, from: state.actors[e.actorId]?.name ?? e.actorId, text: String(e.payload.text), heardBy: Array.isArray(e.payload.heardBy) ? (e.payload.heardBy as string[]) : [] }));
+    return { ...doc, players, realWorld, diff, because, timeline: timelineFor(state), transcript };
   }
 
   /** Finds the organization's own guidance for each weakness, only through the tool pipeline. */

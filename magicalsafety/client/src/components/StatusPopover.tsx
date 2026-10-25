@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getIntegrations, type IntegrationStatus } from "../api";
+import { getApiLog, getIntegrations, type ApiLog, type IntegrationStatus } from "../api";
 import { MockBadge } from "./MockBadge";
 
 const LABEL: Record<string, { text: string; cls: string }> = {
@@ -13,7 +13,8 @@ const LABEL: Record<string, { text: string; cls: string }> = {
 export function StatusPopover() {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<IntegrationStatus[] | null>(null);
-  useEffect(() => { if (open) getIntegrations().then(setItems).catch(() => setItems([])); }, [open]);
+  const [log, setLog] = useState<ApiLog | null>(null);
+  useEffect(() => { if (open) { getIntegrations().then(setItems).catch(() => setItems([])); getApiLog().then(setLog).catch(() => setLog(null)); } }, [open]);
   return (
     <div className="fixed right-3 top-3 z-30 text-sm">
       <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} aria-controls="status-panel" className="rounded-full bg-night-2/90 px-3 py-1 ring-1 ring-white/20 backdrop-blur hover:ring-gold">
@@ -28,6 +29,19 @@ export function StatusPopover() {
                 <li key={i.id} className="flex items-start justify-between gap-3 py-2">
                   <div><div className="font-medium">{i.label}</div><div className="text-xs text-slate-400">{i.detail}</div></div>
                   {i.state === "mock" ? <MockBadge label={i.id === "meta_image" ? "FALLBACK" : "MOCK"} /> : <span className={`shrink-0 text-xs font-semibold ${LABEL[i.state]?.cls ?? ""}`}>{LABEL[i.state]?.text ?? i.state}</span>}
+                </li>
+              ))}
+            </ul>
+          )}
+          <h3 className="mt-3 font-display text-sm text-gold">APIs used so far</h3>
+          {!log || log.summary.length === 0 ? <p className="text-xs text-slate-400">No outside calls yet.</p> : (
+            <ul className="mt-1 space-y-1 text-xs">
+              {log.summary.map((s) => (
+                <li key={`${s.service}${s.mode}`} className="flex justify-between gap-2">
+                  <span>{s.service}</span>
+                  <span className={s.mode === "real" ? "text-emerald-300" : s.mode === "denied" ? "text-rose-300" : "text-slate-400"}>
+                    {s.mode === "real" ? "REAL" : s.mode === "rules" ? "rules, no API" : s.mode === "local" ? "local" : "blocked"} · {s.calls}{s.failed ? ` (${s.failed} failed)` : ""}
+                  </span>
                 </li>
               ))}
             </ul>

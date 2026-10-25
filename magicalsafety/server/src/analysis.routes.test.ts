@@ -116,3 +116,23 @@ describe("team shout-outs", () => {
     expect(((await (await s.get("/analysis", s.A)).json()) as { thankedAlready: boolean }).thankedAlready).toBe(true);
   });
 });
+
+describe("transcript", () => {
+  it("saves what was said, shown to the people who were part of it and to the organizer", async () => {
+    const b = await boot();
+    const { code, id } = await b.create({ teamSize: 3, roleAssignment: "chosen", fillWithBots: true });
+    const [ana, ben] = [b.client(), b.client()];
+    await ana.join(code, "Ana");
+    await ben.join(code, "Ben");
+    await ana.emit("choose_role", { roleId: "discoverer" });
+    await ben.emit("choose_role", { roleId: "authority" });
+    await ana.emit("start");
+    await ana.emit("action", { action: { kind: "say", to: "team", text: "The student on the floor is barely breathing" } });
+    await b.advance(250_000);
+    const get = async (h: Record<string, string>) => ((await (await fetch(`${b.url}/api/sessions/${id}/analysis`, { headers: h })).json()) as { transcript: { from: string; text: string }[] }).transcript;
+    const mine = await get({ "x-player-token": ana.token });
+    expect(mine.map((l) => l.text)).toContain("The student on the floor is barely breathing");
+    expect(mine.find((l) => l.text.includes("barely breathing"))!.from).toBe("Ana");
+    expect((await get({ "x-organizer-passcode": PASS })).length).toBeGreaterThanOrEqual(mine.length);
+  });
+});

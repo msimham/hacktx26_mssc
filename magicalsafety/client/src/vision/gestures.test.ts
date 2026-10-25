@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { countFingers, gestureOptions, GestureController, poseOf, type GestureEvent, type Landmarks, type Pt } from "./gestures";
+import { TaskGestures, taskPoseOf, countFingers, gestureOptions, GestureController, poseOf, type GestureEvent, type Landmarks, type Pt } from "./gestures";
 
 /**
  * A synthetic hand: wrist near the bottom, each finger either out (tip far from the wrist) or folded (tip tucked in).
@@ -132,5 +132,37 @@ describe("which action N fingers picks", () => {
   it("orders by hotkey and skips typed-text actions", () => {
     const got = gestureOptions([{ hotkey: 3 }, { hotkey: 1, needsText: true }, { hotkey: 2 }, {}]);
     expect(got).toEqual([{ hotkey: 2 }, { hotkey: 3 }]);
+  });
+});
+
+const poseHand = (n: Parameters<typeof hand>[0]) => hand(n);
+describe("task gestures", () => {
+  it("recognizes the hand shapes that mean something", () => {
+    expect(taskPoseOf(poseHand([false, true, false, false, false]))).toBe("point");
+    expect(taskPoseOf(poseHand([true, false, false, false, true]))).toBe("phone");
+    expect(taskPoseOf(poseHand([true, true, true, true, true]))).toBe("stop");
+    expect(taskPoseOf(poseHand([true, false, false, false, false]))).toBe("thumbs_up");
+    expect(taskPoseOf(poseHand([false, false, false, false, false]))).toBe("fist");
+    expect(taskPoseOf(poseHand([false, true, true, false, false]))).toBe("none"); // a peace sign means nothing here
+    expect(taskPoseOf(null)).toBe("none");
+  });
+  it("fires a pose only after it is held, then needs the hand to change", () => {
+    const g = new TaskGestures();
+    const ev = (lm: Landmarks | null, t: number) => g.feed(lm, t).filter((e) => e.type === "pose");
+    const phone = poseHand([true, false, false, false, true]);
+    expect(ev(phone, 0)).toHaveLength(0);
+    expect(ev(phone, 300)).toHaveLength(0); // not held long enough yet
+    expect(ev(phone, 800)).toEqual([{ type: "pose", pose: "phone" }]);
+    expect(ev(phone, 3000)).toHaveLength(0); // still holding the same pose: no repeat
+    expect(ev(poseHand([false, true, false, false, false]), 3100)).toHaveLength(0);
+    expect(ev(poseHand([false, true, false, false, false]), 3500)).toEqual([{ type: "pose", pose: "point" }]);
+  });
+  it("a flicker or losing the hand cancels the hold", () => {
+    const g = new TaskGestures();
+    const phone = poseHand([true, false, false, false, true]);
+    g.feed(phone, 0); g.feed(phone, 500);
+    g.feed(null, 600);
+    expect(g.feed(phone, 700).filter((e) => e.type === "pose")).toHaveLength(0);
+    expect(g.feed(phone, 1500).filter((e) => e.type === "pose")).toHaveLength(1);
   });
 });

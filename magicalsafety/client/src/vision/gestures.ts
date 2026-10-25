@@ -14,14 +14,20 @@ const FINGERS: [pip: number, tip: number][] = [[6, 8], [10, 12], [14, 16], [18, 
  * How many fingers are held out (0 to 5). Uses distances rather than "is the tip above the knuckle", so it still works when the
  * hand is tilted or sideways.
  */
-export function countFingers(lm: Landmarks): number {
-  if (lm.length < 21) return 0;
+export interface Fingers { thumb: boolean; index: boolean; middle: boolean; ring: boolean; pinky: boolean }
+export function fingerStates(lm: Landmarks): Fingers {
+  const none = { thumb: false, index: false, middle: false, ring: false, pinky: false };
+  if (lm.length < 21) return none;
   const wrist = lm[WRIST]!;
-  let n = 0;
-  for (const [pip, tip] of FINGERS) if (dist(wrist, lm[tip]!) > dist(wrist, lm[pip]!) * 1.15) n++;
+  const out = FINGERS.map(([pip, tip]) => dist(wrist, lm[tip]!) > dist(wrist, lm[pip]!) * 1.15);
   // The thumb folds sideways across the palm, so compare it with the base of the index finger instead.
-  if (dist(lm[THUMB_TIP]!, lm[INDEX_MCP]!) > dist(lm[THUMB_IP]!, lm[INDEX_MCP]!) * 1.25) n++;
-  return n;
+  const thumb = dist(lm[THUMB_TIP]!, lm[INDEX_MCP]!) > dist(lm[THUMB_IP]!, lm[INDEX_MCP]!) * 1.25;
+  return { thumb, index: out[0]!, middle: out[1]!, ring: out[2]!, pinky: out[3]! };
+}
+
+/** How many fingers are held out (0 to 5). Uses distances rather than "is the tip above the knuckle", so it works when the hand is tilted. */
+export function countFingers(lm: Landmarks): number {
+  return Object.values(fingerStates(lm)).filter(Boolean).length;
 }
 
 export type Pose = "none" | "fist" | "count1" | "count2" | "count3" | "count4" | "palm";
@@ -147,4 +153,47 @@ export class GestureController {
 /** The actions gestures can pick, in the order N fingers selects them. Typed-text actions are left out. */
 export function gestureOptions<T extends { hotkey?: number; needsText?: boolean }>(legal: T[]): T[] {
   return legal.filter((l) => l.hotkey != null && !l.needsText).sort((a, b) => (a.hotkey ?? 0) - (b.hotkey ?? 0));
+}
+
+// ---------- task gestures: hand shapes that mean something in the safety task ----------
+
+/** point = interact with what you face; phone = call for help; stop = keep people back; thumbs up = agree; fist = cancel. */
+export type TaskPose = "none" | "point" | "phone" | "stop" | "thumbs_up" | "fist";
+
+export function taskPoseOf(lm: Landmarks | null): TaskPose {
+  if (!lm || lm.length < 21) return "none";
+  const f = fingerStates(lm);
+  const others = f.middle || f.ring || f.pinky;
+  if (f.thumb && f.index && f.middle && f.ring && f.pinky) return "stop";
+  if (f.thumb && f.pinky && !f.index && !f.middle && !f.ring) return "phone";
+  if (f.index && !f.middle && !f.ring && !f.pinky) return "point";
+  if (f.thumb && !f.index && !others && lm[THUMB_TIP]!.y < lm[WRIST]!.y - 0.05) return "thumbs_up";
+  if (!f.thumb && !f.index && !others) return "fist";
+  return "none";
+}
+
+export type TaskEvent = { type: "progress"; pose: TaskPose; value: number } | { type: "pose"; pose: TaskPose } | { type: "lost" };
+export const HOLD_MS: Record<Exclude<TaskPose, "none">, number> = { point: 350, thumbs_up: 500, phone: 700, stop: 800, fist: 800 };
+
+/** A pose counts only after it is held steady for its hold time, and the same pose can't fire again until the hand changes. */
+export class TaskGestures {
+  private pose: TaskPose = "none";
+  private since = 0;
+  private fired = false;
+  private coolUntil = 0;
+
+  feed(lm: Landmarks | null, now: number): TaskEvent[] {
+    const out: TaskEvent[] = [];
+    const p = taskPoseOf(lm);
+    if (!lm) { if (this.pose !== "none") out.push({ type: "lost" }); this.pose = "none"; this.fired = false; return out; }
+    if (p !== this.pose) {
+      if (this.pose !== "none" && !this.fired) out.push({ type: "progress", pose: this.pose, value: 0 });
+      this.pose = p; this.since = now; this.fired = false;
+    }
+    if (p === "none" || this.fired || now < this.coolUntil) return out;
+    const value = Math.min(1, (now - this.since) / HOLD_MS[p]);
+    out.push({ type: "progress", pose: p, value });
+    if (value >= 1) { this.fired = true; this.coolUntil = now + 1500; out.push({ type: "pose", pose: p }); }
+    return out;
+  }
 }

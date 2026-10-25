@@ -1,3 +1,4 @@
+import { recordApiCall, serviceForTool } from "../apiLog";
 import type { Store } from "../store/store";
 import { redact } from "../agent/redact";
 import { checkPolicy } from "./policy";
@@ -34,6 +35,8 @@ export function createToolExecutor(deps: ToolExecutorDeps) {
     audit.push(entry);
     if (audit.length > 500) audit.shift();
     deps.onAudit?.(entry);
+    const svc = serviceForTool(e.tool);
+    recordApiCall({ at: entry.at, service: svc.service, op: e.tool, mode: e.decision === "denied" ? "denied" : svc.mode, ok: e.decision === "allowed", ms: e.latencyMs, note: e.decision === "denied" ? String(e.reason ?? "") : `by ${e.requestedBy}` });
   };
 
   async function executeTool(req: ToolRequest): Promise<ToolResult> {

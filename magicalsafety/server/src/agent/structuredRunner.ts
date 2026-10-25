@@ -1,3 +1,4 @@
+import { recordApiCall } from "../apiLog";
 import type { z } from "zod";
 import { costUsd } from "./providers/metaMuse";
 import { health } from "./health";
@@ -98,6 +99,10 @@ export class StructuredRunner {
         }
       }
 
+      // Which service answered: the real Meta model, or the built-in rules (no outside call at all).
+      recordApiCall(provider.id === "meta"
+        ? { service: "Meta Muse (Spark, text)", op: `${a.step}/${a.schemaName}`, mode: "real", ok, ms: this.clock() - startedAt, note: ok ? `attempt ${attempt}` : (errors[0] ?? "failed").slice(0, 80) }
+        : { service: "Built-in rules", op: `${a.step}/${a.schemaName}`, mode: "rules", ok: true, ms: this.clock() - startedAt, note: "no API call" });
       const last = !ok && (attempt === (a.attempts ?? 2) || giveUp);
       await this.deps.runLog.append({
         id: `run_${a.scopeId}_${a.step}_${attempt}`, sessionId: a.scopeId, step: a.step, attempt,

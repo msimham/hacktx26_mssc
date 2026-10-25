@@ -759,6 +759,30 @@ describe("Scenario packs (agent-researched, fact-checked, organizer-approved)", 
   });
 });
 
+describe("API call log", () => {
+  it("shows which services were really used, and which answers came from the built-in rules", async () => {
+    const { clearApiCalls } = await import("./apiLog");
+    clearApiCalls();
+    const s = stub(() => json({ organic_results: [{ title: "T", link: "https://www.cdc.gov/x", snippet: "s" }] }));
+    const provider = new Scripted(() => ({ data: { needed: true, query: "teaching teams to call for help", why: "x" }, model: "muse-spark-1.3", usage: null }));
+    const b = await boot({ fetchImpl: s.fn, envExtra: KEYS, provider });
+    await b.org("/org_riverside/research/auto", { method: "POST", body: { topic: "calling for help" } });
+    const log = (await (await fetch(`${b.url}/api/api-log`)).json()) as { summary: { service: string; mode: string; calls: number }[]; calls: { service: string; mode: string; ok: boolean; note: string }[] };
+    expect(log.summary.find((x) => x.service.startsWith("SerpApi"))).toMatchObject({ mode: "real", calls: 1 });
+    expect(log.summary.find((x) => x.service.startsWith("Meta Muse (Spark"))).toMatchObject({ mode: "real" });
+    expect(log.calls[0]!.service).toBeTruthy();
+    const text = JSON.stringify(log);
+    expect(text).not.toContain("teaching teams"); // search words and prompts are not logged
+    expect(text).not.toMatch(/key|token|passcode/i);
+    clearApiCalls();
+    const rules = await boot({ fetchImpl: s.fn });
+    await rules.org("/org_riverside/research/auto", { method: "POST", body: { topic: "calling for help" } });
+    const after = (await (await fetch(`${rules.url}/api/api-log`)).json()) as { summary: { service: string; mode: string }[] };
+    expect(after.summary.find((x) => x.service === "Built-in rules")).toMatchObject({ mode: "rules" });
+    expect(after.summary.some((x) => x.service.startsWith("Meta Muse") && x.mode === "real")).toBe(false);
+  });
+});
+
 void kit;
 
 describe("with every external service failing (the network is down)", () => {
