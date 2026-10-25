@@ -74,6 +74,15 @@ export const ACCENTS: readonly Accent[] = [
     badge: "bg-orange-100 text-orange-700",
     hex: "#f97316",
   },
+  {
+    chip: "border-teal-200 bg-teal-50 text-teal-800 hover:border-teal-400 hover:bg-teal-100",
+    field: "focus:border-teal-500 focus:ring-teal-500/30",
+    text: "text-teal-600",
+    card: "border-l-teal-500",
+    bar: "from-teal-500 to-cyan-400",
+    badge: "bg-teal-100 text-teal-700",
+    hex: "#14b8a6",
+  },
 ];
 
 export const accentAt = (i: number): Accent => ACCENTS[i % ACCENTS.length]!;
