@@ -14,8 +14,8 @@ export const STEPS = [
     id: "train",
     category: "goal",
     emoji: "🎯",
-    question: "What do you want to train?",
-    placeholder: "e.g. My team on delegation during busy shifts",
+    question: "What situation do you want to train for?",
+    placeholder: "e.g. A fire alarm during a busy night shift",
     chips: ["Team collaboration", "Fire safety", "Drug response", "Onboarding"],
   },
   {

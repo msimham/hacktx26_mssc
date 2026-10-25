@@ -34,7 +34,7 @@ Questions are grouped into 7 categories. A segmented build-progress ring (one se
 
 | # | Category | Question | Suggestion chips |
 |---|---|---|---|
-| 1 | Goal | What do you want to train? | Team collaboration · Fire safety · Drug response · Onboarding |
+| 1 | Goal | What situation do you want to train for? | Team collaboration · Fire safety · Drug response · Onboarding |
 | 2 | Goal | Which skills matter most? | Communication · Delegation · Decision making · Help-seeking · Conflict resolution · Adaptability |
 | 3 | World | What world do you want your training to be in? | Fairytale · Real world · Marvel Universe · Harry Potter |
 | 4 | People | Who is it for? | New hires · Managers · Healthcare staff · Students · Sales teams |
