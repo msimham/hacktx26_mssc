@@ -1,3 +1,4 @@
+import { PackSection } from "../components/PackSection";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { INDICATOR_INFO, type Competency, type MetricKey, type OrgConfig } from "@magicalsafety/engine";
@@ -210,6 +211,8 @@ function Builder() {
               <div key={h.chunkId} className="rounded bg-night p-3 text-sm"><div className="text-xs text-slate-400">{h.docTitle} › {h.heading} · matched: {h.matchedTerms.join(", ")}</div><p className="mt-1">{h.text.slice(0, 280)}{h.text.length > 280 ? "…" : ""}</p></div>
             )) : <p className="text-sm text-slate-400">Nothing matched.</p>)}
           </section>
+
+          <PackSection org={org} guard={guard} onOrg={(o) => setOrg((cur) => (cur ? { ...cur, packs: o.packs } : o))} />
 
           <section className={`${card} space-y-3`} aria-label="Research">
             <h2 className="flex items-center gap-2 font-display text-lg text-gold">Research {found?.mock && <MockBadge label="MOCK: SAMPLE RESULTS" />}</h2>

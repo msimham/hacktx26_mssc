@@ -24,6 +24,8 @@ function randomFrom(alphabet: string, n: number): string {
 
 const CreateBody = z.strictObject({
   orgId: z.string().regex(/^org_[a-z0-9_]{2,30}$/).default(SEEDED_ORG_ID),
+  /** An APPROVED scenario pack of this organization. Its wording is copied into the session. */
+  packId: z.string().regex(/^pk_[a-z0-9]{4,12}$/).optional(),
   worldId: WorldId.default("castle"),
   acts: z.array(ScenarioId).min(1).max(2).default(["medical_emergency"]),
   socialEnvironment: SocialEnvironment.default("classmates"),
@@ -81,12 +83,20 @@ export function sessionRoutes(env: Env, store: Store, agent: TrainingAgent, runL
     // Starting straight at the evacuation (without earning it) is a development shortcut only.
     if (key === "evacuation" && process.env.NODE_ENV === "production") return void res.status(400).json({ error: "The evacuation unlocks after the emergency is resolved" });
     if (b.socialEnvironment === "simulated" && !b.team.fillWithBots) return void res.status(400).json({ error: "A simulated team needs simulated teammates turned on" });
+    let pack: SessionConfig["pack"];
+    if (b.packId) {
+      const p = store.getOrg(b.orgId)?.packs.find((x) => x.id === b.packId);
+      if (!p || p.status !== "approved") return void res.status(400).json({ error: "That scenario pack hasn't been approved" });
+      if (p.worldId !== b.worldId) return void res.status(400).json({ error: "That scenario pack was written for a different world" });
+      if (!b.acts.includes("medical_emergency")) return void res.status(400).json({ error: "A scenario pack needs the emergency act" });
+      pack = { id: p.id, title: p.title, theme: p.theme, flavor: p.flavor, guidance: p.guidance, sources: p.sources };
+    }
     const id = `ses_${randomFrom("abcdefghijklmnopqrstuvwxyz0123456789", 10)}`;
     let code = randomFrom(CODE_ALPHABET, 6);
     while (store.findByCode(code)) code = randomFrom(CODE_ALPHABET, 6);
     const parsed = SessionConfigSchema.safeParse({
       id, orgId: b.orgId, joinCode: code, worldId: b.worldId, acts: b.acts, socialEnvironment: b.socialEnvironment, team: b.team,
-      inputMethods: [...new Set(b.inputMethods)], difficulty: { ...DEFAULT_DIFFICULTY, ...b.difficulty }, act2: b.act2, rules: b.rules,
+      inputMethods: [...new Set(b.inputMethods)], difficulty: { ...DEFAULT_DIFFICULTY, ...b.difficulty }, act2: b.act2, rules: b.rules, ...(pack ? { pack } : {}),
     });
     if (!parsed.success) return void res.status(400).json({ error: "Invalid session settings" });
     const config: SessionConfig = parsed.data;
@@ -141,6 +151,7 @@ export function sessionRoutes(env: Env, store: Store, agent: TrainingAgent, runL
         replay: m.replay ?? null,
         plannedActs: m.config.acts.length,
         worldId: m.config.worldId,
+        pack: m.config.pack ? { title: m.config.pack.title, guidance: m.config.pack.guidance, sources: m.config.pack.sources } : null,
         thankedAlready: !!caller.player && !!shout?.some((s) => s.from === caller.player!.id),
       });
     } catch (err) {

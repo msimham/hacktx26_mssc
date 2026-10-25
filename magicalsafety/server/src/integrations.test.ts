@@ -702,6 +702,63 @@ describe("Agent-chosen research", () => {
   });
 });
 
+describe("Scenario packs (agent-researched, fact-checked, organizer-approved)", () => {
+  const gov = (n: number) => ({ title: `CDC overdose guidance ${n}`, link: `https://www.cdc.gov/overdose/${n}`, snippet: "Call emergency services right away if a person is very hard to wake or their breathing is slow. Stay with the person until help arrives. Tell responders what the person may have taken." });
+  const spam = { title: "Buy stuff", link: "https://spam.example.com/x", snippet: "Call now for a miracle cure" };
+  const flavor = { collapseFact: "The student collapsed after the party and is barely responsive.", contextFact: "A friend says the student took something earlier and nobody knows what it was.", victimText: "The student is on the floor, hard to wake, breathing slowly.", companionText: "Their friend is shaken: they took something and I do not know what.", narrCollapse: "A student collapses after the party!", narrWorsening: "The student looks worse.", companionBackstory: ["You saw them take something.", "You do not know what it was."] };
+  const g = (text: string, tag: string) => ({ text, tag, sourceIds: ["s1"] });
+  const draft = { flavor, guidance: [g("Call emergency services right away if a person is very hard to wake.", "call"), g("Stay with the person until help arrives.", "stay"), g("Tell responders what the person may have taken.", "share"), g("Always lock the person's phone first.", "stay")] };
+  const make = (draftData: unknown, reviewData?: (n: number) => unknown) => new Scripted((req) => ({ data: req.schemaName === "scenario_pack_draft" ? draftData : (reviewData ?? ((n: number) => ({ claims: Array.from({ length: n }, (_, index) => ({ index, supported: true, note: "ok" })), issues: [] })))(4), model: "muse-spark-1.3", usage: null }));
+  const gen = (b: Awaited<ReturnType<typeof boot>>, worldId = "campus") => b.org("/org_riverside/packs/generate", { method: "POST", body: { worldId } });
+  type PackRes = { pack: { id: string; status: string; generatedBy: string; needsAttention: boolean; guidance: { text: string }[]; dropped: unknown[]; sources: { id: string; url: string }[] } };
+
+  it("without a SerpApi key it uses the authored pack, flags it for review, and researches nothing", async () => {
+    const s = stub(() => json({}));
+    const b = await boot({ fetchImpl: s.fn });
+    const { pack } = (await (await gen(b)).json()) as PackRes;
+    expect(pack).toMatchObject({ status: "draft", generatedBy: "authored", needsAttention: true });
+    expect(s.calls).toHaveLength(0);
+  });
+
+  it("researches, shows the model only reputable sources, drafts, then drops any line the fact-check rejects", async () => {
+    const s = stub(() => json({ organic_results: [gov(1), spam, gov(2)] }));
+    const provider = make(draft, () => ({ claims: [0, 1, 2, 3].map((index) => ({ index, supported: index !== 3, note: index === 3 ? "not in the source" : "ok" })), issues: [] }));
+    const b = await boot({ fetchImpl: s.fn, envExtra: KEYS, provider });
+    const { pack } = (await (await gen(b)).json()) as PackRes;
+    expect(s.calls.length).toBe(3); // three research searches through the tool pipeline
+    expect(pack.sources.every((x) => x.url.includes("cdc.gov"))).toBe(true);
+    expect(JSON.stringify(provider.of("builder").map((c) => c.user))).not.toContain("spam.example.com");
+    expect(pack.generatedBy).toBe("muse-spark-1.3");
+    expect(pack.guidance.map((x) => x.text)).not.toContain("Always lock the person's phone first.");
+    expect(pack.dropped).toHaveLength(1);
+    expect(pack.status).toBe("draft");
+  });
+
+  it("rejects an unsafe draft (a dose) and falls back to the authored pack", async () => {
+    const s = stub(() => json({ organic_results: [gov(1)] }));
+    const unsafe = { ...draft, guidance: [g("Give 2 mg of anything.", "call"), ...draft.guidance.slice(1)] };
+    const b = await boot({ fetchImpl: s.fn, envExtra: KEYS, provider: make(unsafe) });
+    const { pack } = (await (await gen(b)).json()) as PackRes;
+    expect(pack.generatedBy).toBe("authored");
+    expect(pack.needsAttention).toBe(true);
+  });
+
+  it("is unusable until approved, only for its own world, and then re-skins the story", async () => {
+    const s = stub(() => json({ organic_results: [gov(1), gov(2)] }));
+    const b = await boot({ fetchImpl: s.fn, envExtra: KEYS, provider: make(draft) });
+    const { pack } = (await (await gen(b)).json()) as PackRes;
+    const mk = (body: object) => fetch(`${b.url}/api/sessions`, { method: "POST", headers: { "content-type": "application/json", "x-organizer-passcode": PASS }, body: JSON.stringify(body) });
+    expect((await mk({ worldId: "campus", packId: pack.id })).status).toBe(400); // still a draft
+    expect((await b.org(`/org_riverside/packs/${pack.id}/status`, { method: "POST", body: { status: "approved" } })).status).toBe(200);
+    expect((await mk({ worldId: "castle", packId: pack.id })).status).toBe(400); // written for the campus
+    const ok = await mk({ worldId: "campus", packId: pack.id });
+    expect(ok.status).toBe(201);
+    const meta = kit.server!.store.findByCode(((await ok.json()) as { code: string }).code)!;
+    expect(meta.config.pack?.flavor.narrCollapse).toBe("A student collapses after the party!");
+    expect((await b.org(`/org_riverside/packs/${pack.id}/status`, { method: "POST", body: { status: "approved" }, pass: null })).status).toBe(401);
+  });
+});
+
 void kit;
 
 describe("with every external service failing (the network is down)", () => {

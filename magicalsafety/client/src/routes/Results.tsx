@@ -121,6 +121,18 @@ export function Results() {
         </p>
       </section>
 
+      {a.pack && a.pack.guidance.length > 0 && (
+        <section aria-label="What the sources say" className="rounded-xl bg-night-2 p-4">
+          <h2 className="font-display text-lg text-gold">What the sources say</h2>
+          <ul className="mt-2 space-y-2 text-sm">
+            {a.pack.guidance.map((g, i) => (
+              <li key={i}>• {g.text}{" "}{g.sourceIds.map((id) => { const s = a.pack!.sources.find((x) => x.id === id); return s?.url ? <a key={id} href={s.url} target="_blank" rel="noopener noreferrer" className="ml-1 rounded bg-sky-900 px-1.5 py-0.5 text-xs underline">{s.title.slice(0, 40)}</a> : <span key={id} className="ml-1 rounded bg-sky-900 px-1.5 py-0.5 text-xs">{s?.title.slice(0, 40) ?? id}</span>; })}</li>
+            ))}
+          </ul>
+          <p className="mt-2 text-xs text-slate-400">Approved by your organizer. This is a coordination exercise, not medical training. In a real emergency, call your local emergency number.</p>
+        </section>
+      )}
+
       <details className="rounded-xl bg-night-2/50 p-3">
         <summary className="cursor-pointer text-sm font-semibold text-slate-200">Full details: what happened, measurements, goals, per-person notes</summary>
         <div className="mt-4 space-y-6">

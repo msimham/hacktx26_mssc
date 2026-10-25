@@ -25,8 +25,10 @@ function stripApproved(text: string): string {
 }
 
 /** Every LLM text output passes through here. Blocked text is replaced by authored copy. */
-export function safetyFilter(text: string): SafetyResult {
-  const probe = stripApproved(text);
+export function safetyFilter(text: string, opts?: { allow?: readonly string[] }): SafetyResult {
+  // A theme (such as overdose awareness) may use a few named words; everything else stays blocked.
+  let probe = stripApproved(text);
+  for (const w of opts?.allow ?? []) probe = probe.replace(new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "gi"), " ");
   const reasons = RULES.filter((r) => r.re.test(probe)).map((r) => r.name);
   if (reasons.length === 0) return { ok: true, text, reasons: [] };
   return { ok: false, text: BLOCKED_REPLACEMENT, reasons };

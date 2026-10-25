@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { Competency } from "./assessment";
+import { StoredPack } from "./scenarioPack";
 
 /** Metrics an organization may build its rubric on. */
 export const MetricKey = z.enum([
@@ -82,6 +83,8 @@ export const OrgConfig = z.strictObject({
   objectives: z.array(LearningObjective).max(8),
   rubric: z.array(RubricItem).max(24),
   documents: z.array(OrgDocument).max(20),
+  /** Scenario packs drafted by the research agent. Only "approved" ones can be used in a session. */
+  packs: z.array(StoredPack).max(10).default([]),
   model: z.strictObject({
     provider: z.enum(["meta", "mock"]),
     modelId: z.enum(["muse-spark-1.3", "muse-spark-1.3-contributor"]),

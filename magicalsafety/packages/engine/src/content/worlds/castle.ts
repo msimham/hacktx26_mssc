@@ -7,10 +7,10 @@ export const castle: World = {
   name: "Cinderella's Palace",
   theme: { bg: "#0f1b3d", accent: "#d4af37", fontClass: "font-serif" },
   facts: {
-    f_collapse: { text: "The Duchess collapsed in the ballroom and isn't responding normally.", keywords: ["duchess"] },
+    f_collapse: { text: "The Duchess collapsed in the ballroom after the toast. She is barely responsive and her breathing looks slow.", keywords: ["duchess"] },
     f_help_location: { text: "The physician is waiting at the gatehouse by the courtyard, and the guards answer to you.", keywords: ["physician", "doctor", "gatehouse"] },
     f_cabinet_key: { text: "You hold the key to the Steward's Cabinet where the first-aid chest is kept.", keywords: ["steward's cabinet"] },
-    f_context: { text: "You know the Duchess's companion, and that the Duchess had been dancing all evening (context only)." },
+    f_context: { text: "You know the Duchess's companion. She says the Duchess drank a \"midnight tonic\" a stranger offered earlier, and nobody knows what was in it. The physician needs to hear this." },
     f_crowd: { text: "A candelabra has fallen on the Grand Staircase and guests are crowding." },
     // Act 2
     f_smoke_origin: { text: "Smoke is pouring from the Palace Kitchens. Stay out of that wing.", keywords: ["kitchens"] },
@@ -123,8 +123,8 @@ export const castle: World = {
     ],
   },
   targets: [
-    { id: "victim", label: "The Duchess", roomId: "ballroom", onlyIn: "medical_emergency", text: "The Duchess is on the ballroom floor and does not seem to be responding the way she normally would." },
-    { id: "companion", label: "Duchess's Companion", roomId: "ballroom", text: "The companion is upset. 'We had been dancing for hours,' she says, 'and she was cheerful a moment ago.'" },
+    { id: "victim", label: "The Duchess", roomId: "ballroom", onlyIn: "medical_emergency", text: "The Duchess is on the ballroom floor, barely responding, with slow, shallow breathing. Someone may have slipped her something: this is an emergency." },
+    { id: "companion", label: "Duchess's Companion", roomId: "ballroom", text: "The companion is upset. 'She drank a midnight tonic a stranger gave her,' she says. 'I don't know what was in it. Please don't leave her alone.'" },
     { id: "guard", label: "Palace Guard", roomId: "ballroom", text: "The Palace Guard stands ready. 'Give me a clear task and I'll see it done,' he says." },
     { id: "bell", label: "Palace bell", roomId: "dais", text: "A great bell used to call everyone to attention." },
     { id: "chest", label: "First-aid chest", roomId: "cabinet", text: "A painted chest holding the palace first-aid supplies. It is locked." },
@@ -161,7 +161,7 @@ export const castle: World = {
     assist_upper: "Help the guest in the Upper Gallery",
     assist_ground: "Help the guest by the buffet",
     // Narration
-    narr_collapse: "The Duchess collapses in the Grand Ballroom!",
+    narr_collapse: "After the toast, the Duchess collapses in the Grand Ballroom and can barely respond!",
     narr_crowd: "Crash! A candelabra falls on the Grand Staircase and guests begin to crowd.",
     narr_worsening: "The Duchess looks worse. Time matters.",
     narr_critical: "The Duchess's condition is critical!",
@@ -177,8 +177,8 @@ export const castle: World = {
   },
   companionSheet: [
     "You are the Duchess's companion at the palace ball.",
-    "You and the Duchess had been dancing for hours and she was cheerful a moment ago.",
-    "Suddenly she was on the ballroom floor and not responding the way she normally does.",
+    "A stranger offered the Duchess a \"midnight tonic\" at the ball, and you don't know what was in it.",
+    "Now she is on the ballroom floor, hard to wake, and breathing slowly.",
     "You are frightened and you don't know what happened.",
     "You can point out the Palace Guard in the ballroom, the Throne Dais, the Steward's Cabinet and the courtyard gate.",
     "You will do whatever you are asked, but you are not able to give any medical advice.",

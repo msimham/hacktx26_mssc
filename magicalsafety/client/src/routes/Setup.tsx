@@ -37,6 +37,9 @@ function Setup() {
 
   const playable = s.inputMethods.some((m) => ["mouse", "keyboard", "text"].includes(m));
   const org = orgs.find((o) => o.id === s.orgId);
+  const [packs, setPacks] = useState<{ id: string; title: string; worldId: string }[]>([]);
+  useEffect(() => { void orgApi.get(s.orgId).then((r) => setPacks(r.org.packs.filter((p) => p.status === "approved"))).catch(() => setPacks([])); }, [s.orgId]);
+  const worldPacks = packs.filter((p) => p.worldId === s.worldId);
 
   const create = async () => {
     setBusy(true); setErr(null);
@@ -62,7 +65,15 @@ function Setup() {
       <section className={card}>
         <h2 className="mb-2 font-display text-lg text-gold">World and scenario</h2>
         <div className="grid gap-3 md:grid-cols-2">
-          <label className="text-sm">World<select className={`${field} mt-1`} value={s.worldId} onChange={(e) => set({ worldId: e.target.value })}><option value="castle">Cinderella's Palace</option><option value="campus">Riverside Student Union (campus)</option></select></label>
+          <label className="text-sm">World<select className={`${field} mt-1`} value={s.worldId} onChange={(e) => set({ worldId: e.target.value, packId: undefined })}><option value="castle">Cinderella's Palace</option><option value="campus">Riverside Student Union (campus)</option></select></label>
+          {worldPacks.length > 0 && (
+            <label className="text-sm md:col-span-2">Story pack (approved)
+              <select className={`${field} mt-1`} value={s.packId ?? ""} onChange={(e) => set({ packId: e.target.value || undefined })}>
+                <option value="">Standard story</option>
+                {worldPacks.map((p) => <option key={p.id} value={p.id}>{p.title}</option>)}
+              </select>
+            </label>
+          )}
           <label className="text-sm">Acts<select className={`${field} mt-1`} value={s.acts.join(",")} onChange={(e) => set({ acts: e.target.value.split(",") })}>
             <option value="medical_emergency">Emergency only</option>
             <option value="medical_emergency,evacuation">Emergency → Evacuation (the alarm sounds if the team succeeds)</option>

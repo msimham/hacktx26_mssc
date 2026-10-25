@@ -1,4 +1,4 @@
-import type { AdaptationPlan, Assessment, DiffRow, OrgConfig, TimelineItem, WeaknessCode } from "@magicalsafety/engine";
+import type { AdaptationPlan, Assessment, DiffRow, OrgConfig, StoredPack, TimelineItem, WeaknessCode } from "@magicalsafety/engine";
 
 export interface IntegrationStatus {
   id: string;
@@ -72,6 +72,7 @@ export interface Analysis {
   plannedActs: number;
   worldId: string;
   thankedAlready: boolean;
+  pack: { title: string; guidance: { text: string; tag: string; sourceIds: string[] }[]; sources: { id: string; title: string; url: string }[] } | null;
 }
 
 export async function getAnalysis(sessionId: string, token: string): Promise<Analysis> {
@@ -141,11 +142,16 @@ export const orgApi = {
   search: (id: string, query: string) => orgFetch<{ results: DocHit[] }>(`/${id}/search`, { method: "POST", body: { query, k: 3 } }),
   draft: (description: string, orgId?: string) => orgFetch<DraftResponse>("/draft", { method: "POST", body: { description, ...(orgId && { orgId }) } }),
   research: (id: string, query: string) => orgFetch<{ mock: boolean; results: WebResult[] }>(`/${id}/research`, { method: "POST", body: { query } }),
+  generatePack: (id: string, worldId: string, topic?: string) => orgFetch<{ pack: StoredPack }>(`/${id}/packs/generate`, { method: "POST", body: { worldId, ...(topic ? { topic } : {}) } }),
+  setPackStatus: (id: string, packId: string, status: "approved" | "rejected") => orgFetch<{ org: OrgConfig }>(`/${id}/packs/${packId}/status`, { method: "POST", body: { status } }),
+  deletePack: (id: string, packId: string) => orgFetch<unknown>(`/${id}/packs/${packId}`, { method: "DELETE" }),
   approveResult: (id: string, r: WebResult, mock: boolean) => orgFetch<{ org: OrgConfig }>(`/${id}/research/approve`, { method: "POST", body: { ...r, mock } }),
 };
 
 export interface SessionSetup {
   orgId: string;
+  /** An approved scenario pack to re-skin the emergency story. */
+  packId?: string;
   act2: { exitBlockedAtSec: number; needsAssistanceCount: 1 | 2 };
   worldId: string;
   acts: string[];

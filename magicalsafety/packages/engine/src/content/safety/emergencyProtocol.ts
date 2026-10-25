@@ -2,6 +2,9 @@
  * Authored, fixed safety content. The model never generates or rewrites these strings.
  * Keep it general: no CPR technique, medication, or diagnosis content.
  *
+ * The overdose theme (both worlds) is coordination only: recognize it, call, stay, share what was taken, meet responders.
+ * No doses or procedures are described; naloxone is named only as something a trained person may use.
+ * TODO(USER): Have your campus health or safety office review the overdose scenario wording before real use.
  * TODO(USER): (Optional) Replace this authored safety copy with your organization's reviewed emergency guidance.
  */
 
@@ -11,13 +14,13 @@ export const SAFETY_FOOTER =
 /** Real-world equivalent for each in-world action/task. Shown in tooltips and on Results. */
 export const REAL_WORLD: Record<string, string> = {
   check_responsiveness: "Check whether the person responds, from a safe position, and note what you see.",
-  stay_with_person: "Stay with the person and keep watching them until help arrives.",
+  stay_with_person: "Stay with the person and keep watching them until help arrives. Never leave someone who is hard to wake alone.",
   clear_area: "Make space and keep bystanders back.",
   calm_crowd: "Keep bystanders calm and out of the way.",
   open_cabinet: "Know where the first-aid kit/AED is kept and who can open it.",
-  fetch_kit: "Send someone specific to get the AED/first-aid kit.",
+  fetch_kit: "Send someone specific to get the first-aid kit. If your campus keeps naloxone (Narcan) there, only people trained in it should use it, following its instructions and the call-taker.",
   use_kit: "Have the kit ready where responders will need it.",
-  request_help: "Call emergency services (911 in the US) or your campus emergency number.",
+  request_help: "Call emergency services (911 in the US) or your campus emergency number right away. Say where you are, that the person is hard to wake, and what they may have taken if you know.",
   guide_responders: "Send someone to meet responders and guide them in.",
   ring_bell: "Alert the people nearby so everyone knows something is wrong.",
   // tasks

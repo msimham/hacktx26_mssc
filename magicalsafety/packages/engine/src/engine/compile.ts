@@ -39,7 +39,24 @@ function skinFacts(world: World, scenario: ScenarioDef): FactDef[] {
  * (World, Scenario, SessionConfig, seed) -> RuntimeAct[]. Pure. The seed fixes the incident start time,
  * so a session is fully replayable from (config, seed, inputs).
  */
-export function compile(world: World, config: SessionConfig, seed: number): RuntimeAct[] {
+/** A pack changes wording only: facts, the two people at the scene, the narration and the companion's backstory. Mechanics are untouched. */
+export function applyPack(world: World, pack: NonNullable<SessionConfig["pack"]>): World {
+  const w: World = structuredClone(world);
+  const f = pack.flavor;
+  if (w.facts.f_collapse) w.facts.f_collapse.text = f.collapseFact;
+  if (w.facts.f_context) w.facts.f_context.text = f.contextFact;
+  for (const t of w.targets) {
+    if (t.id === "victim") t.text = f.victimText;
+    if (t.id === "companion") t.text = f.companionText;
+  }
+  w.labels.narr_collapse = f.narrCollapse;
+  w.labels.narr_worsening = f.narrWorsening;
+  w.companionSheet = [...w.companionSheet.slice(0, 1), ...f.companionBackstory, ...w.companionSheet.slice(3)];
+  return w;
+}
+
+export function compile(baseWorld: World, config: SessionConfig, seed: number): RuntimeAct[] {
+  const world = config.pack ? applyPack(baseWorld, config.pack) : baseWorld;
   // The evacuation continues the emergency; it is never the second half of anything else.
   if (config.acts.length === 2 && !(config.acts[0] === "medical_emergency" && config.acts[1] === "evacuation"))
     throw new CompileError("Two acts must be the emergency followed by the evacuation");

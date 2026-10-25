@@ -11,6 +11,8 @@ export const RoleIdSchema = z.enum(["discoverer", "authority", "runner", "liaiso
 export const InputMethod = z.enum(["text", "voice", "mouse", "keyboard", "gesture"]);
 
 /** What this run looks like. Independent of the org layer (what to teach/evaluate). */
+import { AppliedPack } from "./scenarioPack";
+
 export const SessionConfig = z.strictObject({
   id: z.string().min(1),
   orgId: z.string().min(1),
@@ -45,6 +47,8 @@ export const SessionConfig = z.strictObject({
       distractorFirst: z.boolean().optional(),
     })
     .optional(),
+  /** An approved scenario pack, copied in at creation so replays see exactly what was played. */
+  pack: AppliedPack.optional(),
 });
 export type SessionConfig = z.infer<typeof SessionConfig>;
 

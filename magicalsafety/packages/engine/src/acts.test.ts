@@ -76,7 +76,7 @@ describe("the emergency plays unchanged on the campus", () => {
     d.waitUntilT(d.state.acts[0]!.timing.incidentStartT);
     d.apply("p2", { kind: "say", to: "team", text: "Campus security is on the entrance phone." });
     expect(d.state.actors.p3!.facts).toContain("f_help_location");
-    expect(JSON.stringify(viewFor(d.state, "p1"))).toMatch(/A student collapses in the Atrium/);
+    expect(JSON.stringify(viewFor(d.state, "p1"))).toMatch(/student collapses in the Atrium/);
   });
 });
 

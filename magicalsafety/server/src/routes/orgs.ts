@@ -1,11 +1,12 @@
 import { Router, type Request, type Response } from "express";
 import { z } from "zod";
-import { blankOrg, OrgConfig, OrgDocument, type OrgConfig as Org } from "@magicalsafety/engine";
+import { blankOrg, OrgConfig, OrgDocument, WORLDS, type OrgConfig as Org } from "@magicalsafety/engine";
 import type { Env } from "../config/env";
 import { rateLimit, type OrganizerGuard } from "../auth";
 import type { AgentKit } from "../agent";
 import { draftObjectives } from "../agent/builderDraft";
 import { planResearch } from "../agent/researchAgent";
+import { buildPack } from "../agent/scenarioAgent";
 import type { Store } from "../store/store";
 import { SEEDED_ORG_ID } from "../orgs/seed";
 import { SAMPLE_RESULTS } from "../tools/serpapi";
@@ -19,6 +20,8 @@ const NewDoc = z.strictObject({
 });
 const Search = z.strictObject({ query: z.string().trim().min(1).max(300), k: z.number().int().min(1).max(5).optional() });
 const Research = z.strictObject({ query: z.string().trim().min(3).max(200) });
+const GenPack = z.strictObject({ worldId: z.enum(["castle", "campus"]), topic: z.string().trim().min(3).max(300).default("Helping a college student who may have overdosed") });
+const PackStatus = z.strictObject({ status: z.enum(["approved", "rejected"]) });
 const AutoResearch = z.strictObject({ topic: z.string().trim().min(3).max(600) });
 const Approve = z.strictObject({
   title: z.string().trim().min(1).max(200),
@@ -155,6 +158,50 @@ export function orgRoutes(env: Env, store: Store, kit: AgentKit, guard: Organize
     const result = await kit.tools.executeTool({ tool: "serpapi.search", args: { query: body.data.query, num: 5 }, orgId: o.id, requestedBy: "organizer" });
     if (!result.ok) return void res.status(403).json({ error: result.reason });
     res.json({ mock: false, ...(result.output as object) });
+  });
+
+  // Scenario packs: the agent researches (SerpApi), drafts, and fact-checks a story skin plus cited guidance. It is only ever a DRAFT:
+  // an organizer must approve it, and it changes wording only, never the rules.
+  r.post("/:id/packs/generate", async (req, res) => {
+    const o = get(req, res);
+    if (!o) return;
+    const body = GenPack.safeParse(req.body ?? {});
+    if (!body.success) return void res.status(400).json({ error: "Choose a world and describe the topic" });
+    if (o.packs.length >= 10) return void res.status(400).json({ error: "Delete an old pack first (up to 10 are kept)" });
+    const world = WORLDS[body.data.worldId];
+    if (!world) return void res.status(400).json({ error: "That world isn't available" });
+    const budget = { max: o.limits.maxBuilderDraftsPerDay * 2, used: () => kit.usage.get(o.id, "draft_calls", "day"), spend: () => kit.usage.add(o.id, "draft_calls", "day") };
+    try {
+      const pack = await buildPack({
+        runner: kit.runner, provider: kit.providerFor(o), run: (r) => kit.tools.executeTool(r), orgId: o.id, scopeId: o.id,
+        topic: body.data.topic, audience: o.audience || "college students", world, hasSerpKey: !!env.serpApiKey, budget,
+      });
+      const next = OrgConfig.parse({ ...o, packs: [...o.packs, pack] });
+      await store.saveOrg(next);
+      res.status(201).json({ pack });
+    } catch (err) {
+      console.error("[pack]", err instanceof Error ? err.message : "failed");
+      res.status(500).json({ error: "Could not build the scenario pack" });
+    }
+  });
+
+  r.post("/:id/packs/:packId/status", async (req, res) => {
+    const o = get(req, res);
+    if (!o) return;
+    const body = PackStatus.safeParse(req.body);
+    const pack = o.packs.find((p) => p.id === req.params.packId);
+    if (!body.success || !pack) return void res.status(404).json({ error: "Not found" });
+    if (body.data.status === "approved" && pack.guidance.length < 1) return void res.status(400).json({ error: "A pack with no supported guidance can't be approved" });
+    const next = OrgConfig.parse({ ...o, packs: o.packs.map((p) => (p.id === pack.id ? { ...p, status: body.data.status } : p)) });
+    await store.saveOrg(next);
+    res.json({ org: next });
+  });
+
+  r.delete("/:id/packs/:packId", async (req, res) => {
+    const o = get(req, res);
+    if (!o) return;
+    await store.saveOrg(OrgConfig.parse({ ...o, packs: o.packs.filter((p) => p.id !== req.params.packId) }));
+    res.status(204).end();
   });
 
   // The agent decides whether to search and what to type, then the search runs through the same tool pipeline as an organizer's.
