@@ -1,0 +1,689 @@
+{
+ "recipe": {
+  "kind": "spinning_wheel",
+  "name": "Spinning wheel",
+  "parts": [
+   {
+    "shape": "box",
+    "args": [
+     1.3,
+     0.07,
+     0.55
+    ],
+    "profile": [],
+    "position": [
+     0.0,
+     0.46,
+     0.0
+    ],
+    "rotation": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "scale": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "material": {
+     "preset": "wood",
+     "color": "#6b4a2f",
+     "glow": 0.0,
+     "opacity": 1.0
+    }
+   },
+   {
+    "shape": "cylinder",
+    "args": [
+     0.04,
+     0.06,
+     0.46
+    ],
+    "profile": [],
+    "position": [
+     -0.55,
+     0.23,
+     -0.2
+    ],
+    "rotation": [
+     0.0,
+     0.0,
+     0.08
+    ],
+    "scale": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "material": {
+     "preset": "wood",
+     "color": "#5a3d27",
+     "glow": 0.0,
+     "opacity": 1.0
+    }
+   },
+   {
+    "shape": "cylinder",
+    "args": [
+     0.04,
+     0.06,
+     0.46
+    ],
+    "profile": [],
+    "position": [
+     -0.55,
+     0.23,
+     0.2
+    ],
+    "rotation": [
+     0.0,
+     0.0,
+     0.08
+    ],
+    "scale": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "material": {
+     "preset": "wood",
+     "color": "#5a3d27",
+     "glow": 0.0,
+     "opacity": 1.0
+    }
+   },
+   {
+    "shape": "cylinder",
+    "args": [
+     0.04,
+     0.06,
+     0.46
+    ],
+    "profile": [],
+    "position": [
+     0.55,
+     0.23,
+     -0.2
+    ],
+    "rotation": [
+     0.0,
+     0.0,
+     -0.08
+    ],
+    "scale": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "material": {
+     "preset": "wood",
+     "color": "#5a3d27",
+     "glow": 0.0,
+     "opacity": 1.0
+    }
+   },
+   {
+    "shape": "cylinder",
+    "args": [
+     0.04,
+     0.06,
+     0.46
+    ],
+    "profile": [],
+    "position": [
+     0.55,
+     0.23,
+     0.2
+    ],
+    "rotation": [
+     0.0,
+     0.0,
+     -0.08
+    ],
+    "scale": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "material": {
+     "preset": "wood",
+     "color": "#5a3d27",
+     "glow": 0.0,
+     "opacity": 1.0
+    }
+   },
+   {
+    "shape": "box",
+    "args": [
+     0.9,
+     0.03,
+     0.16
+    ],
+    "profile": [],
+    "position": [
+     0.0,
+     0.1,
+     0.3
+    ],
+    "rotation": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "scale": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "material": {
+     "preset": "wood",
+     "color": "#7a5535",
+     "glow": 0.0,
+     "opacity": 1.0
+    }
+   },
+   {
+    "shape": "torus",
+    "args": [
+     0.4,
+     0.028
+    ],
+    "profile": [],
+    "position": [
+     -0.35,
+     0.93,
+     0.0
+    ],
+    "rotation": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "scale": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "material": {
+     "preset": "wood",
+     "color": "#8a6240",
+     "glow": 0.0,
+     "opacity": 1.0
+    }
+   },
+   {
+    "shape": "torus",
+    "args": [
+     0.34,
+     0.012
+    ],
+    "profile": [],
+    "position": [
+     -0.35,
+     0.93,
+     0.03
+    ],
+    "rotation": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "scale": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "material": {
+     "preset": "trim",
+     "color": "",
+     "glow": 0.0,
+     "opacity": 1.0
+    }
+   },
+   {
+    "shape": "box",
+    "args": [
+     0.018,
+     0.78,
+     0.018
+    ],
+    "profile": [],
+    "position": [
+     -0.35,
+     0.93,
+     0.0
+    ],
+    "rotation": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "scale": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "material": {
+     "preset": "wood",
+     "color": "#7a5535",
+     "glow": 0.0,
+     "opacity": 1.0
+    }
+   },
+   {
+    "shape": "box",
+    "args": [
+     0.018,
+     0.78,
+     0.018
+    ],
+    "profile": [],
+    "position": [
+     -0.35,
+     0.93,
+     0.0
+    ],
+    "rotation": [
+     0.0,
+     0.0,
+     0.7853981633974483
+    ],
+    "scale": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "material": {
+     "preset": "wood",
+     "color": "#7a5535",
+     "glow": 0.0,
+     "opacity": 1.0
+    }
+   },
+   {
+    "shape": "box",
+    "args": [
+     0.018,
+     0.78,
+     0.018
+    ],
+    "profile": [],
+    "position": [
+     -0.35,
+     0.93,
+     0.0
+    ],
+    "rotation": [
+     0.0,
+     0.0,
+     1.5707963267948966
+    ],
+    "scale": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "material": {
+     "preset": "wood",
+     "color": "#7a5535",
+     "glow": 0.0,
+     "opacity": 1.0
+    }
+   },
+   {
+    "shape": "box",
+    "args": [
+     0.018,
+     0.78,
+     0.018
+    ],
+    "profile": [],
+    "position": [
+     -0.35,
+     0.93,
+     0.0
+    ],
+    "rotation": [
+     0.0,
+     0.0,
+     2.356194490192345
+    ],
+    "scale": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "material": {
+     "preset": "wood",
+     "color": "#7a5535",
+     "glow": 0.0,
+     "opacity": 1.0
+    }
+   },
+   {
+    "shape": "cylinder",
+    "args": [
+     0.05,
+     0.05,
+     0.16
+    ],
+    "profile": [],
+    "position": [
+     -0.35,
+     0.93,
+     0.0
+    ],
+    "rotation": [
+     1.5707963267948966,
+     0.0,
+     0.0
+    ],
+    "scale": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "material": {
+     "preset": "trim",
+     "color": "",
+     "glow": 0.0,
+     "opacity": 1.0
+    }
+   },
+   {
+    "shape": "sphere",
+    "args": [
+     0.04
+    ],
+    "profile": [],
+    "position": [
+     -0.35,
+     0.93,
+     0.09
+    ],
+    "rotation": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "scale": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "material": {
+     "preset": "metal",
+     "color": "",
+     "glow": 0.0,
+     "opacity": 1.0
+    }
+   },
+   {
+    "shape": "box",
+    "args": [
+     0.07,
+     0.55,
+     0.07
+    ],
+    "profile": [],
+    "position": [
+     -0.35,
+     0.72,
+     -0.14
+    ],
+    "rotation": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "scale": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "material": {
+     "preset": "wood",
+     "color": "#5a3d27",
+     "glow": 0.0,
+     "opacity": 1.0
+    }
+   },
+   {
+    "shape": "box",
+    "args": [
+     0.07,
+     0.55,
+     0.07
+    ],
+    "profile": [],
+    "position": [
+     -0.35,
+     0.72,
+     0.14
+    ],
+    "rotation": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "scale": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "material": {
+     "preset": "wood",
+     "color": "#5a3d27",
+     "glow": 0.0,
+     "opacity": 1.0
+    }
+   },
+   {
+    "shape": "box",
+    "args": [
+     0.07,
+     0.7,
+     0.07
+    ],
+    "profile": [],
+    "position": [
+     0.35,
+     0.85,
+     0.0
+    ],
+    "rotation": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "scale": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "material": {
+     "preset": "wood",
+     "color": "#5a3d27",
+     "glow": 0.0,
+     "opacity": 1.0
+    }
+   },
+   {
+    "shape": "box",
+    "args": [
+     0.5,
+     0.05,
+     0.06
+    ],
+    "profile": [],
+    "position": [
+     0.2,
+     1.0,
+     0.0
+    ],
+    "rotation": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "scale": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "material": {
+     "preset": "wood",
+     "color": "#6b4a2f",
+     "glow": 0.0,
+     "opacity": 1.0
+    }
+   },
+   {
+    "shape": "cone",
+    "args": [
+     0.09,
+     0.38
+    ],
+    "profile": [],
+    "position": [
+     0.35,
+     1.4,
+     0.0
+    ],
+    "rotation": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "scale": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "material": {
+     "preset": "cloth",
+     "color": "#efe3c2",
+     "glow": 0.0,
+     "opacity": 1.0
+    }
+   },
+   {
+    "shape": "capsule",
+    "args": [
+     0.025,
+     0.18
+    ],
+    "profile": [],
+    "position": [
+     0.1,
+     1.02,
+     0.0
+    ],
+    "rotation": [
+     0.0,
+     0.0,
+     1.5707963267948966
+    ],
+    "scale": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "material": {
+     "preset": "trim",
+     "color": "",
+     "glow": 0.0,
+     "opacity": 1.0
+    }
+   },
+   {
+    "shape": "sphere",
+    "args": [
+     0.05
+    ],
+    "profile": [],
+    "position": [
+     0.0,
+     1.02,
+     0.0
+    ],
+    "rotation": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "scale": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "material": {
+     "preset": "cloth",
+     "color": "#e8586f",
+     "glow": 0.0,
+     "opacity": 1.0
+    }
+   },
+   {
+    "shape": "lathe",
+    "args": [],
+    "profile": [
+     [
+      0.01,
+      0.0
+     ],
+     [
+      0.06,
+      0.02
+     ],
+     [
+      0.04,
+      0.1
+     ],
+     [
+      0.06,
+      0.16
+     ],
+     [
+      0.01,
+      0.2
+     ]
+    ],
+    "position": [
+     0.35,
+     1.0,
+     0.0
+    ],
+    "rotation": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "scale": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "material": {
+     "preset": "wood",
+     "color": "#4a3220",
+     "glow": 0.0,
+     "opacity": 1.0
+    }
+   }
+  ],
+  "lights": [],
+  "motion": "none",
+  "on_complete": "spin",
+  "tags": [
+   "fairytale",
+   "sleeping-beauty",
+   "craft"
+  ]
+ },
+ "meta": {
+  "source": "hand-authored seed",
+  "status": "approved"
+ }
+}

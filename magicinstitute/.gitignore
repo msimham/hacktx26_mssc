@@ -1,0 +1,7 @@
+__pycache__/
+.env
+.venv/
+node_modules/
+runs/
+web/create/
+frontend/node_modules/

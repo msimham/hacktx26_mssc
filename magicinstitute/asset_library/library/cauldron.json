@@ -1,0 +1,526 @@
+{
+ "recipe": {
+  "kind": "cauldron",
+  "name": "Bubbling cauldron",
+  "parts": [
+   {
+    "shape": "lathe",
+    "args": [],
+    "profile": [
+     [
+      0.01,
+      0.05
+     ],
+     [
+      0.25,
+      0.06
+     ],
+     [
+      0.46,
+      0.22
+     ],
+     [
+      0.55,
+      0.5
+     ],
+     [
+      0.5,
+      0.76
+     ],
+     [
+      0.46,
+      0.82
+     ]
+    ],
+    "position": [
+     0.0,
+     0.18,
+     0.0
+    ],
+    "rotation": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "scale": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "material": {
+     "preset": "dark",
+     "color": "#26232d",
+     "glow": 0.0,
+     "opacity": 1.0
+    }
+   },
+   {
+    "shape": "torus",
+    "args": [
+     0.47,
+     0.035
+    ],
+    "profile": [],
+    "position": [
+     0.0,
+     1.0,
+     0.0
+    ],
+    "rotation": [
+     1.5707963267948966,
+     0.0,
+     0.0
+    ],
+    "scale": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "material": {
+     "preset": "metal",
+     "color": "#3d3a46",
+     "glow": 0.0,
+     "opacity": 1.0
+    }
+   },
+   {
+    "shape": "cylinder",
+    "args": [
+     0.43,
+     0.43,
+     0.02
+    ],
+    "profile": [],
+    "position": [
+     0.0,
+     0.93,
+     0.0
+    ],
+    "rotation": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "scale": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "material": {
+     "preset": "glow",
+     "color": "#6dff8c",
+     "glow": 1.4,
+     "opacity": 0.9
+    }
+   },
+   {
+    "shape": "sphere",
+    "args": [
+     0.05
+    ],
+    "profile": [],
+    "position": [
+     0.2,
+     0.98,
+     0.0
+    ],
+    "rotation": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "scale": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "material": {
+     "preset": "glow",
+     "color": "#b8ffc8",
+     "glow": 1.0,
+     "opacity": 0.7
+    }
+   },
+   {
+    "shape": "sphere",
+    "args": [
+     0.07
+    ],
+    "profile": [],
+    "position": [
+     -0.10096922091997151,
+     1.02,
+     0.17264187332977476
+    ],
+    "rotation": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "scale": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "material": {
+     "preset": "glow",
+     "color": "#b8ffc8",
+     "glow": 1.0,
+     "opacity": 0.7
+    }
+   },
+   {
+    "shape": "sphere",
+    "args": [
+     0.09
+    ],
+    "profile": [],
+    "position": [
+     -0.0980521642681399,
+     0.98,
+     -0.17431515448271764
+    ],
+    "rotation": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "scale": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "material": {
+     "preset": "glow",
+     "color": "#b8ffc8",
+     "glow": 1.0,
+     "opacity": 0.7
+    }
+   },
+   {
+    "shape": "sphere",
+    "args": [
+     0.05
+    ],
+    "profile": [],
+    "position": [
+     0.19997172727668303,
+     1.02,
+     0.0033627800968701205
+    ],
+    "rotation": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "scale": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "material": {
+     "preset": "glow",
+     "color": "#b8ffc8",
+     "glow": 1.0,
+     "opacity": 0.7
+    }
+   },
+   {
+    "shape": "cone",
+    "args": [
+     0.07,
+     0.3
+    ],
+    "profile": [],
+    "position": [
+     0.36,
+     0.08,
+     0.0
+    ],
+    "rotation": [
+     0.0,
+     0.0,
+     -0.5
+    ],
+    "scale": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "material": {
+     "preset": "dark",
+     "color": "#26232d",
+     "glow": 0.0,
+     "opacity": 1.0
+    }
+   },
+   {
+    "shape": "cone",
+    "args": [
+     0.07,
+     0.3
+    ],
+    "profile": [],
+    "position": [
+     -0.18174459765594872,
+     0.08,
+     0.31075537199359454
+    ],
+    "rotation": [
+     0.43160468332443686,
+     0.0,
+     0.2524230522999288
+    ],
+    "scale": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "material": {
+     "preset": "dark",
+     "color": "#26232d",
+     "glow": 0.0,
+     "opacity": 1.0
+    }
+   },
+   {
+    "shape": "cone",
+    "args": [
+     0.07,
+     0.3
+    ],
+    "profile": [],
+    "position": [
+     -0.17649389568265178,
+     0.08,
+     -0.31376727806889176
+    ],
+    "rotation": [
+     -0.4357878862067941,
+     0.0,
+     0.2451304106703497
+    ],
+    "scale": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "material": {
+     "preset": "dark",
+     "color": "#26232d",
+     "glow": 0.0,
+     "opacity": 1.0
+    }
+   },
+   {
+    "shape": "torus",
+    "args": [
+     0.5,
+     0.02
+    ],
+    "profile": [],
+    "position": [
+     0.0,
+     0.42,
+     0.0
+    ],
+    "rotation": [
+     1.5707963267948966,
+     0.0,
+     0.0
+    ],
+    "scale": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "material": {
+     "preset": "trim",
+     "color": "",
+     "glow": 0.0,
+     "opacity": 1.0
+    }
+   },
+   {
+    "shape": "torus",
+    "args": [
+     0.5,
+     0.025
+    ],
+    "profile": [],
+    "position": [
+     0.0,
+     1.18,
+     0.0
+    ],
+    "rotation": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "scale": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "material": {
+     "preset": "metal",
+     "color": "#3d3a46",
+     "glow": 0.0,
+     "opacity": 1.0
+    }
+   },
+   {
+    "shape": "cylinder",
+    "args": [
+     0.07,
+     0.07,
+     0.85
+    ],
+    "profile": [],
+    "position": [
+     -0.05,
+     0.010000000000000009,
+     0.0
+    ],
+    "rotation": [
+     0.0,
+     0.0,
+     1.3207963267948966
+    ],
+    "scale": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "material": {
+     "preset": "wood",
+     "color": "#4b2f1f",
+     "glow": 0.0,
+     "opacity": 1.0
+    }
+   },
+   {
+    "shape": "cylinder",
+    "args": [
+     0.07,
+     0.07,
+     0.85
+    ],
+    "profile": [],
+    "position": [
+     0.05,
+     0.13,
+     0.0
+    ],
+    "rotation": [
+     0.0,
+     0.0,
+     1.8207963267948966
+    ],
+    "scale": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "material": {
+     "preset": "wood",
+     "color": "#4b2f1f",
+     "glow": 0.0,
+     "opacity": 1.0
+    }
+   },
+   {
+    "shape": "cylinder",
+    "args": [
+     0.62,
+     0.66,
+     0.05
+    ],
+    "profile": [],
+    "position": [
+     0.0,
+     0.025,
+     0.0
+    ],
+    "rotation": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "scale": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "material": {
+     "preset": "stone",
+     "color": "#6c6478",
+     "glow": 0.0,
+     "opacity": 1.0
+    }
+   },
+   {
+    "shape": "sphere",
+    "args": [
+     0.08
+    ],
+    "profile": [],
+    "position": [
+     0.0,
+     0.12,
+     0.0
+    ],
+    "rotation": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "scale": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "material": {
+     "preset": "glow",
+     "color": "#ff7a2a",
+     "glow": 1.6,
+     "opacity": 0.9
+    }
+   }
+  ],
+  "lights": [
+   {
+    "color": "#7dff9a",
+    "intensity": 3.0,
+    "distance": 6.0,
+    "position": [
+     0.0,
+     1.0,
+     0.0
+    ]
+   },
+   {
+    "color": "#ff8a3a",
+    "intensity": 2.5,
+    "distance": 5.0,
+    "position": [
+     0.0,
+     0.2,
+     0.0
+    ]
+   }
+  ],
+  "motion": "none",
+  "on_complete": "pulse",
+  "tags": [
+   "fairytale",
+   "magic",
+   "kitchen"
+  ]
+ },
+ "meta": {
+  "source": "hand-authored seed",
+  "status": "approved"
+ }
+}

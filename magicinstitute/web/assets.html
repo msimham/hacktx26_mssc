@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Magic Institute for Societal Safety · Asset Library</title>
+<link rel="stylesheet" href="site.css">
+<style>
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:14px; }
+  .asset { background:var(--panel); border:1px solid #ffd16622; border-radius:16px; overflow:hidden; }
+  .asset canvas { width:100%; height:200px; display:block; background:radial-gradient(circle at 50% 30%,#4a2f7a,#1b1038); }
+  .asset .meta { padding:10px 12px 12px; } .asset b { display:block; color:var(--gold); } .asset small { color:var(--muted); }
+  .row { display:flex; gap:8px; margin-top:8px; flex-wrap:wrap; } .row button { padding:6px 12px; border-radius:999px; border:1px solid #ffd16688; background:none; color:var(--ink); cursor:pointer; font:inherit; font-size:12px; }
+  .row button.go { background:linear-gradient(135deg,var(--gold),var(--pink)); color:#2a1647; border:0; font-weight:bold; } .row button.bad { border-color:#ff8a8a88; color:#ffb3b3; }
+  h2 { margin-top:34px; } .count { color:var(--muted); font-size:14px; font-weight:normal; }
+  main.wrap { padding-top:40px; }
+</style>
+<script type="importmap">{ "imports": { "three": "/vendor/three/build/three.module.js", "three/addons/": "/vendor/three/examples/jsm/" } }</script>
+</head>
+<body>
+<header class="nav"><a class="brand" href="/">✨ Magic Institute for Societal Safety</a><nav><a href="/play.html">Play</a><a class="btn small" href="/assets.html">Asset library</a></nav></header>
+<main class="wrap">
+  <h1 style="color:var(--gold)">Asset library</h1>
+  <p class="muted">Every prop the agents can place. <b>Candidates</b> are new assets an agent designed that passed the quality bar: keep the ones that look good and later stories will reuse them. Hover a card to see it turn; press <i>react</i> to preview how it answers when a step is completed.</p>
+  <h2>Candidates awaiting review <span class="count" id="n-cand"></span></h2><div class="grid" id="candidates"></div>
+  <h2>Approved library <span class="count" id="n-lib"></span></h2><div class="grid" id="library"></div>
+  <h2>Built-in props <span class="count" id="n-built"></span></h2><div class="grid" id="builtin"></div>
+</main>
+<script type="module" src="assets.js"></script>
+</body>
+</html>

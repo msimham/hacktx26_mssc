@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Magic Institute for Societal Safety · Play</title>
+<link rel="stylesheet" href="style.css">
+<script type="importmap">
+{ "imports": { "three": "/vendor/three/build/three.module.js", "three/addons/": "/vendor/three/examples/jsm/" } }
+</script>
+</head>
+<body>
+<canvas id="view"></canvas>
+
+<section id="setup" class="panel">
+  <h1>✨ Magic Institute for Societal Safety</h1>
+  <p class="sub">Pick your story. We'll build the world, and you'll play its heroine, learning a real skill inside it.</p>
+  <label>Topic <input id="topic" value="fire safety"></label>
+  <label>Audience <input id="audience" value="college students"></label>
+  <label>World <input id="world" value="Sleeping Beauty"></label>
+  <fieldset>
+    <legend>Social level</legend>
+    <label class="radio"><input type="radio" name="level" value="1"> 1 · Self</label>
+    <label class="radio"><input type="radio" name="level" value="2"> 2 · Friends / team</label>
+    <label class="radio"><input type="radio" name="level" value="3" checked> 3 · Community</label>
+  </fieldset>
+  <details id="circle">
+    <summary>Optional: your circle, for finding groups later</summary>
+    <label>School <input id="school" placeholder="e.g. UT Austin" autocomplete="off"></label>
+    <label>Workplace or club <input id="org" autocomplete="off"></label>
+    <label>City <input id="city" placeholder="e.g. Austin, Texas" autocomplete="off"></label>
+    <p class="sub">Nothing is searched or sent until you press <b>Find your people</b> at the end.</p>
+    <div id="fbrow" hidden>
+      <button type="button" id="fbconnect" class="alt">Connect Facebook (optional)</button>
+      <span id="fbstate" class="sub"></span>
+      <label class="check"><input type="checkbox" id="usefb"> Use my Facebook location or hometown to find nearby groups</label>
+    </div>
+  </details>
+  <button id="go">Weave my world</button>
+  <p id="status" class="sub"></p>
+  <p class="sub"><a href="/assets.html">Asset library</a> · <a href="/">About</a></p>
+</section>
+
+<div id="loading" hidden><span>✧</span><b id="loadtext">Preparing lights &amp; materials…</b></div>
+
+<section id="hud" hidden>
+  <div id="act"></div>
+  <div id="cam"><video id="video" autoplay playsinline muted></video><canvas id="overlay"></canvas><div id="seen">no hand</div></div>
+  <div id="coach"></div>
+  <div id="dock">
+    <div id="hint"></div>
+    <div id="prompt"><span class="step" id="stepline"></span><span id="line"></span><small id="gesture"></small><div id="meter"><i></i></div></div>
+  </div>
+  <div id="toast"></div>
+  <div id="ask">
+    <div id="askpanel" hidden>
+      <div id="askq"></div><div id="aska"></div>
+      <form id="askform"><input id="asktext" maxlength="300" placeholder="Or type a question…" autocomplete="off"><button>Ask</button></form>
+    </div>
+    <button id="askbtn" title="Hold to talk, release to ask. Or press V.">🎤 Ask</button>
+  </div>
+  <div id="tools"><button id="keysbtn">⌨ Controls</button></div>
+  <div id="keys" hidden>
+    <b>Move</b> ↑↓ walk · ←→ turn (or W A S D)<br><b>No camera?</b> Hold a key to perform a gesture:<br>
+    1 grab · 2 point · 3 palm · 4 pinch · 5 wave · 6 thumbs-up · 7 pull · 8 push · 9 sweep · 0 squeeze · Q lift · E swipe · R circle · T peace · Y phone · U trace<br>
+    <b>Question?</b> Hold the 🎤 Ask button (or V) and speak.<br><b>Stuck?</b> Press N after a while to skip a step.
+  </div>
+</section>
+
+<section id="end" class="panel" hidden>
+  <h1>🏰 Happily ever after, and ready for real life</h1>
+  <p id="outro" class="sub"></p>
+  <h3>Skills you practiced</h3><div id="learned"></div>
+  <h3>Take action today</h3><ul id="links"></ul>
+  <h3>Find your people</h3>
+  <p class="sub" id="ladderintro">Next, bring this to your friends, school or work, then to your community. We'll search the public web for real groups, clubs and places.</p>
+  <p class="sub" id="ladderdisclose"></p>
+  <button id="findpeople" class="alt">Find your people</button>
+  <div id="ladder"></div>
+  <div id="newassets" hidden><h3>✨ New assets created for this world</h3><p class="sub">They look good? Keep them in the library so future stories can reuse them.</p><ul id="assetlist"></ul></div>
+  <p id="disclaimer" class="sub"></p>
+  <button id="again">Play again</button>
+</section>
+
+<script type="module" src="player.js"></script>
+</body>
+</html>

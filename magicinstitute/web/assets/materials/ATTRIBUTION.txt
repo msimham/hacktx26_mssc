@@ -1,0 +1,6 @@
+Surface source assets: Poly Haven (CC0).
+Castle Brick 01: https://polyhaven.com/a/castle_brick_01
+Marble 01: https://polyhaven.com/a/marble_01
+License: https://polyhaven.com/license
+Downloaded 1k JPG diffuse, OpenGL normal, and roughness maps from dl.polyhaven.org.
+Maps are used in a stylized scene; wall normal strength and surface colors are adapted in code.

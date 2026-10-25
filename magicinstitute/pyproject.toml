@@ -1,0 +1,9 @@
+[project]
+name = "aep"
+version = "0.1.0"
+description = "Agentic enterprise platform: reusable agent infrastructure that builds themed VR training simulations"
+requires-python = ">=3.11"
+dependencies = ["anthropic", "fastapi", "uvicorn[standard]", "pydantic"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

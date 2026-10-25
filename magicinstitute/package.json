@@ -1,0 +1,9 @@
+{
+  "name": "aep-web",
+  "private": true,
+  "description": "Front-end dependencies for the Magic Institute for Societal Safety player (served from /vendor)",
+  "dependencies": {
+    "three": "0.186.1"
+  },
+  "type": "module"
+}
