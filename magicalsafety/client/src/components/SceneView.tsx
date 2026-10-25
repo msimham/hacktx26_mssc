@@ -2,6 +2,7 @@ import type { LegalAction, PlayerView } from "@magicalsafety/engine";
 import { useEffect, useState } from "react";
 import { artUrl, getArtManifest } from "../api";
 import { RoomArt } from "./RoomArt";
+import { Atmosphere, Characters } from "./SceneLife";
 
 interface Props {
   view: PlayerView;
@@ -23,8 +24,11 @@ export function SceneView({ view, onAct, canClick = true }: Props) {
   return (
     <div key={view.room.id} className="room-enter relative aspect-[16/9] w-full overflow-hidden rounded-xl border border-gold/40 shadow-lg" role="group" aria-label={`Scene: ${view.room.name}`}>
       {/* Hand-made SVG scene always renders underneath; generated art (when cached) covers it, and falls back if it fails to load. */}
-      <RoomArt roomId={view.room.id} gradient={view.room.art.fallbackGradient} />
-      {generated && <img src={artUrl("room", view.worldId, view.room.id)} alt="" onError={() => setBroken((b) => new Set(b).add(artKey))} className="absolute inset-0 h-full w-full object-cover" />}
+      <div className="scene-drift absolute inset-0">
+        <RoomArt roomId={view.room.id} gradient={view.room.art.fallbackGradient} />
+        {generated && <img src={artUrl("room", view.worldId, view.room.id)} alt="" onError={() => setBroken((b) => new Set(b).add(artKey))} className="absolute inset-0 h-full w-full object-cover" />}
+      </div>
+      <Atmosphere alarm={view.alarm} critical={view.condition === "critical"} />
       {generated && <span className="absolute bottom-1 right-2 rounded bg-night/70 px-1.5 text-[10px] text-slate-300" title="Pre-generated with Muse Image and cached">Muse art (cached)</span>}
       <div className="absolute left-3 top-3 rounded bg-night/80 px-3 py-1 font-display text-lg text-gold">{view.room.name}</div>
 
@@ -48,15 +52,7 @@ export function SceneView({ view, onAct, canClick = true }: Props) {
         );
       })}
 
-      <ul className="absolute inset-x-0 bottom-2 flex flex-wrap items-end justify-center gap-2 px-3">
-        <li className="rounded-full bg-gold px-3 py-1 text-xs font-bold text-night" aria-label="You">You · {view.you.name}</li>
-        {here.map((a) => (
-          <li key={a.id} className={`rounded-full px-3 py-1 text-xs font-semibold ${a.kind === "npc" ? "bg-slate-200 text-slate-800" : "bg-sky-200 text-slate-900"}`}>
-            {a.kind === "bot" && <span title="Simulated teammate">🤖 </span>}
-            {a.name}{a.roleName && a.kind !== "npc" && a.roleName !== a.name ? ` · ${a.roleName}` : ""}
-          </li>
-        ))}
-      </ul>
+      <Characters view={view} here={here} art={art} />
     </div>
   );
 }

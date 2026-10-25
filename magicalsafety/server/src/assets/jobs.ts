@@ -21,7 +21,11 @@ export function planAssetJobs(cache: ArtCache, model: string, force = false): As
   return jobs;
 }
 
-function job(cache: ArtCache, model: string, key: string, kind: AssetJob["kind"], prompt: string, force: boolean): AssetJob {
+/** One shared look for every image: polished animated-fairytale-film lighting, kept free of text and of any studio's characters. */
+export const ART_STYLE = "Polished 3D-animated fairytale film look, soft cinematic lighting, rich detail, warm painterly realism, gentle depth of field, no text, no logos";
+
+function job(cache: ArtCache, model: string, key: string, kind: AssetJob["kind"], basePrompt: string, force: boolean): AssetJob {
+  const prompt = `${basePrompt}. ${ART_STYLE}`;
   const hash = promptHash(model, prompt, IMAGE_SIZE);
   return { key, kind, prompt, hash, cached: !force && cache.hashOf(key) === hash };
 }
