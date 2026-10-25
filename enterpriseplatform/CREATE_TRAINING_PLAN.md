@@ -37,7 +37,7 @@ A large free-text box with a placeholder. Suggestion chips below it append their
 | 3 | Who is it for? | New hires · Managers · Healthcare staff · Students · Sales teams |
 | 4 | Which skills matter most? | Communication · Delegation · Decision making · Help-seeking · Conflict resolution · Adaptability |
 | 5 | How many people will take part? | Solo · 2 people · 3–5 people · 6+ people |
-| 6 | How should people interact? | Voice · Text · Computer vision / hand movements |
+| 6 | How should people interact? | Voice · Text · Motion |
 | Review | Here's what you're creating | 6 editable answer cards, then a **Create Training** button |
 
 ## Rules

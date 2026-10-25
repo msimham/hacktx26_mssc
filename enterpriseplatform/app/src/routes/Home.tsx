@@ -9,7 +9,7 @@ const TOPICS = [
 
 const HOW = [
   { emoji: "✍️", title: "Tell us what to train", body: "Say it in your own words. Fire drills, tough conversations, first-week onboarding: anything.", tint: "from-violet-100 to-fuchsia-100" },
-  { emoji: "🎬", title: "We help you build your agent", body: "Your own training agent builds a playable simulation your people step into together, by voice, text or hand movements.", tint: "from-rose-100 to-orange-100" },
+  { emoji: "🎬", title: "We help you build your agent", body: "Your own training agent builds a playable simulation your people step into together, by voice, text or motion.", tint: "from-rose-100 to-orange-100" },
   { emoji: "🌱", title: "Everyone practices, everyone grows", body: "The agent watches how each person handled it, spots the gaps, and adapts the next simulation.", tint: "from-emerald-100 to-sky-100" },
 ];
 

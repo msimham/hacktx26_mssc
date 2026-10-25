@@ -46,8 +46,8 @@ export const STEPS = [
     id: "interaction",
     emoji: "🎙️",
     question: "How should people interact?",
-    placeholder: "e.g. Mostly voice, with hand movements for actions",
-    chips: ["Voice", "Text", "Computer vision / hand movements"],
+    placeholder: "e.g. Mostly voice, with motion for actions",
+    chips: ["Voice", "Text", "Motion"],
   },
 ] as const satisfies readonly Step[];
 
