@@ -45,6 +45,7 @@ export function Home() {
           The secure platform for custom training simulation agents
         </p>
         <h1 className="font-display text-5xl font-extrabold leading-[1.05] tracking-tight sm:text-7xl">
+          <span className="bg-gradient-to-r from-violet-600 via-fuchsia-500 to-orange-400 bg-clip-text text-transparent">TALE:</span>{" "}
           Build a{" "}
           <span className="bg-gradient-to-r from-violet-600 via-fuchsia-500 to-orange-400 bg-clip-text text-transparent">
             training simulation agent
