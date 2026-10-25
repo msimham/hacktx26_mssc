@@ -19,7 +19,7 @@ export function WizardShell({ label, progress, accent = ACCENTS[0]!, children, f
       <div className="relative mx-auto flex min-h-screen max-w-2xl flex-col px-4 py-6 sm:py-10">
         <header className="mb-8">
           <div className="mb-3 flex items-center justify-between text-sm">
-            <Link to="/" className="font-display font-extrabold tracking-tight">Training Studio ✨</Link>
+            <Link to="/" className="font-display font-extrabold tracking-tight">TALE ✨</Link>
             <span className={`rounded-full px-3 py-1 font-medium ${accent.badge}`}>{label}</span>
           </div>
           {progress && (

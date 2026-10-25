@@ -13,6 +13,13 @@ const HOW = [
   { emoji: "🌱", title: "Everyone practices, everyone grows", body: "The agent watches how each person handled it, spots the gaps, and adapts the next simulation.", tint: "from-emerald-100 to-sky-100" },
 ];
 
+const TRUST = [
+  { emoji: "🔒", title: "Private by design", body: "Your scenarios, transcripts and results are visible only to your organization." },
+  { emoji: "🛂", title: "You control access", body: "Decide who can create simulations, who can play them, and who can see results." },
+  { emoji: "🗂️", title: "Your data stays yours", body: "Your training content is never shared with other organizations." },
+  { emoji: "🏢", title: "Built for teams at scale", body: "From one department to the whole organization, with one consistent experience." },
+];
+
 const EXAMPLES = [
   { emoji: "🔥", title: "Fire safety", line: "A night shift, an alarm, and a blocked exit.", train: "Fire safety", tint: "bg-rose-500" },
   { emoji: "💊", title: "Drug response", line: "A suspected overdose. Who does what, and how fast?", train: "Drug response", tint: "bg-violet-500" },
@@ -24,7 +31,7 @@ export function Home() {
   return (
     <div className="overflow-x-clip">
       <header className="mx-auto flex max-w-5xl items-center justify-between px-4 py-5">
-        <span className="font-display text-lg font-extrabold tracking-tight">Training Studio ✨</span>
+        <span className="font-display text-lg font-extrabold tracking-tight">TALE ✨ <span className="hidden text-sm font-semibold text-slate-500 sm:inline">Training Agents for Learning Experiences</span></span>
         <Link to="/create" className="text-sm font-medium text-violet-700 hover:underline">Start creating</Link>
       </header>
 
@@ -35,7 +42,7 @@ export function Home() {
           <div className="absolute bottom-0 left-1/3 size-44 animate-float rounded-full bg-sky-300/50 blur-2xl [animation-delay:-4s]" />
         </div>
         <p className="mx-auto mb-5 inline-block rounded-full bg-white px-4 py-1.5 text-sm font-medium text-violet-700 shadow-sm ring-1 ring-violet-100">
-          The agent platform for custom training simulations
+          The secure platform for custom training simulation agents
         </p>
         <h1 className="font-display text-5xl font-extrabold leading-[1.05] tracking-tight sm:text-7xl">
           Build a{" "}
@@ -45,11 +52,11 @@ export function Home() {
           that prepares your people.
         </h1>
         <p className="mx-auto mt-6 max-w-xl text-lg text-slate-600">
-          Describe what your team needs to practice, and Training Studio builds a custom training simulation agent that runs the simulation, plays the other roles and coaches each person. Ready in about a minute.
+          Describe what your team needs to practice, and TALE builds a custom training simulation agent that runs the simulation, plays the other roles and coaches each person. Ready in about a minute.
         </p>
         <div className="mt-9 flex flex-col items-center gap-3">
           <Link to="/create" className={`${buttonPrimary} px-8 py-4 text-lg`}>+ Create Training Simulation Agent</Link>
-          <span className="text-sm text-slate-500">5 quick questions. No setup.</span>
+          <span className="text-sm text-slate-500">5 quick questions. Private to your organization.</span>
         </div>
         <p aria-hidden className="mt-14 animate-bounce text-sm text-slate-400">scroll to see how it works ↓</p>
       </section>
@@ -108,12 +115,38 @@ export function Home() {
         </div>
       </section>
 
-      <section className="px-4 py-24 text-center">
+      <section className="mx-auto max-w-5xl px-4 py-20">
+        <Reveal>
+          <p className="text-center text-sm font-semibold uppercase tracking-widest text-violet-600">Enterprise-ready</p>
+          <h2 className="mt-2 text-center font-display text-3xl font-extrabold tracking-tight sm:text-5xl">Playful for your people. Serious about your data.</h2>
+        </Reveal>
+        <ul className="mt-12 grid gap-5 sm:grid-cols-2">
+          {TRUST.map((t, i) => (
+            <li key={t.title}>
+              <Reveal delay={i * 100}>
+                <div className="flex h-full gap-4 rounded-3xl border border-violet-100 bg-white p-6 shadow-sm">
+                  <span aria-hidden className="text-3xl">{t.emoji}</span>
+                  <div>
+                    <h3 className="font-display text-lg font-extrabold">{t.title}</h3>
+                    <p className="mt-1 text-slate-600">{t.body}</p>
+                  </div>
+                </div>
+              </Reveal>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section className="px-4 pb-24 pt-4 text-center">
         <Reveal>
           <h2 className="font-display text-4xl font-extrabold tracking-tight sm:text-6xl">Ready to make your first training simulation agent? 🚀</h2>
           <Link to="/create" className={`${buttonPrimary} mt-8 inline-block px-8 py-4 text-lg`}>+ Create Training Simulation Agent</Link>
         </Reveal>
       </section>
+
+      <footer className="border-t border-violet-100 px-4 py-8 text-center text-sm text-slate-500">
+        <strong className="font-display text-slate-700">TALE</strong>: Training Agents for Learning Experiences
+      </footer>
     </div>
   );
 }
