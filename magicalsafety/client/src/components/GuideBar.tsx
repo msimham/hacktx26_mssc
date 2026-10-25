@@ -49,13 +49,13 @@ export function GuideBar({ view, onHint, note, onSkipNote, onStoryDone, children
     if (hint && view.phase !== "ended") return { text: `Hint: try "${hint.label}".`, tone: "nudge" as const };
     return guideSays(view, guide);
   }, [inStory, introIdx, view, guide, hint, note]);
-  const spoken = useRef("");
+  const [blocked, setBlocked] = useState(false);
+  // Speak each new line. The timer (cleared by the effect's cleanup) makes this safe under StrictMode's double run in development.
   useEffect(() => {
-    if (!autoRead || spoken.current === line.text) return;
-    spoken.current = line.text;
-    speak(line.text);
+    if (!autoRead) return;
+    const t = setTimeout(() => { void speak(line.text).then((ok) => setBlocked(!ok)); }, 150);
+    return () => clearTimeout(t);
   }, [autoRead, line.text]);
-  useEffect(() => () => stopSpeaking(), []);
   const storyDone = useRef(false);
   useEffect(() => { if (!inStory && !storyDone.current) { storyDone.current = true; onStoryDone?.(); } }, [inStory, onStoryDone]);
 
@@ -67,6 +67,7 @@ export function GuideBar({ view, onHint, note, onSkipNote, onStoryDone, children
       <div className={`guide-bubble relative min-w-0 flex-1 rounded-2xl bg-parchment px-4 py-3 text-ink shadow ring-2 ${ring}`} role="status" aria-live="polite">
         <div className="text-[11px] font-bold uppercase tracking-wide text-night/60">{guide.name}</div>
         <p className="text-base leading-snug sm:text-lg">{line.text}</p>
+        {blocked && autoRead && <p role="status" className="mt-1 text-xs text-night/70">🔇 Your browser didn't start the voice yet. Click “🔊 Read” once to turn it on.</p>}
       </div>
       <div className="flex shrink-0 flex-col items-stretch gap-2">
         {inStory ? (
@@ -88,8 +89,8 @@ export function GuideBar({ view, onHint, note, onSkipNote, onStoryDone, children
         )}
         {canSpeak() && (
           <div className="flex gap-1 text-xs">
-            <button type="button" onClick={() => speak(line.text)} className="rounded bg-white/10 px-2 py-1" aria-label={`Read ${guide.name}'s words aloud`}>🔊 Read</button>
-            <button type="button" aria-pressed={autoRead} onClick={() => { setAutoRead((a) => !a); stopSpeaking(); spoken.current = ""; }} className={`rounded px-2 py-1 ${autoRead ? "bg-gold text-night" : "bg-white/10"}`}>Auto</button>
+            <button type="button" onClick={() => { void speak(line.text).then((ok) => setBlocked(!ok)); }} className="rounded bg-white/10 px-2 py-1" aria-label={`Read ${guide.name}'s words aloud`}>🔊 Read</button>
+            <button type="button" aria-pressed={autoRead} onClick={() => { setAutoRead((a) => !a); stopSpeaking(); setBlocked(false); }} className={`rounded px-2 py-1 ${autoRead ? "bg-gold text-night" : "bg-white/10"}`}>Auto</button>
           </div>
         )}
       </div>

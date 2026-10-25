@@ -4,6 +4,7 @@ import { viewFor } from "@magicalsafety/engine";
 import { Driver } from "@magicalsafety/engine/testing";
 import { makeInit } from "@magicalsafety/engine/testing/scenarios";
 import { Crosshair } from "../components/Popups";
+import { TaskGestureBox } from "../components/TaskGestureBox";
 import { FirstPersonView } from "../world3d/FirstPersonView";
 import { promptFor } from "../world3d/interactions";
 import type { Spot } from "../world3d/layout";
@@ -21,6 +22,7 @@ export function Preview3D() {
   return (
     <div className="relative h-dvh w-full bg-black">
       <FirstPersonView view={view} art={new Set()} paused={false} focusId={null} onTarget={setTarget} onInteract={() => undefined} onExit={() => undefined} onUnsupported={() => document.title = "NO-WEBGL"} />
+      <div className="absolute right-3 top-3 z-20"><TaskGestureBox onPose={() => undefined} /></div>
       <Crosshair prompt={target ? promptFor(target.kind, target.label) : null} />
       <div className="absolute left-3 top-3 rounded bg-night/80 px-3 py-1 font-display text-gold">{view.room.name}</div>
     </div>

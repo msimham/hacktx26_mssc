@@ -202,7 +202,7 @@ export function Game() {
         {toast && <p role="alert" className="ack absolute left-1/2 top-14 z-30 max-w-md -translate-x-1/2 rounded-lg bg-rose-900/90 px-3 py-2 text-sm shadow">{toast}</p>}
         <Bubbles view={view} />
 
-        {methods.has("gesture") && view.phase !== "ended" && (
+        {view.phase !== "ended" && (
           <div className="absolute right-3 top-3 z-20">
             {flat ? <GestureControl legal={view.legal} onAct={act} onGesture={onGesture2D} onCamera={onCamera} practice={warm !== null} /> : <TaskGestureBox onPose={onPose} onCamera={onCamera} />}
           </div>

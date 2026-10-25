@@ -9,7 +9,7 @@ const BASE = "/vision";
 
 export interface Tracker { stop(): void; video: HTMLVideoElement }
 export type TrackerError = "no_camera" | "denied" | "no_model" | "failed";
-export class TrackerFailure extends Error { constructor(public kind: TrackerError) { super(kind); } }
+export class TrackerFailure extends Error { constructor(public kind: TrackerError, public detail = "") { super(kind); } }
 
 export function cameraAvailable(): boolean {
   return typeof navigator !== "undefined" && !!navigator.mediaDevices?.getUserMedia && (typeof window === "undefined" || window.isSecureContext);
@@ -19,7 +19,8 @@ export function cameraAvailable(): boolean {
 export async function startTracker(video: HTMLVideoElement, onFrame: (lm: Landmarks | null, now: number) => void): Promise<Tracker> {
   if (!cameraAvailable()) throw new TrackerFailure("no_camera");
   const head = await fetch(`${BASE}/hand_landmarker.task`, { method: "HEAD" }).catch(() => null);
-  if (!head?.ok) throw new TrackerFailure("no_model");
+  const looksLikeModel = !!head?.ok && !/text\/html/i.test(head.headers.get("content-type") ?? ""); // a server that answers every URL with the page is not a model file
+  if (!looksLikeModel) throw new TrackerFailure("no_model");
 
   let stream: MediaStream;
   try { stream = await navigator.mediaDevices.getUserMedia({ video: { width: 320, height: 240, facingMode: "user" }, audio: false }); }
@@ -32,7 +33,7 @@ export async function startTracker(video: HTMLVideoElement, onFrame: (lm: Landma
     const landmarker = await HandLandmarker.createFromOptions(fileset, { baseOptions: { modelAssetPath: `${BASE}/hand_landmarker.task` }, runningMode: "VIDEO", numHands: 1 });
     video.srcObject = stream;
     video.muted = true;
-    await video.play();
+    try { await video.play(); } catch (e) { if ((e as DOMException)?.name !== "AbortError") throw e; await video.play(); } // a quick restart can interrupt the first play(); try once more
     let stopped = false, last = 0, lastVideoTime = -1;
     const loop = () => {
       if (stopped) return;
@@ -45,8 +46,10 @@ export async function startTracker(video: HTMLVideoElement, onFrame: (lm: Landma
     };
     requestAnimationFrame(loop);
     return { video, stop() { stopped = true; stopStream(); video.srcObject = null; landmarker.close(); } };
-  } catch {
+  } catch (e) {
     stopStream();
-    throw new TrackerFailure("failed");
+    const detail = e instanceof Error ? e.message.slice(0, 120) : "unknown error";
+    console.error("[hands] could not start the hand tracker:", e); // visible in the browser console for diagnosis
+    throw new TrackerFailure("failed", detail);
   }
 }

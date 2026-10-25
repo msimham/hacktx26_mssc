@@ -1,3 +1,4 @@
+import { PreviewCam } from "./routes/PreviewCam";
 import { Preview3D } from "./routes/Preview3D";
 import { Route, Routes } from "react-router-dom";
 import { StatusPopover } from "./components/StatusPopover";
@@ -23,6 +24,7 @@ export function App() {
       <Route path="/builder" element={<BuilderPage />} />
       <Route path="/setup" element={<SetupPage />} />
       <Route path="/inspector/:sessionId" element={<InspectorPage />} />
+      {import.meta.env.DEV && <Route path="/previewcam" element={<PreviewCam />} />}
       {import.meta.env.DEV && <Route path="/preview3d" element={<Preview3D />} />}
       <Route path="*" element={<p className="p-6">Page not found. <a className="underline" href="/">Home</a></p>} />
     </Routes>

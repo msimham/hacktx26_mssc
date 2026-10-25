@@ -21,6 +21,8 @@ export function TaskGestureBox({ onPose, onCamera }: { onPose: (pose: TaskPose) 
   const [state, setState] = useState<"off" | "starting" | "on">("off");
   const [error, setError] = useState<string | null>(null);
   const [seen, setSeen] = useState<{ pose: TaskPose; value: number } | null>(null);
+  const [hand, setHand] = useState(false);
+  const handRef = useRef(false);
 
   const handle = (evs: TaskEvent[]) => {
     for (const e of evs) {
@@ -34,9 +36,9 @@ export function TaskGestureBox({ onPose, onCamera }: { onPose: (pose: TaskPose) 
     if (!video.current) return;
     setError(null); setState("starting");
     try {
-      tracker.current = await startTracker(video.current, (lm, now) => { if (lm?.[0]) setLook((0.5 - lm[0].x) * 2, (lm[0].y - 0.5) * 2, now); handle(gestures.current.feed(lm, now)); });
+      tracker.current = await startTracker(video.current, (lm, now) => { const found = !!lm?.[0]; if (found !== handRef.current) { handRef.current = found; setHand(found); } if (lm?.[0]) setLook((0.5 - lm[0].x) * 2, (lm[0].y - 0.5) * 2, now); handle(gestures.current.feed(lm, now)); });
       setState("on"); onCamera?.(true);
-    } catch (e) { setError(WHY[e instanceof TrackerFailure ? e.kind : "failed"]!); setState("off"); }
+    } catch (e) { const f = e instanceof TrackerFailure ? e : null; setError(`${WHY[f?.kind ?? "failed"]!}${f?.detail ? ` (${f.detail})` : ""}`); setState("off"); }
   };
   useEffect(() => () => { tracker.current?.stop(); }, []);
 
@@ -48,6 +50,7 @@ export function TaskGestureBox({ onPose, onCamera }: { onPose: (pose: TaskPose) 
       </div>
       <video ref={video} playsInline muted className={state === "on" ? "mt-1 w-full -scale-x-100 rounded" : "hidden"} />
       {state === "on" && <p className="mt-1 rounded bg-rose-700 px-1 text-[10px]" role="status">● Camera on this device only</p>}
+      {state === "on" && <p className={`mt-1 rounded px-1 text-[11px] ${hand ? "bg-emerald-700" : "bg-white/10"}`} role="status">{hand ? "✋ I can see your hand" : "No hand yet: hold one up, about 40 cm from the camera, in good light"}</p>}
       {seen && (
         <div className="mt-1" aria-live="polite">
           <div className="flex items-center gap-1"><span className="text-lg">{POSE_ICON[seen.pose as Exclude<TaskPose, "none">]}</span><span className="text-[11px]">{POSE_MEANING[seen.pose as Exclude<TaskPose, "none">]}</span></div>
