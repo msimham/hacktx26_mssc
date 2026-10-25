@@ -176,3 +176,8 @@ Sessions are persisted as **(config, seed, ordered input log)**, not as derived 
 - **The guide** (Gus the mouse in the castle, Professor Hoot the owl on campus) tells the story once, then gives one nudge at a time. All guide text is authored by hand (`client/src/guide/guides.ts`), never model-generated. It points at the team's next unfinished goal and the player's own role, **not at the exact button**, so working out the right move stays part of what is assessed.
 - **Reading aloud** uses the browser's speech synthesis. The verified Meta API facts include speech-to-text (Muse Voice Transcribe, the microphone) but no text-to-speech model, so no Muse TTS is called (`TODO(VERIFY)` in `guide/speak.ts`). The microphone button sits in the guide bar.
 - **Camera box** is a small corner overlay on the scene.
+
+## Hints, and a short results page
+
+- **Hints cost points.** A new `hint` action is always allowed while the game runs. It records a `hint_used` event (so it is in the replay and the verified log) and highlights the next step the simulated teammates' own rules would take for this player's role, only if that step is still legal. The "Hint" button is in the guide bar. A new metric `hints_used` is available to organizer rubrics too. The results page takes **5 points off the overall score per hint** and says so.
+- **Results are summarized by skill.** The top of the results page shows the six skills that were measured, each as strong / getting there / needs practice with one "Try:" line (the interpretation's own advice when it has some, otherwise a short authored tip). The play-by-play, measurements, goals and per-person cards are still there, folded into "Full details". Skills nothing was measured for are left out.

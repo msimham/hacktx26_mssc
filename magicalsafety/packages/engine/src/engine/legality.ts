@@ -150,6 +150,7 @@ export function checkAction(s: RuntimeState, actor: Actor, action: Action): Chec
       if (!r.some((a) => !a.facts.includes(action.factId))) return no("Everyone who can hear you already knows");
       return yes();
     }
+    case "hint": return yes();
     case "introduce":
       if (s.config.socialEnvironment !== "strangers") return no("Everyone already knows each other");
       if (actor.introduced) return no("You have already introduced yourself");
@@ -205,6 +206,7 @@ export function actionKey(a: Action): string {
     case "inspect": return `inspect:${a.targetId}`;
     case "say": return `say:${a.to}`;
     case "introduce": return "introduce";
+    case "hint": return "hint";
     case "share_fact": return `share:${a.factId}:${a.to}`;
     case "delegate": return `delegate:${a.targetId}:${a.taskId}`;
     case "accept_delegation": return `accept:${a.assignmentId}`;

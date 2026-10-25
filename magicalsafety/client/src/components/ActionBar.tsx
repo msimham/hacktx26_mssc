@@ -14,6 +14,7 @@ function Btn({ la, onAct, canClick = true, showKeys = true }: { la: LegalAction;
     <button
       type="button"
       disabled={!canClick}
+      data-key={la.key}
       onClick={() => onAct(la)}
       title={la.realWorld ? `Real-world equivalent: ${la.realWorld}` : la.label}
       className="flex items-center gap-2 rounded-lg bg-night-2 px-3 py-2 text-left text-sm ring-1 ring-white/10 transition hover:bg-night-2/60 hover:ring-gold disabled:cursor-default disabled:hover:ring-white/10"

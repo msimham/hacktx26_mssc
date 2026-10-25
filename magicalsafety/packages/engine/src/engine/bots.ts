@@ -107,7 +107,7 @@ export function botTurn(s: RuntimeState): ActionRequest[] {
   return out;
 }
 
-function nextDuty(s: RuntimeState, bot: Actor): Action | null {
+export function nextDuty(s: RuntimeState, bot: Actor): Action | null {
   // 1. Share what only I know.
   for (const f of bot.facts) {
     if (bot.sharedFacts.includes(f)) continue;

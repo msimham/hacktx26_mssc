@@ -11,9 +11,9 @@ import {
   actors, AUTO_ACCEPT_MS, cloneState, curAct, emit, flushEvents, grantFact, isAutonomous,
   playersOnly, slotRoom, stepRoom,
 } from "./core";
-import { checkAction, factsRideAlong, neededFacts, recipients, stepDurationMs, stepForAction } from "./legality";
+import { actionKey, checkAction, factsRideAlong, neededFacts, recipients, stepDurationMs, stepForAction } from "./legality";
 import { handlerFor, handlerOf } from "./handlers";
-import { botLine } from "./bots";
+import { botLine, nextDuty } from "./bots";
 
 export interface PlayerInit {
   id: string;
@@ -401,6 +401,12 @@ function handle(s: RuntimeState, req: ActionRequest): void {
         if (grantFact(s, h, action.factId)) emit(s, { type: "fact_shared", actor, payload: { factId: action.factId, to: h.id, via: "tell" } });
       }
       if (!actor.sharedFacts.includes(action.factId)) actor.sharedFacts.push(action.factId);
+      break;
+    }
+    case "hint": {
+      // The same reasoning the simulated teammates use for "what should I do next", offered to a person at a cost.
+      const next = nextDuty(s, actor);
+      emit(s, { type: "hint_used", actor, payload: { suggestion: next ? actionKey(next) : null } });
       break;
     }
     case "introduce":

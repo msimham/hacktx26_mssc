@@ -49,3 +49,6 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 @keyframes guide-blink { 0%, 94%, 100% { transform: scaleY(1); } 97% { transform: scaleY(0.1); } }
 .guide-bubble::before { content: ""; position: absolute; left: -8px; top: 50%; width: 16px; height: 16px; background: inherit; transform: translateY(-50%) rotate(45deg); border-radius: 3px; }
 @media (prefers-reduced-motion: reduce) { .guide-avatar, .guide-blink { animation: none; } }
+
+@keyframes hint-pulse { 0%, 100% { outline-color: #fcd34d; } 50% { outline-color: transparent; } }
+@media (prefers-reduced-motion: reduce) { [data-key] { animation: none !important; } }

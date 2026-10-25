@@ -4,7 +4,7 @@ import { Competency } from "./assessment";
 /** Metrics an organization may build its rubric on. */
 export const MetricKey = z.enum([
   "succeeded", "time_to_notice_ms", "time_to_help_request_ms", "time_to_resource_ms", "max_action_share",
-  "delegations_issued", "helper_utilization", "info_shared_ratio", "priority_order_ok", "rejected_actions", "redundant_efforts",
+  "delegations_issued", "helper_utilization", "info_shared_ratio", "priority_order_ok", "rejected_actions", "redundant_efforts", "hints_used",
   // Evacuation (act 2)
   "time_to_headcount_ms", "rooms_swept_ratio", "blocked_exit_used",
 ]);
@@ -32,6 +32,7 @@ export const INDICATOR_INFO: Record<MetricKey, IndicatorInfo> = {
   helper_utilization: { label: "How much available helpers were used", kind: "ratio", directions: ["at_least"], defaultDirection: "at_least", defaultTarget: 0.2, min: 0, max: 1 },
   info_shared_ratio: { label: "Private information that reached the team", kind: "ratio", directions: ["at_least"], defaultDirection: "at_least", defaultTarget: 0.8, min: 0, max: 1 },
   priority_order_ok: { label: "Help was called before distractions", kind: "bool", directions: ["is_true", "is_false"], defaultDirection: "is_true", defaultTarget: 0, min: 0, max: 0 },
+  hints_used: { label: "Hints asked for", kind: "count", directions: ["at_most"], defaultDirection: "at_most", defaultTarget: 0, min: 0, max: 20 },
   rejected_actions: { label: "Actions the rules rejected (confusion)", kind: "count", directions: ["at_most"], defaultDirection: "at_most", defaultTarget: 2, min: 0, max: 50 },
   redundant_efforts: { label: "Work done twice", kind: "count", directions: ["at_most"], defaultDirection: "at_most", defaultTarget: 0, min: 0, max: 20 },
   time_to_headcount_ms: { label: "Evacuation: time to a complete headcount", kind: "time", directions: ["at_most"], defaultDirection: "at_most", defaultTarget: 120_000, min: 10_000, max: 300_000 },

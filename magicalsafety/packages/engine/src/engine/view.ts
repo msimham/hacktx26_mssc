@@ -45,6 +45,9 @@ export interface PlayerView {
     facts: { id: string; text: string }[];
     inventory: string[];
     busy: { label: string; completeT: number } | null;
+    /** The most recent hint you asked for, while it still applies. */
+    hint: { key: string; label: string } | null;
+    hintsUsed: number;
     staying: boolean;
     introduced: boolean;
   };
@@ -138,6 +141,7 @@ function render(s: RuntimeState, e: GameEvent, viewer: Actor): Omit<FeedItem, "i
       if (p.opId === "guest_reached_assembly") return { text: "A guest who needed help has reached safety.", tone: "good" };
       return mine || here ? { text: `${who}: ${L[String(p.opId)] ?? p.opId}`, tone: "info" } : null;
     case "task_failed": return mine ? { text: `That didn't work: ${String(p.reason)}`, tone: "bad" } : null;
+    case "hint_used": return mine ? { text: "You asked for a hint.", tone: "info" } : null;
     case "action_rejected": return mine ? { text: String(p.reason), tone: "bad" } : null;
     case "act_completed":
       if (p.continues === true) return { text: L.narr_beat ?? "Responders take over. Then the alarm sounds…", tone: "good" };
@@ -178,6 +182,8 @@ export function viewFor(s: RuntimeState, playerId: string): PlayerView | null {
       roomId: viewer.roomId,
       facts: viewer.facts.map((id) => ({ id, text: act.facts.find((f) => f.id === id)?.text ?? id })),
       inventory: viewer.inventory.slice(),
+      hint: myHint(s, playerId),
+      hintsUsed: s.events.filter((e) => e.type === "hint_used" && e.actorId === playerId).length,
       busy: viewer.current ? { label: describeStep(L, act, viewer.current.step), completeT: viewer.current.completeT } : null,
       staying: viewer.staying,
       introduced: viewer.introduced,
@@ -206,4 +212,16 @@ export function viewFor(s: RuntimeState, playerId: string): PlayerView | null {
     allowCrossRoomChat: s.config.rules.allowCrossRoomChat,
     inputMethods: s.config.inputMethods.slice(),
   };
+}
+
+/** The latest hint this player asked for, if the suggested action is still something they can do. */
+function myHint(s: RuntimeState, playerId: string): { key: string; label: string } | null {
+  for (let i = s.events.length - 1; i >= 0; i--) {
+    const e = s.events[i]!;
+    if (e.type !== "hint_used" || e.actorId !== playerId) continue;
+    const key = typeof e.payload.suggestion === "string" ? e.payload.suggestion : null;
+    const la = key ? legalActions(s, playerId).find((l) => l.key === key) : undefined;
+    return la ? { key: la.key, label: la.label } : null;
+  }
+  return null;
 }

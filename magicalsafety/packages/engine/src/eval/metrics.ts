@@ -171,6 +171,8 @@ function teamworkMetrics(state: RuntimeState, evs: GameEvent[], ra: RuntimeAct, 
   out.push(m("redundant_efforts", "Work that was already done by someone else when it finished", redundant.length, redundant));
   const rejected = of("action_rejected");
   out.push(m("rejected_actions", "Attempted actions the rules rejected (a confusion signal)", rejected.length, rejected));
+  const hints = of("hint_used");
+  out.push(m("hints_used", "Hints asked for (each one lowers the independence score)", hints.length, hints));
   return out;
 }
 

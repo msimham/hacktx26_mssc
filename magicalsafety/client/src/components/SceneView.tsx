@@ -40,6 +40,7 @@ export function SceneView({ view, onAct, canClick = true }: Props) {
             key={h.id}
             type="button"
             disabled={!enabled}
+            data-key={la?.key}
             onClick={() => la && onAct(la)}
             style={{ left: `${h.x}%`, top: `${h.y}%` }}
             title={h.label}

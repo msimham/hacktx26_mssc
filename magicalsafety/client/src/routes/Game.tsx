@@ -95,7 +95,7 @@ export function Game() {
           </button>
         </div>
         {toast && <p role="alert" className="rounded bg-rose-900/70 p-2 text-sm">{toast}</p>}
-        <GuideBar view={view}>{methods.has("voice") && sessionId ? <VoiceControl sessionId={sessionId} token={loadPlayerBySession(sessionId)?.token ?? ""} legal={view.legal} onSay={(to, text) => void send({ kind: "say", to, text }).then((r) => r && setToast(r))} onAct={act} /> : null}</GuideBar>
+        <GuideBar view={view} onHint={() => void send({ kind: "hint" }).then((r) => r && setToast(r))}>{methods.has("voice") && sessionId ? <VoiceControl sessionId={sessionId} token={loadPlayerBySession(sessionId)?.token ?? ""} legal={view.legal} onSay={(to, text) => void send({ kind: "say", to, text }).then((r) => r && setToast(r))} onAct={act} /> : null}</GuideBar>
         <ActionBar view={view} localT={localT} onAct={act} canClick={methods.has("mouse")} showKeys={methods.has("keyboard")} />
       </div>
       {panel && (

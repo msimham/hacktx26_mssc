@@ -37,12 +37,17 @@ function Avatar({ kind, talking }: { kind: "mouse" | "owl"; talking: boolean }) 
  * The story guide: tells the background once, then gives one short, goal-level nudge at a time.
  * `children` is where the microphone goes, so asking by voice sits right next to the guide.
  */
-export function GuideBar({ view, children }: { view: PlayerView; children?: ReactNode }) {
+export function GuideBar({ view, onHint, children }: { view: PlayerView; onHint?: () => void; children?: ReactNode }) {
   const guide = guideFor(view.worldId);
   const [introIdx, setIntroIdx] = useState(0); // index into the story; past the end means "playing"
   const [autoRead, setAutoRead] = useState(false);
   const inStory = introIdx < guide.intro.length;
-  const line = useMemo(() => (inStory ? { text: guide.intro[introIdx]!, tone: "story" as const } : guideSays(view, guide)), [inStory, introIdx, view, guide]);
+  const hint = view.you.hint;
+  const line = useMemo(() => {
+    if (inStory) return { text: guide.intro[introIdx]!, tone: "story" as const };
+    if (hint && view.phase !== "ended") return { text: `Hint: try "${hint.label}".`, tone: "nudge" as const };
+    return guideSays(view, guide);
+  }, [inStory, introIdx, view, guide, hint]);
   const spoken = useRef("");
   useEffect(() => {
     if (!autoRead || spoken.current === line.text) return;
@@ -54,6 +59,7 @@ export function GuideBar({ view, children }: { view: PlayerView; children?: Reac
   const ring = line.tone === "alert" ? "ring-rose-400/80" : line.tone === "done" ? "ring-emerald-400/70" : "ring-gold/50";
   return (
     <section aria-label={`${guide.name}, your guide`} className="flex items-center gap-3 rounded-xl bg-night-2 p-3">
+      {hint && <style>{`[data-key="${CSS.escape(hint.key)}"]{outline:3px solid #fcd34d;outline-offset:2px;animation:hint-pulse 1.2s ease-in-out infinite}`}</style>}
       <Avatar kind={guide.id} talking={line.tone !== "busy"} />
       <div className={`guide-bubble relative min-w-0 flex-1 rounded-2xl bg-parchment px-4 py-3 text-ink shadow ring-2 ${ring}`} role="status" aria-live="polite">
         <div className="text-[11px] font-bold uppercase tracking-wide text-night/60">{guide.name}</div>
@@ -68,6 +74,11 @@ export function GuideBar({ view, children }: { view: PlayerView; children?: Reac
         ) : (
           <>
             {children}
+            {onHint && view.phase !== "ended" && (
+              <button type="button" onClick={onHint} className="rounded-lg bg-amber-300 px-3 py-2 text-sm font-bold text-night" title="A hint lowers your independence score">
+                💡 Hint{view.you.hintsUsed > 0 ? ` (${view.you.hintsUsed} used)` : ""}
+              </button>
+            )}
             <button type="button" onClick={() => setIntroIdx(0)} className="text-xs text-slate-300 underline">Story again</button>
           </>
         )}

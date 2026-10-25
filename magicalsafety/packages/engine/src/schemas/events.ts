@@ -5,7 +5,7 @@ export const EventType = z.enum([
   "moved", "inspected", "said", "introduced",
   "delegated", "delegation_accepted", "delegation_completed", "help_requested", "help_arrived",
   "resource_fetched", "resource_used", "task_completed", "task_failed", "condition_changed",
-  "action_rejected", "session_ended",
+  "action_rejected", "session_ended", "hint_used",
   // Added beyond the plan's list (see docs/DECISIONS.md): mechanical information transfer.
   "fact_shared",
 ]);

@@ -10,6 +10,8 @@ export const Action = z.discriminatedUnion("kind", [
   z.strictObject({ kind: z.literal("inspect"), targetId: z.string().min(1).max(40) }),
   z.strictObject({ kind: z.literal("say"), text: z.string().trim().min(1).max(300), to: z.string().min(1).max(40) }),
   z.strictObject({ kind: z.literal("introduce") }),
+  /** Ask for a hint. Always allowed while the game runs; every hint is recorded and counts against the player. */
+  z.strictObject({ kind: z.literal("hint") }),
   z.strictObject({ kind: z.literal("share_fact"), factId: z.string().min(1).max(40), to: z.string().min(1).max(40) }),
   z.strictObject({ kind: z.literal("delegate"), targetId: z.string().min(1).max(40), taskId: z.string().min(1).max(40) }),
   z.strictObject({ kind: z.literal("accept_delegation"), assignmentId: z.string().min(1).max(40) }),

@@ -9,6 +9,7 @@ import { EvidenceChip } from "../components/EvidenceChip";
 import { GeneratedBy } from "../components/GeneratedBy";
 import { Recap } from "../components/Recap";
 import { PageSkeleton } from "../components/Skeleton";
+import { summarizeSkills } from "../results/skills";
 
 type Tab = "act1" | "act2" | "change";
 const SHARED_KEYS = ["delegations_issued", "max_action_share", "info_shared_ratio", "centralized", "rejected_actions", "redundant_efforts"];
@@ -52,6 +53,12 @@ export function Results() {
   const others = as.individuals.filter((i) => i.playerId !== a.you);
   const teammates = a.players.filter((p) => p.id !== a.you && p.kind === "human");
 
+  const sum = summarizeSkills({
+    objectives: a.objectives,
+    strengths: [...as.team.strengths, ...(mine ? mine.strengths : [])],
+    improvements: [...as.team.improvements, ...(mine ? mine.improvements : [])],
+    hints: facts.metrics.filter((m) => m.key === "hints_used").reduce((n, m) => n + (typeof m.value === "number" ? m.value : 0), 0),
+  });
   const refById = new Map(a.references.map((r) => [r.id, r]));
   const weightOf = new Map(a.emphasis.map((e) => [e.key, e.weight]));
   // The organization's rubric decides which facts lead. Everything else follows in its usual order.
@@ -90,6 +97,33 @@ export function Results() {
         {locked && <div role="status" className="rounded-xl bg-night-2 p-4 text-sm ring-1 ring-white/15">🔒 <strong>Act 2 locked.</strong> Resolve the emergency to continue. The adapted replay starts again from Act 1, and the evacuation unlocks once a run succeeds.</div>}
       </div>
 
+      <section aria-label="Your skills" className="space-y-3 rounded-xl bg-night-2 p-4">
+        <div className="flex flex-wrap items-baseline gap-3">
+          <h2 className="font-display text-xl text-gold">Skills</h2>
+          {sum.overall !== null && <span className="text-2xl font-bold">{sum.overall}<span className="text-sm font-normal text-slate-400"> / 100</span></span>}
+          <GeneratedBy by={as.generatedBy} />
+        </div>
+        {sum.skills.length === 0 && <p className="text-sm text-slate-300">Nothing stood out either way in this run. Try the adapted run to practice more.</p>}
+        <ul className="grid gap-3 sm:grid-cols-2">
+          {sum.skills.map((k) => (
+            <li key={k.competency} className={`rounded-lg p-3 ring-1 ${k.level === "strong" ? "bg-emerald-950/50 ring-emerald-500/30" : k.level === "growing" ? "bg-amber-950/40 ring-amber-500/30" : "bg-rose-950/40 ring-rose-500/30"}`}>
+              <div className="flex items-center justify-between gap-2">
+                <strong>{COMPETENCY_LABEL[k.competency]}</strong>
+                <span className="text-xs font-semibold">{k.level === "strong" ? "✅ Strong" : k.level === "growing" ? "🟡 Getting there" : "🔴 Needs practice"}</span>
+              </div>
+              {k.tip && <p className="mt-1 text-sm"><span className="text-slate-400">Try: </span>{k.tip}</p>}
+              {k.praise && <p className="mt-1 text-sm text-slate-200">{k.praise}</p>}
+            </li>
+          ))}
+        </ul>
+        <p className="text-sm text-slate-300">
+          {sum.hints === 0 ? "💡 No hints used. You worked it out together." : `💡 ${sum.hints} hint${sum.hints === 1 ? "" : "s"} used (−${sum.hintCost} points). Hints are fine while learning; aim for fewer next time.`}
+        </p>
+      </section>
+
+      <details className="rounded-xl bg-night-2/50 p-3">
+        <summary className="cursor-pointer text-sm font-semibold text-slate-200">Full details: what happened, measurements, goals, per-person notes</summary>
+        <div className="mt-4 space-y-6">
       {twoActs && (
         <div role="tablist" aria-label="Results by act" className="flex gap-2">
           {([["act1", "Act 1: Emergency"], ["act2", "Act 2: Evacuation"], ["change", "Change between acts"]] as const).map(([id, label]) => (
@@ -199,6 +233,9 @@ export function Results() {
           ))}
         </div>
       </section>
+
+        </div>
+      </details>
 
       {a.realWorld.length > 0 && (
         <section aria-label="Real-world equivalents" className="rounded-xl bg-night-2 p-4">
