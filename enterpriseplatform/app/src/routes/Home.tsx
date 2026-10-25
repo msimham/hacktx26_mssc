@@ -57,7 +57,7 @@ export function Home() {
         </p>
         <div className="mt-9 flex flex-col items-center gap-3">
           <Link to="/create" className={`${buttonPrimary} px-8 py-4 text-lg`}>+ Create Training Simulation Agent</Link>
-          <span className="text-sm text-slate-500">5 quick questions. Private to your organization.</span>
+          <span className="text-sm text-slate-500">6 quick questions. Private to your organization.</span>
         </div>
         <p aria-hidden className="mt-14 animate-bounce text-sm text-slate-400">scroll to see how it works ↓</p>
       </section>

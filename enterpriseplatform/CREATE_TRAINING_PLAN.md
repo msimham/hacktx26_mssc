@@ -5,7 +5,7 @@ Frontend-only, first-layer UI for organizations creating a training. No backend,
 ## Flow
 
 ```
-+ Create Training → 1 Train → 2 Audience → 3 Skills → 4 People → 5 Interaction → Review → [Create Training]
++ Create Training → 1 Train → 2 World → 3 Audience → 4 Skills → 5 People → 6 Interaction → Review → [Create Training]
 ```
 
 ## Pattern (every step)
@@ -33,16 +33,17 @@ A large free-text box with a placeholder. Suggestion chips below it append their
 | Step | Question | Suggestion chips |
 |---|---|---|
 | 1 | What do you want to train? | Team collaboration · Fire safety · Drug response · Onboarding |
-| 2 | Who is it for? | New hires · Managers · Healthcare staff · Students · Sales teams |
-| 3 | Which skills matter most? | Communication · Delegation · Decision making · Help-seeking · Conflict resolution · Adaptability |
-| 4 | How many people will take part? | Solo · 2 people · 3–5 people · 6+ people |
-| 5 | How should people interact? | Voice · Text · Image |
-| Review | Here's what you're creating | 5 editable answer cards, then a **Create Training** button |
+| 2 | What world do you want your training to be in? | Fairytale · Real world · Marvel Universe · Harry Potter |
+| 3 | Who is it for? | New hires · Managers · Healthcare staff · Students · Sales teams |
+| 4 | Which skills matter most? | Communication · Delegation · Decision making · Help-seeking · Conflict resolution · Adaptability |
+| 5 | How many people will take part? | Solo · 2 people · 3–5 people · 6+ people |
+| 6 | How should people interact? | Voice · Text · Image |
+| Review | Here's what you're creating | 6 editable answer cards, then a **Create Training** button |
 
 ## Rules
 
 - Continue is enabled once the text box isn't empty.
-- Each step shows "Step N of 5" and a progress bar.
+- Each step shows "Step N of 6" and a progress bar.
 - No AI or technical settings (models, agents, prompts, tools) appear anywhere.
 - Submitting only runs `console.log(state)`.
 

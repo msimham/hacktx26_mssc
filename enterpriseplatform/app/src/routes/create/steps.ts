@@ -15,6 +15,13 @@ export const STEPS = [
     chips: ["Team collaboration", "Fire safety", "Drug response", "Onboarding"],
   },
   {
+    id: "world",
+    emoji: "🌍",
+    question: "What world do you want your training to be in?",
+    placeholder: "e.g. A hospital that feels like a fairytale castle",
+    chips: ["Fairytale", "Real world", "Marvel Universe", "Harry Potter"],
+  },
+  {
     id: "audience",
     emoji: "👥",
     question: "Who is it for?",
