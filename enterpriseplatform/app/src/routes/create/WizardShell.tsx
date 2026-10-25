@@ -7,16 +7,17 @@ interface Props {
   label: string;
   progress: { value: number; max: number } | null;
   accent?: Accent;
+  aside?: ReactNode;
   children: ReactNode;
   footer: ReactNode;
 }
 
-export function WizardShell({ label, progress, accent = ACCENTS[0]!, children, footer }: Props) {
+export function WizardShell({ label, progress, accent = ACCENTS[0]!, aside, children, footer }: Props) {
   return (
     <div className="relative min-h-screen overflow-hidden">
       <div aria-hidden className="pointer-events-none absolute -right-24 -top-24 size-72 rounded-full bg-fuchsia-200/50 blur-3xl" />
       <div aria-hidden className="pointer-events-none absolute -bottom-24 -left-24 size-72 rounded-full bg-amber-200/50 blur-3xl" />
-      <div className="relative mx-auto flex min-h-screen max-w-2xl flex-col px-4 py-6 sm:py-10">
+      <div className={`relative mx-auto flex min-h-screen flex-col px-4 py-6 sm:py-10 ${aside ? "max-w-5xl" : "max-w-2xl"}`}>
         <header className="mb-8">
           <div className="mb-3 flex items-center justify-between text-sm">
             <Link to="/" className="font-display font-extrabold tracking-tight">TALE ✨</Link>
@@ -38,8 +39,13 @@ export function WizardShell({ label, progress, accent = ACCENTS[0]!, children, f
             </div>
           )}
         </header>
-        <main className="flex-1">{children}</main>
-        <footer className="mt-8 flex items-center justify-between gap-3">{footer}</footer>
+        <div className={aside ? "grid flex-1 gap-8 lg:grid-cols-[1fr_17rem]" : "flex-1"}>
+          <div className="flex flex-col">
+            <main className="flex-1">{children}</main>
+            <footer className="mt-8 flex items-center justify-between gap-3">{footer}</footer>
+          </div>
+          {aside && <aside className="order-first lg:order-none">{aside}</aside>}
+        </div>
       </div>
     </div>
   );

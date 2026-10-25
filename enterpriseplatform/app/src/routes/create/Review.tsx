@@ -1,4 +1,5 @@
 import { accentAt } from "./accents";
+import { CATEGORIES, categoryIndex } from "./categories";
 import { STEPS, type Answers } from "./steps";
 
 interface Props {
@@ -13,13 +14,19 @@ export function Review({ answers, onEdit }: Props) {
       <h1 className="font-display text-3xl font-extrabold tracking-tight sm:text-4xl">Here&rsquo;s what you&rsquo;re creating</h1>
       <ul className="mt-6 space-y-3">
         {STEPS.map((step, i) => {
-          const accent = accentAt(i);
+          const c = categoryIndex(step.category);
+          const accent = accentAt(c);
           return (
             <li key={step.id} className={`rounded-2xl border border-l-8 border-slate-200 bg-white p-4 shadow-sm ${accent.card}`}>
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <h2 className={`text-sm font-semibold ${accent.text}`}>{step.emoji} {step.question}</h2>
-                  <p className="mt-1 whitespace-pre-wrap break-words">{answers[step.id]}</p>
+                  <p className={`text-xs font-semibold uppercase tracking-wider ${accent.text}`}>{CATEGORIES[c]?.label}</p>
+                  <h2 className="text-sm font-medium text-slate-500">{step.emoji} {step.question}</h2>
+                  {answers[step.id].trim() ? (
+                    <p className="mt-1 whitespace-pre-wrap break-words">{answers[step.id]}</p>
+                  ) : (
+                    <p className="mt-1 italic text-slate-400">Not answered yet</p>
+                  )}
                 </div>
                 <button
                   type="button"

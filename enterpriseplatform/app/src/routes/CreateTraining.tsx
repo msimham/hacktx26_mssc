@@ -1,6 +1,8 @@
 import { useReducer, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { accentAt } from "./create/accents";
+import { BuildRing } from "./create/BuildRing";
+import { categoryIndex, categoryProgress } from "./create/categories";
 import { Confetti } from "./create/Confetti";
 import { PromptStep } from "./create/PromptStep";
 import { Review } from "./create/Review";
@@ -15,7 +17,11 @@ export function CreateTraining() {
   const [created, setCreated] = useState(false);
   const { answers, index } = state;
   const step = STEPS[index];
-  const accent = accentAt(index);
+  const accent = accentAt(step ? categoryIndex(step.category) : 0);
+  const progress = categoryProgress(answers);
+  const allAnswered = progress.every((p) => p.done === 1);
+  const goto = (i: number) => dispatch({ type: "goto", index: i });
+  const ring = (current?: number) => <BuildRing progress={progress} current={current} onSelect={goto} />;
 
   if (created) {
     return (
@@ -41,7 +47,7 @@ export function CreateTraining() {
     return (
       <WizardShell
         label="Review"
-        accent={accentAt(STEPS.length)}
+        aside={ring()}
         progress={{ value: STEPS.length, max: STEPS.length }}
         footer={
           <>
@@ -49,6 +55,7 @@ export function CreateTraining() {
             <button
               type="button"
               className={buttonPrimary}
+              disabled={!allAnswered}
               onClick={async () => {
                 await submitTraining(answers);
                 setCreated(true);
@@ -59,7 +66,7 @@ export function CreateTraining() {
           </>
         }
       >
-        <Review answers={answers} onEdit={(i) => dispatch({ type: "goto", index: i })} />
+        <Review answers={answers} onEdit={goto} />
       </WizardShell>
     );
   }
@@ -68,6 +75,7 @@ export function CreateTraining() {
     <WizardShell
       label={`Step ${index + 1} of ${STEPS.length}`}
       accent={accent}
+      aside={ring(categoryIndex(step.category))}
       progress={{ value: index + 1, max: STEPS.length }}
       footer={
         <>

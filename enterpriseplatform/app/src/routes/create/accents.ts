@@ -5,6 +5,8 @@ export interface Accent {
   readonly card: string;
   readonly bar: string;
   readonly badge: string;
+  /** Raw color for SVG strokes. */
+  readonly hex: string;
 }
 
 /** Full class strings so Tailwind can see them at build time. */
@@ -16,6 +18,7 @@ export const ACCENTS: readonly Accent[] = [
     card: "border-l-violet-500",
     bar: "from-violet-500 to-fuchsia-500",
     badge: "bg-violet-100 text-violet-700",
+    hex: "#8b5cf6",
   },
   {
     chip: "border-rose-200 bg-rose-50 text-rose-800 hover:border-rose-400 hover:bg-rose-100",
@@ -24,6 +27,7 @@ export const ACCENTS: readonly Accent[] = [
     card: "border-l-rose-500",
     bar: "from-rose-500 to-orange-400",
     badge: "bg-rose-100 text-rose-700",
+    hex: "#f43f5e",
   },
   {
     chip: "border-amber-200 bg-amber-50 text-amber-900 hover:border-amber-400 hover:bg-amber-100",
@@ -32,6 +36,7 @@ export const ACCENTS: readonly Accent[] = [
     card: "border-l-amber-500",
     bar: "from-amber-400 to-orange-500",
     badge: "bg-amber-100 text-amber-800",
+    hex: "#f59e0b",
   },
   {
     chip: "border-emerald-200 bg-emerald-50 text-emerald-800 hover:border-emerald-400 hover:bg-emerald-100",
@@ -40,6 +45,7 @@ export const ACCENTS: readonly Accent[] = [
     card: "border-l-emerald-500",
     bar: "from-emerald-500 to-teal-400",
     badge: "bg-emerald-100 text-emerald-700",
+    hex: "#10b981",
   },
   {
     chip: "border-sky-200 bg-sky-50 text-sky-800 hover:border-sky-400 hover:bg-sky-100",
@@ -48,6 +54,7 @@ export const ACCENTS: readonly Accent[] = [
     card: "border-l-sky-500",
     bar: "from-sky-500 to-indigo-500",
     badge: "bg-sky-100 text-sky-700",
+    hex: "#0ea5e9",
   },
   {
     chip: "border-fuchsia-200 bg-fuchsia-50 text-fuchsia-800 hover:border-fuchsia-400 hover:bg-fuchsia-100",
@@ -56,6 +63,16 @@ export const ACCENTS: readonly Accent[] = [
     card: "border-l-fuchsia-500",
     bar: "from-fuchsia-500 to-pink-400",
     badge: "bg-fuchsia-100 text-fuchsia-700",
+    hex: "#d946ef",
+  },
+  {
+    chip: "border-orange-200 bg-orange-50 text-orange-800 hover:border-orange-400 hover:bg-orange-100",
+    field: "focus:border-orange-500 focus:ring-orange-500/30",
+    text: "text-orange-600",
+    card: "border-l-orange-500",
+    bar: "from-orange-500 to-amber-400",
+    badge: "bg-orange-100 text-orange-700",
+    hex: "#f97316",
   },
 ];
 

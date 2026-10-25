@@ -5,7 +5,7 @@ Frontend-only, first-layer UI for organizations creating a training. No backend,
 ## Flow
 
 ```
-+ Create Training → 1 Train → 2 World → 3 Audience → 4 Skills → 5 People → 6 Interaction → Review → [Create Training]
++ Create Training → Goal → World → People → Experience → Knowledge → Guardrails → Success → Review → [Create Training]
 ```
 
 ## Pattern (every step)
@@ -30,20 +30,27 @@ A large free-text box with a placeholder. Suggestion chips below it append their
 
 ## Steps
 
-| Step | Question | Suggestion chips |
-|---|---|---|
-| 1 | What do you want to train? | Team collaboration · Fire safety · Drug response · Onboarding |
-| 2 | What world do you want your training to be in? | Fairytale · Real world · Marvel Universe · Harry Potter |
-| 3 | Who is it for? | New hires · Managers · Healthcare staff · Students · Sales teams |
-| 4 | Which skills matter most? | Communication · Delegation · Decision making · Help-seeking · Conflict resolution · Adaptability |
-| 5 | How many people will take part? | Solo · 2 people · 3–5 people · 6+ people |
-| 6 | How should people interact? | Voice · Text · Motion |
-| Review | Here's what you're creating | 6 editable answer cards, then a **Create Training** button |
+Questions are grouped into 7 categories. A segmented build-progress ring (one segment per category) sits beside the question and fills as answers come in, so the organization sees every consideration being covered. Clicking a segment or its label jumps to that category. The ring reads "Every answer shapes your agent", then "Your agent is taking shape", then "Your agent is production-ready ✨". A footnote says security, monitoring and infrastructure are handled by the platform.
+
+| # | Category | Question | Suggestion chips |
+|---|---|---|---|
+| 1 | Goal | What do you want to train? | Team collaboration · Fire safety · Drug response · Onboarding |
+| 2 | Goal | Which skills matter most? | Communication · Delegation · Decision making · Help-seeking · Conflict resolution · Adaptability |
+| 3 | World | What world do you want your training to be in? | Fairytale · Real world · Marvel Universe · Harry Potter |
+| 4 | People | Who is it for? | New hires · Managers · Healthcare staff · Students · Sales teams |
+| 5 | People | How many people will take part? | Solo · 2 people · 3–5 people · 6+ people |
+| 6 | Experience | How should people interact? | Voice · Text · Motion |
+| 7 | Knowledge | What should your agent know? | Our policies · Training objectives · Industry guidelines · Past sessions |
+| 8 | Guardrails | What should your agent never do without asking? | Ask before big changes · Keep scores private · Stay on topic · Flag real emergencies |
+| 9 | Success | How will you know it worked? | Clearer communication · Faster decisions · Everyone speaks up · Better each round |
+| Review | | Here's what you're creating | One editable card per answer, labeled by category; Create stays disabled until every question is answered |
+
+Cost, model and latency choices are platform-managed and never asked.
 
 ## Rules
 
 - Continue is enabled once the text box isn't empty.
-- Each step shows "Step N of 6" and a progress bar.
+- Each step shows "Step N of 9" and a progress bar.
 - No AI or technical settings (models, agents, prompts, tools) appear anywhere.
 - Submitting only runs `console.log(state)`.
 
@@ -56,6 +63,8 @@ A standalone Vite + React + TypeScript + Tailwind 4 app in `enterpriseplatform/a
 - `enterpriseplatform/app/src/routes/CreateTraining.tsx`: wizard state in one `useReducer`, all answers as strings.
 - `enterpriseplatform/app/src/routes/create/PromptStep.tsx`: reusable text box plus chips.
 - `enterpriseplatform/app/src/routes/create/steps.ts`: questions, placeholders and chips.
+- `enterpriseplatform/app/src/routes/create/categories.ts`: the 7 categories and per-category progress.
+- `enterpriseplatform/app/src/routes/create/BuildRing.tsx`: the segmented progress ring.
 - `enterpriseplatform/app/src/routes/create/Review.tsx`, `WizardShell.tsx`.
 
 The build prompt for Sonnet is in `SONNET_PROMPT.md`.

@@ -4,7 +4,8 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { CreateTraining } from "./CreateTraining";
 import { initialState, reducer } from "./create/state";
-import { STEPS } from "./create/steps";
+import { categoryProgress } from "./create/categories";
+import { emptyAnswers, STEPS } from "./create/steps";
 
 afterEach(cleanup);
 
@@ -22,6 +23,15 @@ describe("reducer", () => {
     expect(s.answers.train).toBe("Fire safety, Onboarding");
     expect(reducer(initialState(), { type: "back" }).index).toBe(0);
     expect(reducer(initialState(), { type: "goto", index: 99 }).index).toBe(STEPS.length);
+  });
+});
+
+describe("categoryProgress", () => {
+  it("fills a category in proportion to its answered questions", () => {
+    const progress = categoryProgress({ ...emptyAnswers(), train: "Fire safety" });
+    expect(progress.find((p) => p.id === "goal")?.done).toBe(0.5);
+    expect(progress.find((p) => p.id === "world")?.done).toBe(0);
+    expect(progress.find((p) => p.id === "world")?.firstStep).toBe(STEPS.findIndex((s) => s.id === "world"));
   });
 });
 
@@ -46,9 +56,10 @@ describe("CreateTraining wizard", () => {
       await user.click(screen.getByRole("button", { name: "Continue" }));
     }
     expect(screen.getByText(/what you.re creating/i)).toBeTruthy();
+    expect(screen.getByText(/production-ready/)).toBeTruthy();
     await user.click(screen.getByRole("button", { name: "Create Training Simulation Agent" }));
     expect(log).toHaveBeenCalledWith(expect.objectContaining({ train: "Team collaboration" }));
-    expect(await screen.findByRole("status")).toBeTruthy();
+    expect(await screen.findByText(/being created/)).toBeTruthy();
     log.mockRestore();
   });
 });
