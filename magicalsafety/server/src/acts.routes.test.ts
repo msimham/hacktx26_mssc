@@ -135,3 +135,11 @@ describe("two-act sessions over sockets", () => {
     void playWell; void PASS;
   });
 });
+
+describe("creating a session with every input method", () => {
+  it("accepts all five, including hand gestures", async () => {
+    const b = await boot();
+    const made = await b.create({ inputMethods: ["mouse", "keyboard", "text", "voice", "gesture"] });
+    expect(made.code).toMatch(/^[A-Z0-9]{6}$/);
+  });
+});

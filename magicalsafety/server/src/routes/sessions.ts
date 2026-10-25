@@ -32,7 +32,7 @@ const CreateBody = z.strictObject({
     roleAssignment: z.enum(["random", "chosen", "organizer"]).default("random"),
     fillWithBots: z.boolean().default(true),
   }).default({ size: 3, roleAssignment: "random", fillWithBots: true }),
-  inputMethods: z.array(InputMethod).min(1).max(4).default(["mouse", "keyboard", "text"]),
+  inputMethods: z.array(InputMethod).min(1).max(5).default(["mouse", "keyboard", "text"]),
   difficulty: Difficulty.partial().default({}),
   act2: z.strictObject({
     exitBlockedAtSec: z.number().int().min(20).max(90).default(50),
